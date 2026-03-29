@@ -12,6 +12,10 @@ If you want to explore the model engineering phase, navigate to the `experiments
 * Applies `RobustScaler` to numerical columns to handle extreme outliers without squashing the transaction variance.
 * Strips unnecessary structures to prepare for raw array inputs.
 
+**Visual Evidence of Class Imbalance:**
+
+![Class Distribution logs showing 0.173% Fraud Ratio](docs/images/experiments/class-distribution.png)
+
 ### 2. Model Benchmarking
 We don't guess; we benchmark. The evaluation strictly avoids "Accuracy" and focuses on **PR-AUC** and **Inference Latency**.
 
@@ -20,6 +24,9 @@ We don't guess; we benchmark. The evaluation strictly avoids "Accuracy" and focu
 | **XGBoost** | **0.8752** | **0.8469** | **0.8925** | **0.8691** | **0.0011 ms/row** |
 | LightGBM | 0.8724 | 0.8571 | 0.8485 | 0.8528 | 0.0023 ms/row |
 | Random Forest | 0.8501 | 0.7449 | 0.9605 | 0.8391 | 0.0025 ms/row |
+
+**Visual Evidence of Benchmark Arena:**
+![Model Training Benchmark results table](docs/images/experiments/benchmark-results.png)
 
 *XGBoost was selected as the champion model due to its superior PR-AUC and sub-millisecond inference speed.*
 
