@@ -10,3 +10,6 @@ data/processed/*.csv
 
 models/*.onnx
 !models/fraud_xgboost.onnx
+
+logs/*.log
+!logs/.gitkeep
