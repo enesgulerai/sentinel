@@ -33,3 +33,19 @@ We don't guess; we benchmark. The evaluation strictly avoids "Accuracy" and focu
 ### 3. Production Export
 The champion XGBoost model is trained on the full dataset with calculated `scale_pos_weight` and exported to the **ONNX** format.
 * **Final Model Size:** 176.47 KB (Optimized for microservices and RAM efficiency).
+
+## If You're a Data Engineer 
+The architecture decouples data ingestion from inference using **Redpanda** (Kafka-compatible message broker). This ensures high throughput, fault tolerance, and true real-time streaming capabilities.
+
+### 1. The Highway 
+We deploy Redpanda and Redpanda Console via Docker to handle message brokering. The infrastructure is configured with dedicated internal and external advertised listeners to support cross-container and host communications.
+
+### 2. The Ingestor
+A custom Python producer reads the raw historical transactions and streams them into the `transactions` topic at a controlled rate (e.g., 5-10 messages/second).
+* **Crucial Detail:** The `Class` (Fraud/Normal) label is deliberately stripped before ingestion to simulate a true production environment where the model must make blind predictions.
+
+**Visual Evidence of Real-Time Streaming:**
+![Redpanda Console showing live transaction stream](docs/images/kafka/redpanda-console.png)
+
+### 3. Enterprise Logging
+All services use a standardized, timestamped Python `logging` configuration instead of raw print statements, ensuring observability across the pipeline.
