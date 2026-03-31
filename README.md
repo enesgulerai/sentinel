@@ -49,3 +49,29 @@ A custom Python producer reads the raw historical transactions and streams them 
 
 ### 3. Enterprise Logging
 All services use a standardized, timestamped Python `logging` configuration instead of raw print statements, ensuring observability across the pipeline.
+
+## System Architecture & API Gateway
+
+This project implements a decoupled, event-driven microservices architecture:
+
+1.  **FastAPI Gateway (Entry Point):** Acts as the primary ingress for external systems (e.g., POS terminals, Web Apps). It utilizes `Pydantic` for strict data validation and asynchronously publishes valid transactions to the message broker, returning a `202 Accepted` status within milliseconds.
+2.  **Redpanda (Message Broker):** A Kafka-compatible streaming platform that handles high-throughput data ingestion, decoupling the API from the inference engine and providing built-in backpressure management.
+3.  **Inference Engine (Kafka Consumer):** A standalone Python service that continuously polls the message broker. It applies real-time feature transformations (using decoupled `RobustScaler` artifacts) and feeds the normalized data into the 176 KB ONNX XGBoost model for sub-millisecond fraud detection.
+
+### API Usage (Swagger UI)
+
+The API is fully documented and testable via the automatically generated Swagger UI.
+
+**Endpoint:** `POST /api/v1/transactions`
+
+**Payload Example:**
+```json
+{
+  "Time": 406.0,
+  "V1": -2.312226542,
+  "V2": 1.951992011,
+  "...",
+  "Amount": 0.0
+}
+```
+*Note: The system handles raw Time and Amount values. Preprocessing and scaling are applied on the fly by the inference engine to prevent training-serving skew.*
