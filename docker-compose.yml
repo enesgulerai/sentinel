@@ -1,4 +1,5 @@
 services:
+  # KAFKA (Redpanda)
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:latest
     container_name: sentinel-redpanda
@@ -29,3 +30,10 @@ services:
     depends_on:
       redpanda:
         condition: service_healthy
+
+  # REDIS
+  redis:
+    image: redis:7-alpine
+    container_name: sentinel-redis
+    ports:
+    - "6379:6379"
