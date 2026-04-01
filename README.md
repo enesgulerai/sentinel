@@ -75,3 +75,14 @@ The API is fully documented and testable via the automatically generated Swagger
 }
 ```
 *Note: The system handles raw Time and Amount values. Preprocessing and scaling are applied on the fly by the inference engine to prevent training-serving skew.*
+
+### 🛡️ Idempotency & Performance Benchmarking
+
+In high-throughput financial systems, duplicate transactions (e.g., a user double-clicking "Pay") can lead to critical data corruption. To prevent this, an **Atomic Redis Lock** is implemented at the API Gateway level. 
+
+We conducted an asynchronous load test simulating a severe race condition: sending **1,000 identical transactions concurrently** to the API.
+
+**Visual Evidence of Redis Test:**
+![Redpanda Console showing live transaction stream](docs/images/redis/redis_load.png)
+
+The system utilizes Redis `SETNX` (Set if Not eXists) atomic operations to mitigate "Check-Then-Act" vulnerabilities. This ensures sub-millisecond duplicate detection without adding latency to the main Kafka stream or the ONNX inference engine.
