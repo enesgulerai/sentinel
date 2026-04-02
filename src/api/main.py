@@ -4,9 +4,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, status
 from confluent_kafka import Producer
 import redis.asyncio as redis
+import os
 
 from src.api.schemas import TransactionRequest
 from src.utils.logger import get_logger
+
+REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
+REDPANDA_BROKER = os.getenv("REDPANDA_BROKER", "localhost:19092")
 
 logger = get_logger(__name__)
 
@@ -20,7 +24,7 @@ async def lifespan(app: FastAPI):
     logger.info("Starting FastAPI Gateway...")
     
     # 1. Connect to Redis (The Guardian)
-    redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+    redis_client = redis.Redis(host=REDIS_HOST, port=6379, db=0, decode_responses=True)
     try:
         await redis_client.ping()
         logger.info("SUCCESS: Connected to Redis Cache.")
@@ -28,7 +32,7 @@ async def lifespan(app: FastAPI):
         logger.error(f"Redis connection failed: {e}")
         
     # 2. Connect to Redpanda (The Highway)
-    conf = {'bootstrap.servers': 'localhost:19092'}
+    conf = {'bootstrap.servers': 'REDPANDA_BROKER'}
     producer = Producer(conf)
     logger.info("SUCCESS: Connected to Redpanda Stream.")
     
