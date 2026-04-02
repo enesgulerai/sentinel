@@ -3,7 +3,7 @@ Sentinel is an enterprise-grade, real-time fraud detection system. It simulates 
 
 ---
 
-## If You're a Data Scientist
+### If You're a Data Scientist or ML Engineer: High-Speed Inference & Serialization
 The foundation of this project is built on strict data science principles, avoiding common pitfalls of highly imbalanced datasets (Fraud ratio: 0.17%).
 
 If you want to explore the model engineering phase, navigate to the `experiments/` directory.
@@ -34,7 +34,7 @@ We don't guess; we benchmark. The evaluation strictly avoids "Accuracy" and focu
 The champion XGBoost model is trained on the full dataset with calculated `scale_pos_weight` and exported to the **ONNX** format.
 * **Final Model Size:** 176.47 KB (Optimized for microservices and RAM efficiency).
 
-## If You're a Data Engineer 
+## If You're a Data Engineer: Event-Driven Architecture & Stream Processing
 The architecture decouples data ingestion from inference using **Redpanda** (Kafka-compatible message broker). This ensures high throughput, fault tolerance, and true real-time streaming capabilities.
 
 ### 1. The Highway 
