@@ -50,6 +50,19 @@ A custom Python producer reads the raw historical transactions and streams them 
 ### 3. Enterprise Logging
 All services use a standardized, timestamped Python `logging` configuration instead of raw print statements, ensuring observability across the pipeline.
 
+### If You're a DevOps Engineer: Containerization & Orchestration
+
+The entire infrastructure is dockerized with production-grade DevSecOps practices to ensure reproducibility and security across environments.
+
+**Architecture Highlights:**
+* **Multi-Stage Builds:** Reduced image sizes by compiling C-dependencies (like librdkafka) in a builder stage and extracting only the necessary artifacts to the runtime stage.
+* **Layer Caching:** Separated dependency files for the frontend and backend, leveraging the `uv` package manager for ultra-fast, cached dependency resolution.
+* **Security First:** Containers run as a non-root user (sentinel) with explicit permission boundaries and home directory allocations to prevent privilege escalation.
+* **Seamless Orchestration:** The `docker-compose.yml` orchestrates the API Gateway, Streamlit UI, Redis (Idempotency Lock), and Redpanda (Event Stream) within an isolated Docker network.
+
+**Visual Evidence: Real-Time UI**
+![Streamlit UI Demonstration](docs/images/ui/streamlit-usage.gif)
+
 ## System Architecture & API Gateway
 
 This project implements a decoupled, event-driven microservices architecture:
