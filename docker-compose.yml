@@ -37,3 +37,35 @@ services:
     container_name: sentinel-redis
     ports:
     - "6379:6379"
+
+  # API
+  api:
+    build: 
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    container_name: sentinel-api
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=redis
+      - REDPANDA_BROKER=redpanda:9092
+    depends_on:
+      - redis
+      - redpanda
+    networks:
+      - default
+
+  # UI
+  ui:
+    build:
+      context: .
+      dockerfile: docker/frontend/Dockerfile
+    container_name: sentinel-ui
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=http://api:8000/api/v1/transactions
+    depends_on:
+      - api
+    networks:
+      - default
