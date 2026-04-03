@@ -1,4 +1,4 @@
-.PHONY: up down logs restart ps
+.PHONY: up down test
 
 up:
 	@echo "Starting all Docker containers..."
@@ -15,15 +15,10 @@ down:
 	@echo "Stopping and removing all Docker containers..."
 	docker compose down
 
-restart:
-	@echo "Restarting all Docker containers..."
-	docker compose down
-	docker compose up -d
+test:
+	@echo "Running all tests with coverage report..."
+	python -m pytest tests/ --cov=src --cov-report=term-missing
 
-logs:
-	@echo "Tailing logs for all containers..."
-	docker compose logs -f
-
-ps:
-	@echo "Showing container status..."
-	docker compose ps
+test-unit:
+	@echo "Running unit tests only..."
+	python -m pytest tests/unit/ -v
