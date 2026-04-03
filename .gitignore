@@ -13,3 +13,10 @@ models/*.onnx
 
 logs/*.log
 !logs/.gitkeep
+
+.coverage
+.pytest_cache/
+htmlcov/
+nosetests.xml
+coverage.xml
+*,cover

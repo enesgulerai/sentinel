@@ -63,6 +63,18 @@ The entire infrastructure is dockerized with production-grade DevSecOps practice
 **Visual Evidence: Real-Time UI**
 ![Streamlit UI Demonstration](docs/images/ui/streamlit-usage.gif)
 
+### If You're a QA Engineer or Tech Lead: Dual-Layered Testing Strategy
+
+To balance execution speed and real-world reliability, the test suite is strictly bifurcated into two distinct layers.
+
+**Testing Architecture Highlights:**
+* **Isolated Unit Tests (`test_api_logic.py`):** External dependencies (Redis, Redpanda) are completely stubbed using `AsyncMock`. This guarantees instantaneous execution and validates the core FastAPI routing, Pydantic schema validation, and internal logic without any infrastructure overhead.
+* **Live Integration Tests (`test_api.py`):** Infrastructure-dependent. These tests interact directly with the active Docker containers to validate the actual network I/O, the Redis idempotency lock mechanics, and the Redpanda event ingestion.
+* **Coverage & Reliability:** The suite currently maintains an **81% code coverage**, ensuring that critical paths and architectural boundaries are fully verified.
+
+**Test Execution & Coverage Evidence:**
+![Code Coverage Result](docs/images/test/test-results.png)
+
 ## System Architecture & API Gateway
 
 This project implements a decoupled, event-driven microservices architecture:
