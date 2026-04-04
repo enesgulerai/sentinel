@@ -75,6 +75,20 @@ To balance execution speed and real-world reliability, the test suite is strictl
 **Test Execution & Coverage Evidence:**
 ![Code Coverage Result](docs/images/test/test-results.png)
 
+## 🚧 Kubernetes Migration Status
+
+The project is currently undergoing a migration to a full Kubernetes (K8s) architecture. 
+
+**Successfully Migrated to K8s:**
+* FastAPI Gateway (`api-deployment`, `api-service`)
+* Streamlit Dashboard (`ui-deployment`, `ui-service`)
+* Redis Cache (`redis-deployment`, `redis-service`)
+
+**Known Issues & Next Steps:**
+* **Redpanda (Kafka) K8s Deployment:** Currently, the Redpanda broker faces a `CrashLoopBackOff` in the localized K8s environment (Docker Desktop) due to strict hardware/I/O constraints and configuration mismatches. 
+* **Temporary Workaround:** For a fully stable local experience, it is highly recommended to run the entire stack using Docker Compose (`make up`). 
+* **Future Goal:** Complete the Helm chart implementation and stabilize Redpanda within the K8s cluster.
+
 ## System Architecture & API Gateway
 
 This project implements a decoupled, event-driven microservices architecture:
