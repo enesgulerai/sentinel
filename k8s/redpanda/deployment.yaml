@@ -16,7 +16,7 @@ spec:
       containers:
         - name: redpanda
           image: docker.redpanda.com/redpandadata/redpanda:v23.2.19
-          command:
+          args:
             - redpanda
             - start
             - --mode=dev-container
