@@ -13,5 +13,4 @@ data:
 
   # Infrastructure Endpoints
   REDIS_HOST: "redis-service"
-  REDPANDA_BROKERS: "redpanda-service:9092"
   REDPANDA_BROKER: "redpanda-service:9092"

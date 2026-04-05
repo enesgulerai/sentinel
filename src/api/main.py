@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI):
         logger.error(f"Redis connection failed: {e}")
         
     # 2. Connect to Redpanda (The Highway)
-    conf = {'bootstrap.servers': 'REDPANDA_BROKER'}
+    conf = {"bootstrap.servers": os.getenv("REDPANDA_BROKER")}
     producer = Producer(conf)
     logger.info("SUCCESS: Connected to Redpanda Stream.")
     
