@@ -6,7 +6,7 @@ metadata:
 spec:
   type: ClusterIP
   selector:
-    app: sentine-api
+    app: sentinel-api
   ports:
     - protocol: TCP
       port: 8000
