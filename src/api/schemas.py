@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+
 class TransactionRequest(BaseModel):
     Time: float
     V1: float

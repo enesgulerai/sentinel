@@ -37,7 +37,7 @@ The champion XGBoost model is trained on the full dataset with calculated `scale
 ## If You're a Data Engineer: Event-Driven Architecture & Stream Processing
 The architecture decouples data ingestion from inference using **Redpanda** (Kafka-compatible message broker). This ensures high throughput, fault tolerance, and true real-time streaming capabilities.
 
-### 1. The Highway 
+### 1. The Highway
 We deploy Redpanda and Redpanda Console via Docker to handle message brokering. The infrastructure is configured with dedicated internal and external advertised listeners to support cross-container and host communications.
 
 ### 2. The Ingestor
@@ -115,9 +115,9 @@ The API is fully documented and testable via the automatically generated Swagger
 ```
 *Note: The system handles raw Time and Amount values. Preprocessing and scaling are applied on the fly by the inference engine to prevent training-serving skew.*
 
-### 🛡️ Idempotency & Performance Benchmarking
+### Idempotency & Performance Benchmarking
 
-In high-throughput financial systems, duplicate transactions (e.g., a user double-clicking "Pay") can lead to critical data corruption. To prevent this, an **Atomic Redis Lock** is implemented at the API Gateway level. 
+In high-throughput financial systems, duplicate transactions (e.g., a user double-clicking "Pay") can lead to critical data corruption. To prevent this, an **Atomic Redis Lock** is implemented at the API Gateway level.
 
 We conducted an asynchronous load test simulating a severe race condition: sending **1,000 identical transactions concurrently** to the API.
 

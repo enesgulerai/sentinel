@@ -40,7 +40,7 @@ services:
 
   # API
   api:
-    build: 
+    build:
       context: .
       dockerfile: docker/backend/Dockerfile
     container_name: sentinel-api
