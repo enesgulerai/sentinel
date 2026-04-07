@@ -1,0 +1,43 @@
+global:
+  environment: "development"
+
+# --- FastAPI Gateway ---
+api:
+  replicaCount: 2
+  image:
+    repository: "sentinel-api"
+    tag: "v4"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8000
+
+# --- Streamlit Dashboard ---
+ui:
+  replicaCount: 1
+  image:
+    repository: "sentinel-ui"
+    tag: "v4"
+    pullPolicy: IfNotPresent
+  service:
+    type: LoadBalancer
+    port: 8501
+
+# --- Redis Cache ---
+redis:
+  replicaCount: 1
+  image:
+    repository: "redis"
+    tag: "7.2-alpine"
+    pullPolicy: IfNotPresent
+  service:
+    port: 6379
+
+# --- Redpanda (Kafka) ---
+redpanda:
+  replicaCount: 1
+  image:
+    repository: "docker.redpanda.com/redpandadata/redpanda"
+    tag: "v23.2.19"
+  service:
+    port: 9092

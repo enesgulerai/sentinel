@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redpanda-deployment
+  labels:
+    app: redpanda
+spec:
+  replicas: {{ .Values.redpanda.replicaCount }}
+  selector:
+    matchLabels:
+      app: redpanda
+  template:
+    metadata:
+      labels:
+        app: redpanda
+    spec:
+      containers:
+      - name: redpanda
+        image: "{{ .Values.redpanda.image.repository }}:{{ .Values.redpanda.image.tag }}"
+        args:
+        - redpanda
+        - start
+        - --mode=dev-container
+        - --smp=1
+        - --memory=1G
+        ports:
+        - containerPort: 9092

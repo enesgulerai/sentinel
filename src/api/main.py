@@ -10,8 +10,13 @@ from fastapi import FastAPI, HTTPException, status
 from src.api.schemas import TransactionRequest
 from src.utils.logger import get_logger
 
+# --- DYNAMIC ENVIRONMENT VARIABLES ---
+# K8s ConfigMap üzerinden gelecek, bulamazsa lokale (localhost) dönecek
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-REDPANDA_BROKER = os.getenv("REDPANDA_BROKER", "localhost:19092")
+REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
+
+# Helm config.yaml dosyamızda KAFKA_BROKER_URL olarak tanımlamıştık
+KAFKA_BROKER = os.getenv("KAFKA_BROKER_URL", "localhost:19092")
 
 logger = get_logger(__name__)
 
@@ -26,23 +31,30 @@ async def lifespan(app: FastAPI):
     logger.info("Starting FastAPI Gateway...")
 
     # 1. Connect to Redis (The Guardian)
-    redis_client = redis.Redis(host=REDIS_HOST, port=6379, db=0, decode_responses=True)
+    redis_client = redis.Redis(
+        host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True
+    )
     try:
         await redis_client.ping()
-        logger.info("SUCCESS: Connected to Redis Cache.")
+        logger.info(f"SUCCESS: Connected to Redis Cache at {REDIS_HOST}:{REDIS_PORT}")
     except Exception as e:
-        logger.error(f"Redis connection failed: {e}")
+        logger.error(f"Redis connection failed at {REDIS_HOST}:{REDIS_PORT} -> {e}")
 
     # 2. Connect to Redpanda (The Highway)
-    conf = {"bootstrap.servers": os.getenv("REDPANDA_BROKER")}
-    producer = Producer(conf)
-    logger.info("SUCCESS: Connected to Redpanda Stream.")
+    conf = {"bootstrap.servers": KAFKA_BROKER}
+    try:
+        producer = Producer(conf)
+        logger.info(f"SUCCESS: Connected to Redpanda Stream at {KAFKA_BROKER}")
+    except Exception as e:
+        logger.error(f"Redpanda connection failed at {KAFKA_BROKER} -> {e}")
 
     yield
 
     logger.info("Shutting down API...")
-    producer.flush(timeout=5.0)
-    await redis_client.aclose()
+    if producer:
+        producer.flush(timeout=5.0)
+    if redis_client:
+        await redis_client.aclose()
     logger.info("Shutdown complete.")
 
 

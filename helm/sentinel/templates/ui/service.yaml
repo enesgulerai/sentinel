@@ -2,12 +2,11 @@ apiVersion: v1
 kind: Service
 metadata:
   name: ui-service
-  namespace: sentinel
 spec:
-  type: LoadBalancer
+  type: {{ .Values.ui.service.type }}
   selector:
-    app: sentinel-ui
+    app: ui
   ports:
     - protocol: TCP
-      port: 8501
+      port: {{ .Values.ui.service.port }}
       targetPort: 8501
