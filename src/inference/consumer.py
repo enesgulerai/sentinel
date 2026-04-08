@@ -72,7 +72,8 @@ def start_inference_engine():
             scaled_amount = scaler_amount.transform(np.array([[raw_amount]]))[0][0]
             scaled_time = scaler_time.transform(np.array([[raw_time]]))[0][0]
 
-            # Reconstruct features in the exact training order: [scaled_amount, scaled_time, V1...V28]
+            # Reconstruct features in the exact training order:
+            # [scaled_amount, scaled_time, V1...V28]
             ordered_features = [scaled_amount, scaled_time]
             for i in range(1, 29):
                 ordered_features.append(transaction.get(f"V{i}", 0.0))
@@ -86,11 +87,13 @@ def start_inference_engine():
             # Logging
             if fraud_prob > 0.50:
                 logger.warning(
-                    f"FRAUD DETECTED! Prob: %{fraud_prob*100:.2f} | Amount: ${raw_amount:.2f}"
+                    f"FRAUD DETECTED! Prob: %{fraud_prob * 100:.2f} | "
+                    f"Amount: ${raw_amount:.2f}"
                 )
             else:
                 logger.info(
-                    f"Normal Tx. Prob: %{fraud_prob*100:.2f} | Amount: ${raw_amount:.2f}"
+                    f"Normal Tx. Prob: %{fraud_prob * 100:.2f} | "
+                    f"Amount: ${raw_amount:.2f}"
                 )
 
     except KeyboardInterrupt:

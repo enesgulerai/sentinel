@@ -97,7 +97,8 @@ col_main, col_info = st.columns([2, 1], gap="large")
 with col_main:
     st.title("🛡️ Sentinel Gateway")
     st.markdown(
-        "Real-time Fraud Detection Interface. Submit a payload to test the Event-Driven Pipeline."
+        "Real-time Fraud Detection Interface."
+        "Submit a payload to test the Event-Driven Pipeline."
     )
 
     payload_str = st.text_area(
@@ -107,7 +108,8 @@ with col_main:
 with col_info:
     st.markdown("<br><br>", unsafe_allow_html=True)
     st.info(
-        "💡 **Pro Tip:** Modify the 'Amount' or 'Time' slightly to bypass the Redis Lock and hit the Redpanda stream."
+        "💡 **Pro Tip:** Modify the 'Amount' or 'Time' slightly "
+        " to bypass the Redis Lock and hit the Redpanda stream."
     )
 
     if st.button("🚀 Process Transaction", use_container_width=True):
