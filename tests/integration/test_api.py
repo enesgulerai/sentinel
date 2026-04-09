@@ -1,10 +1,12 @@
-import requests
+from fastapi.testclient import TestClient
 
-API_URL = "http://localhost:8000"
+from src.api.main import app
+
+client = TestClient(app)
 
 
 def test_health_check():
-    response = requests.get(f"{API_URL}/")
+    response = client.get("/")
     assert response.status_code == 200
     assert response.json()["status"] == "online"
 
@@ -43,7 +45,7 @@ def test_valid_transaction_ingestion():
         "Amount": 100.0,
     }
 
-    response = requests.post(f"{API_URL}/api/v1/transactions", json=payload)
+    response = client.post("/api/v1/transactions", json=payload)
 
     assert response.status_code == 202
     data = response.json()
@@ -54,5 +56,5 @@ def test_valid_transaction_ingestion():
 def test_invalid_transaction_payload():
     bad_payload = {"Time": 100.0, "V1": 1.5}
 
-    response = requests.post(f"{API_URL}/api/v1/transactions", json=bad_payload)
+    response = client.post("/api/v1/transactions", json=bad_payload)
     assert response.status_code == 422
