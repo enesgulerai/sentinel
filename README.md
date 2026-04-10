@@ -97,6 +97,19 @@ This project implements a decoupled, event-driven microservices architecture:
 2.  **Redpanda (Message Broker):** A Kafka-compatible streaming platform that handles high-throughput data ingestion, decoupling the API from the inference engine and providing built-in backpressure management.
 3.  **Inference Engine (Kafka Consumer):** A standalone Python service that continuously polls the message broker. It applies real-time feature transformations (using decoupled `RobustScaler` artifacts) and feeds the normalized data into the 176 KB ONNX XGBoost model for sub-millisecond fraud detection.
 
+## Pipeline Orchestration & Monitoring
+
+To ensure the reliability of the machine learning lifecycle and data ingestion pipelines, **Prefect** is integrated as the primary orchestration engine.
+
+Instead of relying on fragmented scripts, the system utilizes Prefect DAGs (Directed Acyclic Graphs) to manage task dependencies, automatic retries, and failure alerts.
+
+**Key Orchestration Features:**
+* **Dynamic Run Naming:** Automated timestamp-based tags (e.g., `10-04-26_Health-Check_18-33`) for precise tracing.
+* **Resilience:** Built-in task retries and delay mechanisms to handle transient network or service failures.
+* **Observability:** Full integration with the Prefect UI for real-time monitoring of task states and pipeline health.
+
+![Prefect Dashboard - Daily Health Check](docs/images/prefect/prefect-dashboard.png)
+
 ### API Usage (Swagger UI)
 
 The API is fully documented and testable via the automatically generated Swagger UI.
