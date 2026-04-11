@@ -119,7 +119,7 @@ with col_info:
             start_time = time.perf_counter()
             with st.spinner("Routing..."):
                 response = requests.post(
-                    f"{API_URL}/api/v1/transactions", json=payload_data
+                    f"{API_URL}/api/v1/transactions", json=payload_data, timeout=10
                 )
                 response_data = response.json()
             elapsed_ms = (time.perf_counter() - start_time) * 1000
