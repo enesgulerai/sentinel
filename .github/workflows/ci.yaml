@@ -25,9 +25,8 @@ jobs:
       - name: Install dependencies
         run: |
           uv venv
-
           uv pip install -r requirements/dev.txt
-
+          uv pip install bandit[toml]
           echo "$GITHUB_WORKSPACE/.venv/bin" >> $GITHUB_PATH
 
       - name: Run Ruff Linter
@@ -36,5 +35,19 @@ jobs:
       - name: Run Ruff Formatter
         run: ruff format --check .
 
+      - name: Run Bandit (Internal Security / SAST)
+        run: bandit -c pyproject.toml -r .
+
       - name: Run Pytest
         run: python -m pytest tests/
+
+      - name: Run Trivy Vulnerability Scanner (External Security)
+        uses: aquasec/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          scanners: 'vuln'
+          skip-dirs: '.venv'
+          format: 'table'
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
