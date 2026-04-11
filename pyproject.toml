@@ -17,4 +17,4 @@ quote-style = "double"
 indent-style = "space"
 
 [tool.bandit]
-exclude_dirs = ["tests", "experiments"]
+exclude_dirs = ["tests", "experiments", ".venv"]
