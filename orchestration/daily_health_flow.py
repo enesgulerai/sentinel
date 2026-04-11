@@ -24,7 +24,8 @@ def generate_daily_report(health_data):
     if health_data["status"] != "online":
         raise ValueError("CRITICAL ERROR: API is DOWN! Triggering incident...")
 
-    report = f"DAILY REPORT: All systems functioning normally. Uptime: {health_data['uptime']}"
+    report = "DAILY REPORT: All systems functioning normally."
+    f"Uptime: {health_data['uptime']}"
     print("[WORKER 2] Report generated successfully.")
     return report
 
