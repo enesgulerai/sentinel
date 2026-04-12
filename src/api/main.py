@@ -16,7 +16,7 @@ REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 
 # Helm config.yaml dosyamızda KAFKA_BROKER_URL olarak tanımlamıştık
-KAFKA_BROKER = os.getenv("KAFKA_BROKER_URL", "localhost:19092")
+KAFKA_BROKER = os.getenv("REDPANDA_BROKER", "localhost:19092")
 
 logger = get_logger(__name__)
 
