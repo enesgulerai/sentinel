@@ -1,6 +1,17 @@
 # Real-Time AI Fraud Detection
 Sentinel is an enterprise-grade, real-time fraud detection system. It simulates high-throughput financial transactions via streaming (Redpanda/Kafka) and evaluates them in milliseconds using an optimized ONNX inference engine.
 
+![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
+![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
+![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)
+![Kubernetes](https://img.shields.io/badge/kubernetes-%23326ce5.svg?style=for-the-badge&logo=kubernetes&logoColor=white)
+![Helm](https://img.shields.io/badge/Helm-0F1689?style=for-the-badge&logo=Helm&logoColor=white)
+![Apache Kafka](https://img.shields.io/badge/Apache%20Kafka-000?style=for-the-badge&logo=apachekafka)
+![Redis](https://img.shields.io/badge/redis-%23DD0031.svg?style=for-the-badge&logo=redis&logoColor=white)
+![Prefect](https://img.shields.io/badge/Prefect-FFFFFF?style=for-the-badge&logo=prefect&logoColor=black)
+![Trivy](https://img.shields.io/badge/Trivy-007acc?style=for-the-badge&logo=aquasecurity&logoColor=white)
+![Bandit](https://img.shields.io/badge/security-bandit-yellow.svg?style=for-the-badge&logo=python&logoColor=white)
+
 ---
 
 ### If You're a Data Scientist or ML Engineer: High-Speed Inference & Serialization
