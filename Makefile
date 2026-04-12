@@ -18,7 +18,3 @@ down:
 test:
 	@echo "Running all tests with coverage report..."
 	python -m pytest tests/ --cov=src --cov-report=term-missing
-
-test-unit:
-	@echo "Running unit tests only..."
-	python -m pytest tests/unit/ -v
