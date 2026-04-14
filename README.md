@@ -30,14 +30,14 @@ If you want to explore the model engineering phase, navigate to the `experiments
 ### 2. Model Benchmarking
 We don't guess; we benchmark. The evaluation strictly avoids "Accuracy" and focuses on **PR-AUC** and **Inference Latency**.
 
-| Model | PR-AUC | Recall | Precision | F1-Score | Inference Time |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **XGBoost** | **0.8752** | **0.8469** | **0.8925** | **0.8691** | **0.0011 ms/row** |
-| LightGBM | 0.8724 | 0.8571 | 0.8485 | 0.8528 | 0.0023 ms/row |
-| Random Forest | 0.8501 | 0.7449 | 0.9605 | 0.8391 | 0.0025 ms/row |
+| Model | PR-AUC | Recall | Precision | F1-Score | Train Time (s) | Real-Time Latency |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **XGBoost** | **0.8752** | **0.8469** | **0.8925** | **0.8691** | **1.81** | **0.7684 ms/row** |
+| LightGBM | 0.8724 | 0.8571 | 0.8485 | 0.8528 | 1.28 | 2.6728 ms/row |
+| Random Forest | 0.8501 | 0.7449 | 0.9605 | 0.8391 | 19.54 | 18.2848 ms/row |
 
 **Visual Evidence of Benchmark Arena:**
-![Model Training Benchmark results table](docs/images/experiments/benchmark-results.png)
+![Model Training Benchmark results table](docs/images/experiments/real-time-benchmark-results.png)
 
 *XGBoost was selected as the champion model due to its superior PR-AUC and sub-millisecond inference speed.*
 
