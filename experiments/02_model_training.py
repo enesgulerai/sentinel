@@ -92,7 +92,8 @@ def run_model_benchmark(X, y):
         f1 = f1_score(y_test, y_pred)
 
         # 3. Real-Time (Online) Inference Simulation
-        # Instead of feeding thousands of rows at once, we simulate an API receiving 100 separate requests
+        # Instead of feeding thousands of rows at once,
+        # we simulate an API receiving 100 separate requests
         sample_for_online_test = X_test.head(100).values
 
         online_start_time = time.time()
