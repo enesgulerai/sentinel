@@ -20,8 +20,10 @@ def train_and_export_model():
         raise FileNotFoundError(f"Dataset not found at: {PROCESSED_DATA_PATH}")
 
     df = pd.read_csv(PROCESSED_DATA_PATH)
-    X = df.drop("Class", axis=1)
-    y = df["Class"]
+
+    # Memory Optimization: Use pop() to extract target variable in O(1) time
+    y = df.pop("Class")
+    X = df
 
     neg_class_count = (y == 0).sum()
     pos_class_count = (y == 1).sum()
@@ -38,7 +40,7 @@ def train_and_export_model():
         eval_metric="logloss",
     )
 
-    # CRITICAL FIX: Strip Pandas column names by passing NumPy arrays
+    # Strip Pandas column names by passing NumPy arrays to avoid serving skew
     model.fit(X.values, y.values)
 
     print("\nConverting XGBoost model to ONNX format...")

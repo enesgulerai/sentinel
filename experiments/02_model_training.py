@@ -28,8 +28,11 @@ def load_data(filepath: Path):
         )
 
     df = pd.read_csv(filepath)
-    X = df.drop("Class", axis=1)
-    y = df["Class"]
+
+    # Memory Optimization: Use pop() instead of drop() for O(1) complexity
+    y = df.pop("Class")
+    X = df  # df now only contains the features
+
     return X, y
 
 
@@ -74,19 +77,28 @@ def run_model_benchmark(X, y):
     for model_name, model in models.items():
         print(f"Training {model_name}...")
 
+        # 1. Training Time
         start_time = time.time()
         model.fit(X_train, y_train)
         train_time = time.time() - start_time
 
-        inf_start_time = time.time()
+        # 2. Batch Inference (Evaluation Metrics)
         y_pred = model.predict(X_test)
         y_prob = model.predict_proba(X_test)[:, 1]
-        inference_time = (time.time() - inf_start_time) / len(X_test) * 1000
 
         pr_auc = average_precision_score(y_test, y_prob)
         recall = recall_score(y_test, y_pred)
         precision = precision_score(y_test, y_pred)
         f1 = f1_score(y_test, y_pred)
+
+        # 3. Real-Time (Online) Inference Simulation
+        # Instead of feeding thousands of rows at once, we simulate an API receiving 100 separate requests
+        sample_for_online_test = X_test.head(100).values
+
+        online_start_time = time.time()
+        for row in sample_for_online_test:
+            _ = model.predict(row.reshape(1, -1))  # Simulate one JSON payload arriving
+        online_inference_time = (time.time() - online_start_time) / 100 * 1000
 
         results.append(
             {
@@ -96,7 +108,7 @@ def run_model_benchmark(X, y):
                 "Precision": round(precision, 4),
                 "F1-Score": round(f1, 4),
                 "Train Time (s)": round(train_time, 2),
-                "Inf. Time/Row (ms)": round(inference_time, 4),
+                "Real-Time Latency (ms/row)": round(online_inference_time, 4),
             }
         )
 
@@ -106,7 +118,7 @@ def run_model_benchmark(X, y):
     )
 
     print("\n" + "=" * 80)
-    print(" " * 25 + "BENCHMARK RESULTS")
+    print(" " * 22 + "REAL-TIME BENCHMARK RESULTS")
     print("=" * 80)
     print(results_df.to_string(index=False))
     print("=" * 80)
