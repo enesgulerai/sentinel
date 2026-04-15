@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 import joblib
@@ -12,9 +13,10 @@ logger = get_logger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 MODEL_PATH = PROJECT_ROOT / "models" / "fraud_xgboost.onnx"
-SCALER_AMOUNT_PATH = PROJECT_ROOT / "models" / "scaler_amount.joblib"
-SCALER_TIME_PATH = PROJECT_ROOT / "models" / "scaler_time.joblib"
-TOPIC_NAME = "transactions"
+SCALER_PATH = PROJECT_ROOT / "models" / "robust_scaler.joblib"
+
+REDPANDA_BROKER = os.getenv("REDPANDA_BROKER", "localhost:19092")
+TOPIC_NAME = os.getenv("KAFKA_TOPIC", "transactions")
 
 
 def start_inference_engine():
@@ -29,26 +31,24 @@ def start_inference_engine():
     session = ort.InferenceSession(str(MODEL_PATH))
     input_name = session.get_inputs()[0].name
 
-    # Load Scalers
-    if not SCALER_AMOUNT_PATH.exists() or not SCALER_TIME_PATH.exists():
-        logger.error("Scalers not found. Run save_scalers.py first.")
+    # Load Scaler
+    if not SCALER_PATH.exists():
+        logger.error(f"Scaler not found at {SCALER_PATH}. Run pipeline first.")
         return
 
-    logger.info("Loading RobustScalers for data transformation...")
-    scaler_amount = joblib.load(SCALER_AMOUNT_PATH)
-    scaler_time = joblib.load(SCALER_TIME_PATH)
+    logger.info("Loading Unified RobustScaler for data transformation...")
+    scaler = joblib.load(SCALER_PATH)
 
     # Kafka Consumer Settings
-    # Changed group.id to 'v2' to force reading from the earliest offset again
     conf = {
-        "bootstrap.servers": "localhost:19092",
+        "bootstrap.servers": REDPANDA_BROKER,
         "group.id": "fraud-detector-v2",
         "auto.offset.reset": "earliest",
     }
 
     consumer = Consumer(conf)
     consumer.subscribe([TOPIC_NAME])
-    logger.info(f"Subscribed to topic: '{TOPIC_NAME}'. Waiting for transactions...")
+    logger.info(f"Subscribed to topic: '{TOPIC_NAME}' at {REDPANDA_BROKER}")
     logger.info("-" * 60)
 
     try:
@@ -68,9 +68,9 @@ def start_inference_engine():
             raw_amount = transaction.get("Amount", 0.0)
             raw_time = transaction.get("Time", 0.0)
 
-            # Scale features
-            scaled_amount = scaler_amount.transform(np.array([[raw_amount]]))[0][0]
-            scaled_time = scaler_time.transform(np.array([[raw_time]]))[0][0]
+            scaled_features = scaler.transform(np.array([[raw_amount, raw_time]]))
+            scaled_amount = scaled_features[0][0]
+            scaled_time = scaled_features[0][1]
 
             # Reconstruct features in the exact training order:
             # [scaled_amount, scaled_time, V1...V28]
