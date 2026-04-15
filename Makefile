@@ -1,8 +1,8 @@
-.PHONY: fetch preprocess train export pipeline clean
+.PHONY: fetch preprocess train export pipeline clean up ps
 
 
 #################################################################
-# DATA SCIENCE
+# Data Science
 #################################################################
 fetch:
 	python experiments/00_fetch_data.py
@@ -27,3 +27,12 @@ clean:
 	rm -f models/*.joblib
 	rm -f models/*.onnx
 	@echo "All generated data and models have been cleaned."
+
+#################################################################
+# Docker
+#################################################################
+up:
+	docker compose up --build -d
+
+ps:
+	docker compose ps
