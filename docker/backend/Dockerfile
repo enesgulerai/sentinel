@@ -1,6 +1,9 @@
 # Stage 1: Builder
 FROM python:3.11-slim AS builder
 
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
 WORKDIR /app
 
 RUN apt-get update && \
@@ -9,14 +12,20 @@ RUN apt-get update && \
 
 RUN pip install uv
 
+# Create an isolated virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
 COPY docker/backend/requirements.txt .
-RUN uv pip install --system --no-cache -r requirements.txt
+RUN uv pip install --no-cache -r requirements.txt
 
 # Stage 2: Runtime
 FROM python:3.11-slim
 
+# Enforce the use of the virtual environment
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PATH="/opt/venv/bin:$PATH"
 
 WORKDIR /app
 
@@ -24,11 +33,12 @@ RUN groupadd -r sentinel && useradd -r -g sentinel sentinel
 
 RUN mkdir -p /app/logs && chown -R sentinel:sentinel /app/logs
 
-COPY --from=builder /usr/local/lib/python3.11/site-packages/ /usr/local/lib/python3.11/site-packages/
-COPY --from=builder /usr/local/bin/ /usr/local/bin/
+# Copy the completely isolated virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
 
-COPY --chown=sentinel:sentinel src/api/ ./src/api/
-COPY --chown=sentinel:sentinel src/utils/ ./src/utils/
+# Copy all source code and essential ML artifacts
+COPY --chown=sentinel:sentinel src/ ./src/
+COPY --chown=sentinel:sentinel models/ ./models/
 
 USER sentinel
 

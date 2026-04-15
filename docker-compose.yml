@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  # KAFKA (Redpanda)
+  # --- Service: Redpanda ---
   redpanda:
-    image: docker.redpanda.com/redpandadata/redpanda:latest
+    image: docker.redpanda.com/redpandadata/redpanda:v23.3.2
     container_name: sentinel-redpanda
     command:
       - redpanda
@@ -24,7 +24,7 @@ services:
       - sentinel_net
 
   console:
-    image: docker.redpanda.com/redpandadata/console:latest
+    image: docker.redpanda.com/redpandadata/console:v2.4.5
     container_name: sentinel-console
     ports:
       - "8080:8080"
@@ -37,16 +37,21 @@ services:
     networks:
       - sentinel_net
 
-  # REDIS
+  # --- Service: Redis ---
   redis:
     image: redis:7-alpine
     container_name: sentinel-redis
     ports:
-    - "6379:6379"
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     networks:
       - sentinel_net
 
-  # API
+  # --- Service: API ---
   api:
     build:
       context: .
@@ -58,12 +63,29 @@ services:
       - REDIS_HOST=redis
       - REDPANDA_BROKER=redpanda:9092
     depends_on:
-      - redis
-      - redpanda
+      redis:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
     networks:
       - sentinel_net
 
-  # UI
+  # --- Service:: Consumer ---
+  consumer:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    container_name: sentinel-consumer
+    command: ["python", "-m", "src.consumer.main"]
+    environment:
+      - REDPANDA_BROKER=redpanda:9092
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    networks:
+      - sentinel_net
+
+  # --- Service: UI ---
   ui:
     build:
       context: .
@@ -74,7 +96,8 @@ services:
     environment:
       - API_URL=http://api:8000
     depends_on:
-      - api
+      api:
+        condition: service_started
     networks:
       - sentinel_net
 
