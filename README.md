@@ -1,11 +1,10 @@
-<div align="center">
+<div align="left">
 
 # Sentinel: Real-Time AI Fraud Detection
 
 *Enterprise-grade, event-driven anomaly detection pipeline with sub-millisecond ONNX inference.*
 
 ![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
-![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg?style=for-the-badge)
 ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
 ![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)
 <br>
@@ -18,19 +17,19 @@
 </div>
 
 ---
-
 **Sentinel** is an enterprise-grade, real-time fraud detection system. It simulates high-throughput financial transactions via streaming (Redpanda/Kafka) and evaluates them in milliseconds using an optimized ONNX inference engine.
 
----
+## Data Science & Model Engineering
+**Focus:** High-Speed Inference, Serialization, and Skew Prevention
 
-## If You're a Data Scientist or ML Engineer
-**Focus:** High-Speed Inference & Serialization
+The foundation of this pipeline is built on strict machine learning principles designed to handle highly imbalanced financial datasets (Fraud ratio: `0.17%`). The end-to-end model engineering lifecycle is isolated within the `experiments/` directory.
 
-The foundation of this project is built on strict data science principles, avoiding common pitfalls of highly imbalanced datasets (Fraud ratio: `0.17%`). If you want to explore the model engineering phase, navigate to the `experiments/` directory.
+### 1. Data Processing & Feature Engineering
+Handling an extreme class imbalance requires preprocessing techniques that preserve the anomaly signals without distorting the underlying distribution.
 
-### 1. Data Processing
-* Applies `RobustScaler` to numerical columns to handle extreme outliers without squashing the transaction variance.
-* Strips unnecessary structures to prepare for raw array inputs.
+* **Outlier-Aware Scaling:** Standard scaling mechanisms (mean/variance) are susceptible to distortion by extreme anomalies. We implement `RobustScaler`, which uses the Interquartile Range (IQR) to center and scale numerical features. This ensures that massive fraudulent transactions do not skew the baseline distribution while remaining detectable as distinct outliers.
+* **Artifact Decoupling for Streaming:** To guarantee zero training-serving skew, the fitted scaler state is serialized (`scaler.pkl`) independently from the model. This exact artifact is loaded into the memory of the Kafka Consumer, ensuring real-time payloads are transformed using the exact same mathematical boundaries as the training phase.
+* **Payload Optimization:** The pipeline strips unessential categorical metadata and flattens the incoming JSON structures into raw, homogeneous Numpy arrays. This minimizes serialization overhead and prepares the data for strict array-based ONNX inference.
 
 ### 2. Model Benchmarking
 We don't guess; we benchmark. The evaluation strictly avoids "Accuracy" and focuses on **PR-AUC** and **Inference Latency**.
@@ -43,15 +42,11 @@ We don't guess; we benchmark. The evaluation strictly avoids "Accuracy" and focu
 
 > *XGBoost was selected as the champion model due to its superior PR-AUC and sub-millisecond inference speed.*
 
-**Visual Evidence of Benchmark Arena:** ![Model Training Benchmark results table](docs/images/experiments/real_time_benchmark_results.png)
-
 ### 3. Production Export
 The champion XGBoost model is trained on the full dataset with calculated `scale_pos_weight` and exported to the **ONNX** format.
 * **Final Model Size:** `176.47 KB` (Optimized for microservices and RAM efficiency).
 
----
-
-## If You're a Data Engineer
+## Data Engineering
 **Focus:** Event-Driven Architecture & Stream Processing
 
 The architecture decouples data ingestion from inference using **Redpanda** (Kafka-compatible message broker). This ensures high throughput, fault tolerance, and true real-time streaming capabilities.
@@ -68,8 +63,6 @@ A custom Python producer reads the raw historical transactions and streams them 
 ### 3. Enterprise Logging
 All services use a standardized, timestamped Python `logging` configuration instead of raw print statements, ensuring observability across the pipeline.
 
----
-
 ## If You're a DevOps Engineer
 **Focus:** Containerization & Orchestration
 
@@ -83,8 +76,6 @@ The entire infrastructure is dockerized with production-grade DevSecOps practice
 
 **Visual Evidence: Real-Time UI** ![Streamlit UI Demonstration](docs/images/ui/streamlit_usage.gif)
 
----
-
 ## If You're a QA Engineer or Tech Lead
 **Focus:** Dual-Layered Testing Strategy
 
@@ -96,59 +87,3 @@ To balance execution speed and real-world reliability, the test suite is strictl
 * **Coverage & Reliability:** The suite currently maintains an **81% code coverage**, ensuring that critical paths and architectural boundaries are fully verified.
 
 **Test Execution & Coverage Evidence:** ![Code Coverage Result](docs/images/test/test_results.png)
-
----
-
-## Kubernetes Migration Status
-
-The project has been successfully migrated to a localized Kubernetes (K8s) architecture. The entire data pipeline and microservices stack are fully operational within the cluster.
-
-**Successfully Deployed Services:**
-* **FastAPI Gateway** (`api-deployment`, `api-service`) - Handles incoming traffic and model inference.
-* **Streamlit Dashboard** (`ui-deployment`, `ui-service`) - Interactive user interface.
-* **Redis Cache** (`redis-deployment`, `redis-service`) - High-speed caching layer.
-* **Redpanda (Kafka)** (`redpanda-deployment`, `redpanda-service`) - Real-time event streaming engine running in dev-container mode.
-
-**Next Steps & Roadmap:**
-* [ ] Package the current K8s manifests into **Helm Charts** for dynamic configuration.
-* [ ] Integrate **ArgoCD** for automated GitOps deployments and continuous delivery.
-
----
-
-## System Architecture & API Gateway
-
-This project implements a decoupled, event-driven microservices architecture:
-
-1. **FastAPI Gateway (Entry Point):** Acts as the primary ingress for external systems (e.g., POS terminals, Web Apps). It utilizes `Pydantic` for strict data validation and asynchronously publishes valid transactions to the message broker, returning a `202 Accepted` status within milliseconds.
-2. **Redpanda (Message Broker):** A Kafka-compatible streaming platform that handles high-throughput data ingestion, decoupling the API from the inference engine and providing built-in backpressure management.
-3. **Inference Engine (Kafka Consumer):** A standalone Python service that continuously polls the message broker. It applies real-time feature transformations (using decoupled `RobustScaler` artifacts) and feeds the normalized data into the 176 KB ONNX XGBoost model for sub-millisecond fraud detection.
-
----
-
-## Pipeline Orchestration & Monitoring
-
-To ensure the reliability of the machine learning lifecycle and data ingestion pipelines, **Prefect** is integrated as the primary orchestration engine. Instead of relying on fragmented scripts, the system utilizes Prefect DAGs (Directed Acyclic Graphs) to manage task dependencies, automatic retries, and failure alerts.
-
-**Key Orchestration Features:**
-* **Dynamic Run Naming:** Automated timestamp-based tags (e.g., `10-04-26_Health-Check_18-33`) for precise tracing.
-* **Resilience:** Built-in task retries and delay mechanisms to handle transient network or service failures.
-* **Observability:** Full integration with the Prefect UI for real-time monitoring of task states and pipeline health.
-
-![Prefect Dashboard - Daily Health Check](docs/images/prefect/prefect_dashboard.png)
-
----
-
-## API Usage (Swagger UI)
-
-The API is fully documented and testable via the automatically generated Swagger UI.
-
-**Endpoint:** `POST /api/v1/transactions`
-
-**Payload Example:**
-```json
-{
-  "Time": 406.0,
-  "V1": -2.312226542,
-  "V2": 1.951992011,
-  "Amount": 150.00
-}
