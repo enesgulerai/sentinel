@@ -1,6 +1,7 @@
 import json
 import os
 import time
+import uuid
 
 import requests
 import streamlit as st
@@ -8,7 +9,6 @@ import streamlit as st
 # --- Page Configuration ---
 st.set_page_config(
     page_title="Sentinel | Dashboard",
-    page_icon="🛡️",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -55,7 +55,16 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-API_URL = os.getenv("API_URL", "http://api-service:8000")
+API_URL = os.getenv("API_URL", "http://api:8000")
+
+# --- Session State for Idempotency Key ---
+if "tx_id" not in st.session_state:
+    st.session_state.tx_id = str(uuid.uuid4())
+
+
+def generate_new_id():
+    st.session_state.tx_id = str(uuid.uuid4())
+
 
 # --- Default Test Payload ---
 DEFAULT_PAYLOAD = {
@@ -95,11 +104,14 @@ DEFAULT_PAYLOAD = {
 col_main, col_info = st.columns([2, 1], gap="large")
 
 with col_main:
-    st.title("🛡️ Sentinel Gateway")
+    st.title("[Sentinel Gateway]")
     st.markdown(
-        "Real-time Fraud Detection Interface."
+        "Real-time Fraud Detection Interface. "
         "Submit a payload to test the Event-Driven Pipeline."
     )
+
+    st.text_input("Transaction ID (Idempotency Key):", key="tx_id")
+    st.button("[Generate New ID]", on_click=generate_new_id)
 
     payload_str = st.text_area(
         "JSON Payload:", value=json.dumps(DEFAULT_PAYLOAD, indent=2), height=400
@@ -108,13 +120,16 @@ with col_main:
 with col_info:
     st.markdown("<br><br>", unsafe_allow_html=True)
     st.info(
-        "💡 **Pro Tip:** Modify the 'Amount' or 'Time' slightly "
-        " to bypass the Redis Lock and hit the Redpanda stream."
+        "[Pro Tip:] Click 'Process Transaction' twice without changing the Transaction ID "
+        "to see the Redis Lock block the duplicate. Generate a new ID to bypass the lock."
     )
 
-    if st.button("🚀 Process Transaction", use_container_width=True):
+    if st.button("[Process Transaction]", use_container_width=True):
         try:
             payload_data = json.loads(payload_str)
+
+            # Inject the UI-controlled transaction_id into the payload
+            payload_data["transaction_id"] = st.session_state.tx_id
 
             start_time = time.perf_counter()
             with st.spinner("Routing..."):
@@ -132,15 +147,15 @@ with col_info:
             with m2:
                 source = response_data.get("source", "Unknown")
                 if "Redis" in source:
-                    st.metric(label="Routed To", value="Redis Cache 🛡️")
+                    st.metric(label="Routed To", value="Redis Cache [BLOCKED]")
                 else:
-                    st.metric(label="Routed To", value="Redpanda 🛣️")
+                    st.metric(label="Routed To", value="Redpanda [STREAM]")
 
             if response.status_code == 202:
                 if "Redis" in source:
-                    st.warning(f"**BLOCKED:** {response_data.get('message')}")
+                    st.warning(f"BLOCKED: {response_data.get('message')}")
                 else:
-                    st.success(f"**ACCEPTED:** {response_data.get('message')}")
+                    st.success(f"ACCEPTED: {response_data.get('message')}")
             else:
                 st.error(f"Error: {response_data}")
 
