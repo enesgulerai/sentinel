@@ -18,3 +18,4 @@ indent-style = "space"
 
 [tool.bandit]
 exclude_dirs = ["tests", "experiments", ".venv"]
+skips = ["B101"]
