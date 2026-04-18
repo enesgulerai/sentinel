@@ -120,8 +120,9 @@ with col_main:
 with col_info:
     st.markdown("<br><br>", unsafe_allow_html=True)
     st.info(
-        "[Pro Tip:] Click 'Process Transaction' twice without changing the Transaction ID "
-        "to see the Redis Lock block the duplicate. Generate a new ID to bypass the lock."
+        "[Pro Tip:] Click 'Process Transaction' twice without changing"
+        "the Transaction ID to see the Redis Lock block the duplicate."
+        "Generate a new ID to bypass the lock."
     )
 
     if st.button("[Process Transaction]", use_container_width=True):

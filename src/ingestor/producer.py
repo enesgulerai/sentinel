@@ -22,8 +22,9 @@ def delivery_report(err, msg):
     if err is not None:
         logger.error(f"Message delivery failed: {err}")
     else:
-        # Reduced logging level to DEBUG for delivery reports to avoid spamming the console
-        # You can change it to info if you want to see every single delivery confirmation
+        # Reduced logging level to DEBUG for delivery reports to avoid
+        # spamming the console You can change it to info if you want to
+        # see every single delivery confirmation.
         logger.debug(f"Delivered to topic '{msg.topic()}'")
 
 
@@ -45,7 +46,8 @@ def start_streaming():
         logger.info("Dropped 'Class' column for real-world simulation.")
 
     logger.info(
-        f"Streaming {len(df)} transactions to topic '{TOPIC_NAME}' at {REDPANDA_BROKER}..."
+        f"Streaming {len(df)} transactions to topic '{TOPIC_NAME}'"
+        f"at {REDPANDA_BROKER}..."
     )
     logger.info("-" * 60)
 

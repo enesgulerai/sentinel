@@ -107,7 +107,8 @@ async def ingest_transaction(transaction: TransactionRequest):
         producer.poll(0)
 
         logger.info(
-            f"NEW transaction routed to Redpanda. Amount: ${tx_data.get('Amount', 0.0):.2f}"
+            f"NEW transaction routed to Redpanda."
+            f"Amount: ${tx_data.get('Amount', 0.0):.2f}"
         )
 
         return {

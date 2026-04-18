@@ -6,12 +6,14 @@ from pydantic import BaseModel, Field
 class TransactionRequest(BaseModel):
     transaction_id: str = Field(
         default_factory=lambda: str(uuid.uuid4()),
-        description="Unique identifier for idempotency to prevent duplicate transactions.",
+        description="Unique identifier for idempotency to prevent"
+        "duplicate transactions.",
     )
     Time: float = Field(
         ...,
         ge=0.0,
-        description="Seconds elapsed between this transaction and the first transaction.",
+        description="Seconds elapsed between this transaction and"
+        "the first transaction.",
     )
     V1: float
     V2: float
