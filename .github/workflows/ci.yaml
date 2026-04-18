@@ -39,7 +39,7 @@ jobs:
         run: bandit -c pyproject.toml -r src/
 
       - name: Run Pytest (Isolated Unit Tests Only)
-        run: python -m pytest tests/test_api_logic.py -v
+        run: python -m pytest tests/integration/test_api_logic.py -v
 
       - name: Run Trivy Vulnerability Scanner (External Security)
         uses: aquasecurity/trivy-action@v0.35.0
