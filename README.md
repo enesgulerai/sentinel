@@ -36,15 +36,15 @@ We don't guess; we benchmark. The evaluation strictly avoids "Accuracy" and focu
 
 | Model | PR-AUC | Recall | Precision | F1-Score | Train Time (s) | Real-Time Latency |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **XGBoost** | **0.8752** | **0.8469** | **0.8925** | **0.8691** | **1.81** | **0.7684 ms/row** |
-| LightGBM | 0.8724 | 0.8571 | 0.8485 | 0.8528 | 1.28 | 2.6728 ms/row |
-| Random Forest | 0.8501 | 0.7449 | 0.9605 | 0.8391 | 19.54 | 18.2848 ms/row |
+| **XGBoost** | **0.8800** | **0.8817** | **0.8586** | **0.8586** | **1.83** | **0.7210 ms/row** |
+| LightGBM | 0.8710 | 0.8571 | 0.8400 | 0.8485 | 1.42 | 2.9719 ms/row |
+| Random Forest | 0.8542 | 0.7449 | 0.9605 | 0.8391 | 19.06 | 22.2659 ms/row |
 
 > *XGBoost was selected as the champion model due to its superior PR-AUC and sub-millisecond inference speed.*
 
 ### 3. Production Export
 The champion XGBoost model is trained on the full dataset with calculated `scale_pos_weight` and exported to the **ONNX** format.
-* **Final Model Size:** `176.47 KB` (Optimized for microservices and RAM efficiency).
+* **Final Model Size:** `160.24 KB` (Optimized for microservices and RAM efficiency).
 
 ## Data Engineering
 **Focus:** Event-Driven Architecture & Stream Processing
