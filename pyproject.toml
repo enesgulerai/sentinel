@@ -1,5 +1,5 @@
 [tool.ruff]
-line-length = 88
+line-length = 120
 target-version = "py311"
 
 [tool.ruff.lint]
@@ -10,7 +10,7 @@ select = [
     "I",  # isort
     "B",  # flake8-bugbear
 ]
-ignore = []
+ignore = ["E501"]
 
 [tool.ruff.format]
 quote-style = "double"
