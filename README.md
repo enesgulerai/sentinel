@@ -4,15 +4,16 @@
 
 *Enterprise-grade, event-driven anomaly detection pipeline with sub-millisecond ONNX inference.*
 
-![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
-![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
-![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)
+![Python](https://img.shields.io/badge/python-000000?style=for-the-badge&logo=python&logoColor=ffdd54)
+![FastAPI](https://img.shields.io/badge/FastAPI-000000?style=for-the-badge&logo=fastapi&logoColor=white)
+![Docker](https://img.shields.io/badge/docker-000000?style=for-the-badge&logo=docker&logoColor=white)
 <br>
-![Apache Kafka](https://img.shields.io/badge/Apache%20Kafka-000?style=for-the-badge&logo=apachekafka)
-![Redis](https://img.shields.io/badge/redis-%23DD0031.svg?style=for-the-badge&logo=redis&logoColor=white)
-![Prefect](https://img.shields.io/badge/Prefect-FFFFFF?style=for-the-badge&logo=prefect&logoColor=black)
-![Trivy](https://img.shields.io/badge/Trivy-007acc?style=for-the-badge&logo=aquasecurity&logoColor=white)
-![Bandit](https://img.shields.io/badge/security-bandit-yellow.svg?style=for-the-badge&logo=python&logoColor=white)
+![Apache Kafka](https://img.shields.io/badge/Apache%20Kafka-000000?style=for-the-badge&logo=apachekafka&logoColor=white)
+![Redis](https://img.shields.io/badge/redis-000000?style=for-the-badge&logo=redis&logoColor=white)
+![Prefect](https://img.shields.io/badge/Prefect-000000?style=for-the-badge&logo=prefect&logoColor=white)
+![Trivy](https://img.shields.io/badge/Trivy-000000?style=for-the-badge&logo=aquasecurity&logoColor=white)
+![Bandit](https://img.shields.io/badge/Bandit-000000?style=for-the-badge&logo=python&logoColor=white)
+![Justfile](https://img.shields.io/badge/Justfile-000000?style=for-the-badge&logo=just&logoColor=white)
 
 </div>
 
