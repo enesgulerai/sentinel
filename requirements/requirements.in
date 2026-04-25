@@ -1,0 +1,29 @@
+# Core ML & Data
+pandas
+numpy
+scikit-learn
+xgboost
+lightgbm
+
+# Model Export
+onnxmltools
+onnxruntime
+
+# API & Serving
+fastapi
+uvicorn
+
+# Async & Networking
+aiohttp
+httpx
+
+# Orchestration & UI
+prefect
+streamlit
+
+# Testing & Linting
+pytest
+pytest-cov
+pytest-mock
+fakeredis
+ruff
