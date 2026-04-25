@@ -30,7 +30,7 @@ jobs:
       - name: Install dependencies
         run: |
           uv venv
-          uv pip install -r requirements/dev.txt
+          uv pip install -r requirements/requirements.txt
           uv pip install bandit[toml]
           echo "$GITHUB_WORKSPACE/.venv/bin" >> $GITHUB_PATH
 
