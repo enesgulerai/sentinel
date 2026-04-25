@@ -58,9 +58,7 @@ def load_data(df: pd.DataFrame):
         payload = row.to_dict()
 
         try:
-            response = requests.post(
-                f"{API_URL}/api/v1/transactions", json=payload, timeout=5
-            )
+            response = requests.post(f"{API_URL}/api/v1/transactions", json=payload, timeout=5)
 
             if response.status_code == 202:
                 success_count += 1

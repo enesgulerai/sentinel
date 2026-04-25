@@ -24,6 +24,4 @@ def test_onnx_inference():
     assert len(predictions[0]) == 1, "Model should return a single prediction array"
 
     pred_value = predictions[0][0]
-    assert isinstance(pred_value, (np.floating, np.integer, float, int)), (
-        "Prediction must be a numeric value"
-    )
+    assert isinstance(pred_value, (np.floating, np.integer, float, int)), "Prediction must be a numeric value"

@@ -28,9 +28,7 @@ async def lifespan(app: FastAPI):
     logger.info("Starting FastAPI Gateway...")
 
     # 1. Connect to Redis
-    redis_client = redis.Redis(
-        host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True
-    )
+    redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True)
     try:
         await redis_client.ping()
         logger.info(f"SUCCESS: Connected to Redis Cache at {REDIS_HOST}:{REDIS_PORT}")
@@ -88,9 +86,7 @@ async def ingest_transaction(transaction: TransactionRequest):
         tx_hash = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
 
         # REDIS ATOMIC OPERATION
-        is_new_transaction = await redis_client.set(
-            transaction.transaction_id, "processed", ex=10, nx=True
-        )
+        is_new_transaction = await redis_client.set(transaction.transaction_id, "processed", ex=10, nx=True)
 
         if not is_new_transaction:
             logger.warning(f"DUPLICATE BLOCKED by Redis! Hash: {tx_hash[:8]}")
@@ -106,10 +102,7 @@ async def ingest_transaction(transaction: TransactionRequest):
         producer.produce(TOPIC_NAME, value=payload_bytes, callback=delivery_report)
         producer.poll(0)
 
-        logger.info(
-            f"NEW transaction routed to Redpanda."
-            f"Amount: ${tx_data.get('Amount', 0.0):.2f}"
-        )
+        logger.info(f"NEW transaction routed to Redpanda.Amount: ${tx_data.get('Amount', 0.0):.2f}")
 
         return {
             "status": "success",

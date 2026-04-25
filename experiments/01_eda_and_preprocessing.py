@@ -7,9 +7,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import RobustScaler
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -44,9 +42,7 @@ def load_and_inspect_data(filepath: Path) -> pd.DataFrame:
     return df
 
 
-def split_and_scale_data(
-    df: pd.DataFrame, scaler_out_path: Path
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+def split_and_scale_data(df: pd.DataFrame, scaler_out_path: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Splits the data into train/test sets FIRST, then applies scaling
     to prevent data leakage.
@@ -85,9 +81,7 @@ def split_and_scale_data(
     return train_df, test_df
 
 
-def save_processed_data(
-    train_df: pd.DataFrame, test_df: pd.DataFrame, output_dir: Path
-) -> None:
+def save_processed_data(train_df: pd.DataFrame, test_df: pd.DataFrame, output_dir: Path) -> None:
     logger.info(f"Saving processed data to directory: {output_dir}")
     output_dir.mkdir(parents=True, exist_ok=True)
 

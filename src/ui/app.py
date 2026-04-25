@@ -105,17 +105,12 @@ col_main, col_info = st.columns([2, 1], gap="large")
 
 with col_main:
     st.title("[Sentinel Gateway]")
-    st.markdown(
-        "Real-time Fraud Detection Interface. "
-        "Submit a payload to test the Event-Driven Pipeline."
-    )
+    st.markdown("Real-time Fraud Detection Interface. Submit a payload to test the Event-Driven Pipeline.")
 
     st.text_input("Transaction ID (Idempotency Key):", key="tx_id")
     st.button("[Generate New ID]", on_click=generate_new_id)
 
-    payload_str = st.text_area(
-        "JSON Payload:", value=json.dumps(DEFAULT_PAYLOAD, indent=2), height=400
-    )
+    payload_str = st.text_area("JSON Payload:", value=json.dumps(DEFAULT_PAYLOAD, indent=2), height=400)
 
 with col_info:
     st.markdown("<br><br>", unsafe_allow_html=True)
@@ -134,9 +129,7 @@ with col_info:
 
             start_time = time.perf_counter()
             with st.spinner("Routing..."):
-                response = requests.post(
-                    f"{API_URL}/api/v1/transactions", json=payload_data, timeout=10
-                )
+                response = requests.post(f"{API_URL}/api/v1/transactions", json=payload_data, timeout=10)
                 response_data = response.json()
             elapsed_ms = (time.perf_counter() - start_time) * 1000
 

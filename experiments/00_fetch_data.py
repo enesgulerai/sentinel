@@ -11,9 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configure standard logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -30,13 +28,8 @@ def verify_file_hash(file_path: Path, expected_hash: str) -> bool:
     """
     Verifies the SHA-256 hash of a file efficiently by reading it in chunks.
     """
-    if (
-        not expected_hash
-        or expected_hash == "replace_this_with_actual_sha256_hash_string"
-    ):
-        logger.warning(
-            "No valid expected hash provided in .env. Skipping integrity check."
-        )
+    if not expected_hash or expected_hash == "replace_this_with_actual_sha256_hash_string":
+        logger.warning("No valid expected hash provided in .env. Skipping integrity check.")
         return True
 
     sha256_hash = hashlib.sha256()
@@ -46,9 +39,7 @@ def verify_file_hash(file_path: Path, expected_hash: str) -> bool:
 
     calculated_hash = sha256_hash.hexdigest()
     if calculated_hash != expected_hash:
-        logger.error(
-            f"Hash mismatch! Expected: {expected_hash}, Got: {calculated_hash}"
-        )
+        logger.error(f"Hash mismatch! Expected: {expected_hash}, Got: {calculated_hash}")
         return False
 
     logger.info("File integrity verified successfully via SHA-256.")
@@ -83,9 +74,7 @@ def download_and_extract_data():
     # 3. Integrity Check (SHA-256)
     if not verify_file_hash(ZIP_PATH, EXPECTED_ZIP_HASH):
         ZIP_PATH.unlink()
-        raise ValueError(
-            "Data integrity compromised. Downloaded file hash does not match."
-        )
+        raise ValueError("Data integrity compromised. Downloaded file hash does not match.")
 
     # 4. Extraction
     logger.info("Extracting data archive...")

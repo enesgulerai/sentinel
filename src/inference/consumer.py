@@ -86,15 +86,9 @@ def start_inference_engine():
 
             # Logging
             if fraud_prob > 0.50:
-                logger.warning(
-                    f"FRAUD DETECTED! Prob: %{fraud_prob * 100:.2f} | "
-                    f"Amount: ${raw_amount:.2f}"
-                )
+                logger.warning(f"FRAUD DETECTED! Prob: %{fraud_prob * 100:.2f} | Amount: ${raw_amount:.2f}")
             else:
-                logger.info(
-                    f"Normal Tx. Prob: %{fraud_prob * 100:.2f} | "
-                    f"Amount: ${raw_amount:.2f}"
-                )
+                logger.info(f"Normal Tx. Prob: %{fraud_prob * 100:.2f} | Amount: ${raw_amount:.2f}")
 
     except KeyboardInterrupt:
         logger.info("\nGracefully shutting down the AI engine...")

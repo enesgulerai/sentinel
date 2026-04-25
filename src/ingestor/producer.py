@@ -45,10 +45,7 @@ def start_streaming():
         df = df.drop(columns=["Class"])
         logger.info("Dropped 'Class' column for real-world simulation.")
 
-    logger.info(
-        f"Streaming {len(df)} transactions to topic '{TOPIC_NAME}'"
-        f"at {REDPANDA_BROKER}..."
-    )
+    logger.info(f"Streaming {len(df)} transactions to topic '{TOPIC_NAME}'at {REDPANDA_BROKER}...")
     logger.info("-" * 60)
 
     transactions = df.to_dict(orient="records")

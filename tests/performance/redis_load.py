@@ -57,10 +57,7 @@ async def send_request(session, req_id):
 
 
 async def run_load_test():
-    print(
-        f"Starting Load Test: Sending {TOTAL_REQUESTS} "
-        f"identical requests concurrently..."
-    )
+    print(f"Starting Load Test: Sending {TOTAL_REQUESTS} identical requests concurrently...")
     print("-" * 60)
 
     start_total = time.perf_counter()

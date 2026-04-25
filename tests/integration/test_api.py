@@ -13,9 +13,7 @@ def test_health_check():
 
 def test_valid_transaction_ingestion(mocker):
     # 1. Mock Redis (The Silencer for Cache)
-    mock_redis = mocker.patch(
-        "src.api.main.redis_client", new_callable=mocker.AsyncMock
-    )
+    mock_redis = mocker.patch("src.api.main.redis_client", new_callable=mocker.AsyncMock)
     mock_redis.set.return_value = True
 
     # 2. Mock Redpanda (The Silencer for Stream)

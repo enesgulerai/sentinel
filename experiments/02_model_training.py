@@ -20,9 +20,7 @@ from xgboost import XGBClassifier
 warnings.filterwarnings("ignore")
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -36,9 +34,7 @@ def load_split_data(data_dir: Path):
 
     logger.info(f"Loading split datasets from: {data_dir}")
     if not train_path.exists() or not test_path.exists():
-        raise FileNotFoundError(
-            "Split datasets not found. Run 01_eda_and_preprocessing.py first."
-        )
+        raise FileNotFoundError("Split datasets not found. Run 01_eda_and_preprocessing.py first.")
 
     train_df = pd.read_csv(train_path)
     test_df = pd.read_csv(test_path)
@@ -53,9 +49,7 @@ def load_split_data(data_dir: Path):
     return X_train, X_test, y_train, y_test
 
 
-def export_model_to_onnx(
-    model, model_name: str, input_feature_count: int, output_dir: Path
-):
+def export_model_to_onnx(model, model_name: str, input_feature_count: int, output_dir: Path):
     """
     Exports the trained tree-based model to the universal ONNX format
     for microsecond-latency inference in production.
@@ -94,9 +88,7 @@ def run_model_benchmark(X_train, X_test, y_train, y_test):
     logger.info(f"Class Imbalance Ratio (Neg/Pos): {scale_pos_weight_val:.2f}")
 
     models = {
-        "Random Forest": RandomForestClassifier(
-            n_estimators=100, class_weight="balanced", n_jobs=-1, random_state=42
-        ),
+        "Random Forest": RandomForestClassifier(n_estimators=100, class_weight="balanced", n_jobs=-1, random_state=42),
         "LightGBM": LGBMClassifier(
             n_estimators=100,
             class_weight="balanced",
@@ -156,9 +148,7 @@ def run_model_benchmark(X_train, X_test, y_train, y_test):
         )
 
     results_df = pd.DataFrame(results)
-    results_df = results_df.sort_values(by="PR-AUC", ascending=False).reset_index(
-        drop=True
-    )
+    results_df = results_df.sort_values(by="PR-AUC", ascending=False).reset_index(drop=True)
 
     print("\n" + "=" * 80)
     print(" " * 22 + "REAL-TIME BENCHMARK RESULTS")
@@ -169,9 +159,7 @@ def run_model_benchmark(X_train, X_test, y_train, y_test):
     # Automatically export the best model to ONNX
     best_model_name = results_df.iloc[0]["Model"]
     best_model_instance = trained_models[best_model_name]
-    logger.info(
-        f"\nWinner Algorithm: {best_model_name}. Initiating ONNX export pipeline."
-    )
+    logger.info(f"\nWinner Algorithm: {best_model_name}. Initiating ONNX export pipeline.")
 
     export_model_to_onnx(
         model=best_model_instance,
