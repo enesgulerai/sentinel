@@ -12,16 +12,12 @@ fetch:
 preprocess: fetch
     uv run python -m src.features.preprocessing
 
-# Trains tree-based models and benchmarks real-time inference latency
+# Trains the champion model (XGBoost) and exports it to ONNX format
 train: preprocess
-    uv run python experiments/02_model_training.py
-
-# Exports the champion XGBoost model to the universal ONNX format
-export:
-    uv run python experiments/03_train_and_export.py
+    uv run python -m src.models.trainer
 
 # Runs the complete end-to-end machine learning pipeline
-pipeline: fetch preprocess train export
+pipeline: train
     @echo "SUCCESS: Full Machine Learning Pipeline Completed!"
 
 # Wipes all generated datasets, scaled files, and trained models
