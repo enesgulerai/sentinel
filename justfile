@@ -6,11 +6,11 @@ set shell := ["powershell.exe", "-c"]
 
 # Downloads raw data and verifies integrity using SHA-256
 fetch:
-    uv run python experiments/00_fetch_data.py
+    uv run python -m src.data.ingestion
 
 # Splits train/test sets and applies preprocessing without data leakage
 preprocess: fetch
-    uv run python experiments/01_eda_and_preprocessing.py
+    uv run python -m src.features.preprocessing
 
 # Trains tree-based models and benchmarks real-time inference latency
 train: preprocess
