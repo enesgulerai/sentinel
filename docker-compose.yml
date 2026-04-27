@@ -76,7 +76,7 @@ services:
       context: .
       dockerfile: docker/backend/Dockerfile
     container_name: sentinel-consumer
-    command: ["python", "-m", "src.consumer.main"]
+    command: ["python", "-m", "src.inference.consumer"]
     environment:
       - REDPANDA_BROKER=redpanda:9092
     depends_on:
