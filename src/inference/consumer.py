@@ -1,5 +1,6 @@
 import json
 import os
+import warnings
 from pathlib import Path
 
 import joblib
@@ -8,6 +9,8 @@ import onnxruntime as ort
 from confluent_kafka import Consumer
 
 from src.utils.logger import get_logger
+
+warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
 
 logger = get_logger(__name__)
 
@@ -18,77 +21,88 @@ SCALER_PATH = PROJECT_ROOT / "models" / "robust_scaler.joblib"
 REDPANDA_BROKER = os.getenv("REDPANDA_BROKER", "localhost:19092")
 TOPIC_NAME = os.getenv("KAFKA_TOPIC", "transactions")
 
+BATCH_SIZE = 500
+POLL_TIMEOUT = 1.0
+
 
 def start_inference_engine():
     logger.info("Starting AI Inference Engine (Kafka Consumer)...")
 
-    # Load ONNX Model
-    if not MODEL_PATH.exists():
-        logger.error(f"Model not found at {MODEL_PATH}")
+    if not MODEL_PATH.exists() or not SCALER_PATH.exists():
+        logger.error("Model or Scaler not found. Run pipeline first.")
         return
 
-    logger.info("Loading highly optimized 176 KB ONNX model...")
+    logger.info("Loading highly optimized ONNX model & Scaler...")
     session = ort.InferenceSession(str(MODEL_PATH))
     input_name = session.get_inputs()[0].name
-
-    # Load Scaler
-    if not SCALER_PATH.exists():
-        logger.error(f"Scaler not found at {SCALER_PATH}. Run pipeline first.")
-        return
-
-    logger.info("Loading Unified RobustScaler for data transformation...")
     scaler = joblib.load(SCALER_PATH)
 
-    # Kafka Consumer Settings
+    # Kafka Consumer Settings (Optimize for Throughput)
     conf = {
         "bootstrap.servers": REDPANDA_BROKER,
         "group.id": "fraud-detector-v2",
         "auto.offset.reset": "earliest",
+        "fetch.min.bytes": 100000,
+        "fetch.wait.max.ms": 100,
     }
 
     consumer = Consumer(conf)
     consumer.subscribe([TOPIC_NAME])
-    logger.info(f"Subscribed to topic: '{TOPIC_NAME}' at {REDPANDA_BROKER}")
+    logger.info(f"Subscribed to topic: '{TOPIC_NAME}'. Awaiting data...")
     logger.info("-" * 60)
 
     try:
         while True:
-            msg = consumer.poll(1.0)
+            msgs = consumer.consume(num_messages=BATCH_SIZE, timeout=POLL_TIMEOUT)
 
-            if msg is None:
-                continue
-            if msg.error():
-                logger.error(f"Consumer error: {msg.error()}")
+            if not msgs:
                 continue
 
-            record_value = msg.value().decode("utf-8")
-            transaction = json.loads(record_value)
+            batch_data = []
+            valid_msgs = []
 
-            # Extract raw features
-            raw_amount = transaction.get("Amount", 0.0)
-            raw_time = transaction.get("Time", 0.0)
+            for msg in msgs:
+                if msg.error():
+                    continue
 
-            scaled_features = scaler.transform(np.array([[raw_amount, raw_time]]))
-            scaled_amount = scaled_features[0][0]
-            scaled_time = scaled_features[0][1]
+                transaction = json.loads(msg.value().decode("utf-8"))
 
-            # Reconstruct features in the exact training order:
-            # [scaled_amount, scaled_time, V1...V28]
-            ordered_features = [scaled_amount, scaled_time]
-            for i in range(1, 29):
-                ordered_features.append(transaction.get(f"V{i}", 0.0))
+                row = [transaction.get("Time", 0.0)]
+                for i in range(1, 29):
+                    row.append(transaction.get(f"V{i}", 0.0))
+                row.append(transaction.get("Amount", 0.0))
 
-            X_input = np.array([ordered_features], dtype=np.float32)
+                batch_data.append(row)
+                valid_msgs.append(transaction)
 
-            # Run Inference
-            outputs = session.run(None, {input_name: X_input})
-            fraud_prob = float(outputs[1][0][1])
+            if not batch_data:
+                continue
 
-            # Logging
-            if fraud_prob > 0.50:
-                logger.warning(f"FRAUD DETECTED! Prob: %{fraud_prob * 100:.2f} | Amount: ${raw_amount:.2f}")
-            else:
-                logger.info(f"Normal Tx. Prob: %{fraud_prob * 100:.2f} | Amount: ${raw_amount:.2f}")
+            X_batch = np.array(batch_data, dtype=np.float32)
+
+            time_amount_cols = X_batch[:, [0, 29]]
+            scaled_time_amount = scaler.transform(time_amount_cols)
+
+            X_batch[:, 0] = scaled_time_amount[:, 0]
+            X_batch[:, 29] = scaled_time_amount[:, 1]
+
+            outputs = session.run(None, {input_name: X_batch})
+            fraud_probs = outputs[1]
+
+            frauds_in_batch = 0
+            for i, prob_dict in enumerate(fraud_probs):
+                fraud_prob = prob_dict.get(1, 0.0) if isinstance(prob_dict, dict) else prob_dict[1]
+
+                if fraud_prob > 0.50:
+                    frauds_in_batch += 1
+                    amt = valid_msgs[i].get("Amount", 0.0)
+                    tx_id = valid_msgs[i].get("transaction_id", "Unknown")
+                    logger.warning(
+                        f"FRAUD DETECTED! Prob: %{fraud_prob * 100:.2f} | Amount: ${amt:.2f} | TX: {tx_id[:8]}"
+                    )
+
+            if len(valid_msgs) > 50:
+                logger.info(f"Processed batch of {len(valid_msgs)} txs. Frauds found: {frauds_in_batch}")
 
     except KeyboardInterrupt:
         logger.info("\nGracefully shutting down the AI engine...")

@@ -1,4 +1,3 @@
-import hashlib
 import json
 import os
 from contextlib import asynccontextmanager
@@ -19,7 +18,7 @@ logger = get_logger(__name__)
 
 producer = None
 redis_client = None
-TOPIC_NAME = "transactions"
+TOPIC_NAME = os.getenv("KAFKA_TOPIC", "transactions")
 
 
 @asynccontextmanager
@@ -27,7 +26,7 @@ async def lifespan(app: FastAPI):
     global producer, redis_client
     logger.info("Starting FastAPI Gateway...")
 
-    # 1. Connect to Redis
+    # 1. Connect to Redis (For Idempotency)
     redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True)
     try:
         await redis_client.ping()
@@ -36,7 +35,7 @@ async def lifespan(app: FastAPI):
         logger.error(f"FATAL: Redis connection failed -> {e}")
         raise e
 
-    # 2. Connect to Redpanda (The Highway)
+    # 2. Connect to Redpanda/Kafka (The Event Stream)
     conf = {"bootstrap.servers": KAFKA_BROKER}
     try:
         producer = Producer(conf)
@@ -57,8 +56,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Sentinel ML API",
-    description="Real-time Fraud Detection with Redis Idempotency",
-    version="0.4.0",
+    description="Real-time Fraud Detection Gateway with Redis Idempotency and Kafka Event Streaming",
+    version="1.0.0",
     lifespan=lifespan,
 )
 
@@ -73,23 +72,25 @@ async def root():
     return {
         "status": "online",
         "service": "Sentinel ML API Gateway",
-        "version": "0.4.0",
+        "version": "1.0.0",
     }
 
 
-@app.post("/api/v1/transactions", status_code=status.HTTP_202_ACCEPTED)
+@app.post("/api/v1/transactions", status_code=status.HTTP_202_ACCEPTED, tags=["Fraud Detection"])
 async def ingest_transaction(transaction: TransactionRequest):
     try:
+        # 1. Convert Pydantic model to dictionary
         tx_data = transaction.model_dump()
 
+        # 2. Hash payload for idempotency checking
         payload_str = json.dumps(tx_data, sort_keys=True)
-        tx_hash = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
+        # tx_hash = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
 
-        # REDIS ATOMIC OPERATION
+        # 3. Redis Atomic Operation: Check if transaction was seen in the last 10 seconds
         is_new_transaction = await redis_client.set(transaction.transaction_id, "processed", ex=10, nx=True)
 
         if not is_new_transaction:
-            logger.warning(f"DUPLICATE BLOCKED by Redis! Hash: {tx_hash[:8]}")
+            logger.warning(f"DUPLICATE BLOCKED by Redis! TX ID: {transaction.transaction_id[:8]}")
             return {
                 "status": "ignored",
                 "message": "Duplicate transaction detected",
@@ -97,18 +98,18 @@ async def ingest_transaction(transaction: TransactionRequest):
                 "source": "Redis Cache (Duplicate)",
             }
 
-        # Route to Redpanda
+        # 4. Route to Redpanda Topic
         payload_bytes = payload_str.encode("utf-8")
         producer.produce(TOPIC_NAME, value=payload_bytes, callback=delivery_report)
         producer.poll(0)
 
-        logger.info(f"NEW transaction routed to Redpanda.Amount: ${tx_data.get('Amount', 0.0):.2f}")
+        logger.info(f"NEW transaction routed to Redpanda. Amount: ${tx_data.get('Amount', 0.0):.2f}")
 
         return {
             "status": "success",
             "message": "Transaction queued for fraud analysis",
+            "transaction_id": transaction.transaction_id,
             "amount": tx_data.get("Amount", 0.0),
-            "source": "Redpanda Stream (New)",
         }
 
     except Exception as e:

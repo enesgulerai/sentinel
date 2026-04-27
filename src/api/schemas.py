@@ -1,17 +1,17 @@
 import uuid
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class TransactionRequest(BaseModel):
     transaction_id: str = Field(
         default_factory=lambda: str(uuid.uuid4()),
-        description="Unique identifier for idempotency to preventduplicate transactions.",
+        description="Unique identifier for idempotency to prevent duplicate transactions.",
     )
     Time: float = Field(
         ...,
         ge=0.0,
-        description="Seconds elapsed between this transaction andthe first transaction.",
+        description="Seconds elapsed between this transaction and the first transaction.",
     )
     V1: float
     V2: float
@@ -43,8 +43,8 @@ class TransactionRequest(BaseModel):
     V28: float
     Amount: float = Field(..., ge=0.0, description="Transaction amount. Cannot be negative.")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "transaction_id": "123e4567-e89b-12d3-a456-426614174000",
                 "Time": 0.0,
@@ -79,3 +79,11 @@ class TransactionRequest(BaseModel):
                 "Amount": 149.62,
             }
         }
+    )
+
+
+class TransactionResponse(BaseModel):
+    transaction_id: str = Field(..., description="The ID of the processed transaction.")
+    is_fraud: bool = Field(..., description="True if the model predicts fraud, False otherwise.")
+    fraud_probability: float = Field(..., description="The probability score (0.0 to 1.0) of fraud.")
+    processing_time_ms: float = Field(..., description="Time taken to process the request in milliseconds.")
