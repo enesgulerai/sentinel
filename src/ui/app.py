@@ -8,7 +8,7 @@ import streamlit as st
 
 # --- Page Configuration ---
 st.set_page_config(
-    page_title="Sentinel | Dashboard",
+    page_title="Sentinel | API Gateway",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -66,7 +66,7 @@ def generate_new_id():
     st.session_state.tx_id = str(uuid.uuid4())
 
 
-# --- Default Test Payload ---
+# --- Default Test Payload (Fraud Example) ---
 DEFAULT_PAYLOAD = {
     "Time": 406.0,
     "V1": -2.312226542,
@@ -101,59 +101,70 @@ DEFAULT_PAYLOAD = {
 }
 
 # --- UI Layout ---
-col_main, col_info = st.columns([2, 1], gap="large")
+st.title("🛡️ Sentinel API Gateway")
+st.markdown("Real-time Fraud Detection Interface. Submit a payload to test the Event-Driven Pipeline.")
+st.divider()
+
+col_main, col_info = st.columns([1.2, 1], gap="large")
 
 with col_main:
-    st.title("[Sentinel Gateway]")
-    st.markdown("Real-time Fraud Detection Interface. Submit a payload to test the Event-Driven Pipeline.")
+    st.subheader("Transaction Parameters")
 
-    st.text_input("Transaction ID (Idempotency Key):", key="tx_id")
-    st.button("[Generate New ID]", on_click=generate_new_id)
+    col_id, col_btn = st.columns([3, 1])
+    with col_id:
+        st.text_input("Transaction ID (Idempotency Key):", key="tx_id", disabled=True)
+    with col_btn:
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.button("🔄 Generate New ID", on_click=generate_new_id, use_container_width=True)
 
-    payload_str = st.text_area("JSON Payload:", value=json.dumps(DEFAULT_PAYLOAD, indent=2), height=400)
+    with st.expander("🛠️ View / Edit Raw JSON Payload", expanded=True):
+        payload_str = st.text_area(
+            "JSON Editor", value=json.dumps(DEFAULT_PAYLOAD, indent=4), height=300, label_visibility="collapsed"
+        )
 
 with col_info:
-    st.markdown("<br><br>", unsafe_allow_html=True)
+    st.subheader("Event Dispatcher")
     st.info(
-        "[Pro Tip:] Click 'Process Transaction' twice without changing"
-        "the Transaction ID to see the Redis Lock block the duplicate."
+        "💡 **Pro Tip:** Click 'Process Transaction' twice without changing "
+        "the Transaction ID to see the **Redis Lock** block the duplicate. "
         "Generate a new ID to bypass the lock."
     )
 
-    if st.button("[Process Transaction]", use_container_width=True):
+    if st.button("🚀 Process Transaction", use_container_width=True):
         try:
             payload_data = json.loads(payload_str)
-
-            # Inject the UI-controlled transaction_id into the payload
             payload_data["transaction_id"] = st.session_state.tx_id
 
             start_time = time.perf_counter()
-            with st.spinner("Routing..."):
+            with st.spinner("Routing via API Gateway..."):
                 response = requests.post(f"{API_URL}/api/v1/transactions", json=payload_data, timeout=10)
                 response_data = response.json()
             elapsed_ms = (time.perf_counter() - start_time) * 1000
 
+            st.divider()
             st.subheader("Gateway Response")
 
             m1, m2 = st.columns(2)
             with m1:
                 st.metric(label="Latency", value=f"{elapsed_ms:.2f} ms")
             with m2:
-                source = response_data.get("source", "Unknown")
+                source = response_data.get("source", "Redpanda [STREAM]")
                 if "Redis" in source:
-                    st.metric(label="Routed To", value="Redis Cache [BLOCKED]")
+                    st.metric(
+                        label="Routed To", value="Redis Cache [BLOCKED]", delta="- Duplicate", delta_color="inverse"
+                    )
                 else:
-                    st.metric(label="Routed To", value="Redpanda [STREAM]")
+                    st.metric(label="Routed To", value="Redpanda [STREAM]", delta="+ Queued", delta_color="normal")
 
             if response.status_code == 202:
                 if "Redis" in source:
-                    st.warning(f"BLOCKED: {response_data.get('message')}")
+                    st.error(f"🛑 BLOCKED: {response_data.get('message')}")
                 else:
-                    st.success(f"ACCEPTED: {response_data.get('message')}")
+                    st.success(f"✅ ACCEPTED: {response_data.get('message')}")
             else:
-                st.error(f"Error: {response_data}")
+                st.warning(f"⚠️ Error: {response_data}")
 
         except json.JSONDecodeError:
-            st.error("Invalid JSON format.")
+            st.error("❌ Invalid JSON format. Please check your payload.")
         except requests.exceptions.ConnectionError:
-            st.error(f"Connection failed. Could not reach the API at: {API_URL}")
+            st.error(f"🔌 Connection failed. Could not reach the API at: {API_URL}")
