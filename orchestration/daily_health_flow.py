@@ -24,8 +24,8 @@ def generate_daily_report(health_data):
     if health_data["status"] != "online":
         raise ValueError("CRITICAL ERROR: API is DOWN! Triggering incident...")
 
-    report = "DAILY REPORT: All systems functioning normally."
-    f"Uptime: {health_data['uptime']}"
+    # BUG FIX: Combined the strings properly with a newline
+    report = f"DAILY REPORT: All systems functioning normally.\nUptime: {health_data['uptime']}"
     print("[WORKER 2] Report generated successfully.")
     return report
 
@@ -43,4 +43,4 @@ def daily_health_check_pipeline():
 
 
 if __name__ == "__main__":
-    daily_health_check_pipeline()
+    daily_health_check_pipeline.serve(name="local-docker-deployment", cron="0 9 * * *", tags=["health-check", "docker"])

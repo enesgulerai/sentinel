@@ -1,3 +1,4 @@
+import os
 import time
 from datetime import datetime
 
@@ -6,7 +7,7 @@ import pandas as pd
 import requests
 from prefect import flow, task
 
-API_URL = "http://127.0.0.1:8000"
+API_URL = os.getenv("API_URL", "http://api:8000")
 
 
 def generate_run_name():
@@ -39,9 +40,7 @@ def extract_data(source_url: str) -> pd.DataFrame:
 def transform_data(df: pd.DataFrame) -> pd.DataFrame:
     """Cleans data and prepares features for machine learning."""
     print("[TRANSFORM] Initiating data cleaning process...")
-
     df.fillna(0.0, inplace=True)
-
     print("[TRANSFORM] Data cleaned and structured for API.")
     return df
 
@@ -88,4 +87,4 @@ def data_ingestion_pipeline():
 
 
 if __name__ == "__main__":
-    data_ingestion_pipeline()
+    data_ingestion_pipeline.serve(name="local-docker-ingestion", cron="0 * * * *", tags=["etl", "docker", "ingestion"])
