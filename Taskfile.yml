@@ -1,0 +1,59 @@
+version: '3'
+
+tasks:
+  default:
+    desc: Displays this help menu listing all available commands
+    silent: true
+    cmds:
+      - task --list
+
+  install:
+    desc: Installs project dependencies and sets up the development environment
+    cmds:
+      - uv sync
+      - uv run pre-commit install
+
+  fetch:
+    desc: Downloads raw data and verifies integrity using SHA-256
+    cmds:
+      - uv run python -m src.data.ingestion
+
+  preprocess:
+    desc: Splits train/test sets and applies preprocessing without data leakage
+    deps: [fetch]
+    cmds:
+      - uv run python -m src.features.preprocessing
+
+  train:
+    desc: Trains the champion model (XGBoost) and exports it to ONNX format
+    deps: [preprocess]
+    cmds:
+      - uv run python -m src.models.trainer
+
+  pipeline:
+    desc: Runs the complete end-to-end machine learning pipeline
+    deps: [train]
+    silent: true
+    cmds:
+      - 'echo "SUCCESS: Full Machine Learning Pipeline Completed!"'
+
+  clean:
+    desc: Wipes all generated datasets, scaled files, and trained models
+    silent: true
+    ignore_error: true
+    cmds:
+      - rm -f data/raw/creditcard.csv
+      - rm -f data/processed/*.csv
+      - rm -f models/*.joblib
+      - rm -f models/*.onnx
+      - echo "All generated data and models have been wiped clean."
+
+  up:
+    desc: Docker - Builds images and starts infrastructure containers in the background
+    cmds:
+      - docker compose up --build -d
+
+  ps:
+    desc: Docker - Shows the current status of running containers
+    cmds:
+      - docker compose ps
