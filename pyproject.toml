@@ -20,6 +20,7 @@ dependencies = [
     "streamlit>=1.57.0",
     "uvicorn>=0.46.0",
     "xgboost>=3.2.0",
+    "gdown>=6.0.0"
 ]
 
 [tool.ruff]
