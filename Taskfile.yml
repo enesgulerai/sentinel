@@ -53,6 +53,11 @@ tasks:
     cmds:
       - docker compose up --build -d
 
+  down:
+    desc: "Stops and removes Docker containers, networks, and volumes"
+    cmds:
+      - docker compose down
+
   ps:
     desc: Docker - Shows the current status of running containers
     cmds:
