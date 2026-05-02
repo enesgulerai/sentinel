@@ -51,11 +51,15 @@ Run the complete machine learning pipeline. This automated task will fetch the r
     task pipeline
 ```
 
-### 5. Launch the Application (Docker Compose)
-Start the Docker containers to spin up the Prefect orchestration server, API gateway, and all other core services in detached mode.
+### 5. Launch and Manage Application
+The Sentinel project utilizes a microservices architecture. Start the Docker containers to spin up the Prefect orchestration server, API gateway, and all other core services in detached mode:
 
 ```bash
+    # Start all services
     task up
+
+    # Stop and remove containers, networks, and volumes
+    task down
 ```
 
 ## Local Services & Ports
@@ -68,3 +72,14 @@ Once the Docker containers are up and running, you can access the core services 
 | **API Gateway** | http://localhost:8000 |
 | **Redpanda Console** | http://localhost:8080 |
 | **Streamlit UI** | http://localhost:8501 |
+
+## Troubleshooting
+
+### "task: command not found"
+Sentinel leverages the **Taskfile** runner for efficient task automation and documentation. If the `task` command is not recognized, you need to install the task runner on your system:
+
+*   **macOS (Homebrew):** `brew install go-task/tap/go-task`
+*   **Windows (Chocolatey or Scoop):** `choco install go-task` or `scoop install task`
+*   **Linux:** `sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d`
+
+Alternatively, you can visit the [official Task installation guide](https://taskfile.dev/installation/) for more options.
