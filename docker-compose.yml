@@ -1,7 +1,7 @@
 services:
   # --- Service: Redpanda ---
   redpanda:
-    image: docker.redpanda.com/redpandadata/redpanda:v23.3.2
+    image: docker.redpanda.com/redpandadata/redpanda:v23.3.11
     container_name: sentinel-redpanda
     command:
       - redpanda
@@ -75,6 +75,7 @@ services:
 
   # --- Service: API ---
   api:
+    image: sentinel-api:v0.5.0
     build:
       context: .
       dockerfile: docker/backend/Dockerfile
@@ -102,6 +103,7 @@ services:
 
   # --- Service: Consumer ---
   consumer:
+    image: sentinel-consumer:v0.5.0
     build:
       context: .
       dockerfile: docker/backend/Dockerfile
@@ -125,6 +127,7 @@ services:
 
   # --- Service: UI ---
   ui:
+    image: sentinel-ui:v0.5.0
     build:
       context: .
       dockerfile: docker/frontend/Dockerfile
@@ -164,6 +167,7 @@ services:
 
   # --- Service: Orchestrator (Flow Runner) ---
   orchestrator:
+    image: sentinel-orchestrator:v0.5.0
     build:
       context: .
       dockerfile: docker/orchestration/Dockerfile
