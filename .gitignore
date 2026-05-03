@@ -3,13 +3,24 @@
 env/
 venv/
 
-# Python Cache
+# Python Cache & Tooling
 __pycache__/
 *.py[cod]
 *$py.class
+.ruff_cache/
+.mypy_cache/
 
 # Security & Configurations
 .env
+
+# IDEs & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Taskfile Cache
+.task/
 
 # Data (Raw and Processed)
 data/raw/*
@@ -23,6 +34,9 @@ models/*.joblib
 models/*.pkl
 models/*.h5
 !models/.gitkeep
+
+# Jupyter/Notebooks
+.ipynb_checkpoints/
 
 # Logs
 logs/*.log

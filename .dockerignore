@@ -1,12 +1,17 @@
-# Git
-.git
+# Git & Hooks
+.git/
 .gitignore
+.pre-commit-config.yaml
 
-# Python
+# Python & Caches
 __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
 
 # Virtual Environments
 .venv/
@@ -15,6 +20,7 @@ env/
 
 # Environment Variables
 .env
+.env.*
 
 # IDEs
 .vscode/
@@ -24,5 +30,19 @@ env/
 data/
 *.log
 
+# Project Documentation & Configs
+docs/
+README.md
+Taskfile.yml
+docker-compose.yml
+k8s/
+
+# Testing & Jupyter
+tests/
+notebooks/
+*.ipynb
+.ipynb_checkpoints/
+
 # OS
 .DS_Store
+Thumbs.db

@@ -7,12 +7,37 @@ tasks:
     cmds:
       - task --list
 
+  # ==========================================
+  # CODE QUALITY & LINTING
+  # ==========================================
+  lint:
+    desc: Run Ruff linter to check for code quality issues
+    cmds:
+      - ruff check .
+
+  format:
+    desc: Run Ruff formatter to auto-format Python code
+    cmds:
+      - ruff format .
+
+  check:
+    desc: Run all code quality checks
+    cmds:
+      - task: lint
+      - task: format
+
+  # ==========================================
+  # ENVIRONMENT
+  # ==========================================
   install:
     desc: Installs project dependencies and sets up the development environment
     cmds:
       - uv sync
       - uv run pre-commit install
 
+  # ==========================================
+  # MLOPS & DATA PIPELINE
+  # ==========================================
   fetch:
     desc: Downloads raw data and verifies integrity using SHA-256
     cmds:
@@ -48,6 +73,9 @@ tasks:
       - rm -f models/*.onnx
       - echo "All generated data and models have been wiped clean."
 
+  # ==========================================
+  # INFRASTRUCTURE & DOCKER
+  # ==========================================
   up:
     desc: Docker - Builds images and starts infrastructure containers in the background
     cmds:
