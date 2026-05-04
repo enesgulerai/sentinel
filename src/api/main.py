@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 from contextlib import asynccontextmanager
@@ -79,27 +80,35 @@ async def root():
 @app.post("/api/v1/transactions", status_code=status.HTTP_202_ACCEPTED, tags=["Fraud Detection"])
 async def ingest_transaction(transaction: TransactionRequest):
     try:
-        # 1. Convert Pydantic model to dictionary
+        # 1. Convert Pydantic model to dictionary (For Redpanda and Response)
         tx_data = transaction.model_dump()
 
-        # 2. Hash payload for idempotency checking
-        payload_str = json.dumps(tx_data, sort_keys=True)
-        # tx_hash = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
+        # 2. Hash payload for idempotency checking (THE REAL ARMOR)
+        # We exclude the auto-generated transaction_id to get the true fingerprint of the data
+        hash_data = transaction.model_dump(exclude={"transaction_id"})
+        hash_payload_str = json.dumps(hash_data, sort_keys=True)
+        tx_hash = hashlib.sha256(hash_payload_str.encode("utf-8")).hexdigest()
 
-        # 3. Redis Atomic Operation: Check if transaction was seen in the last 10 seconds
-        is_new_transaction = await redis_client.set(transaction.transaction_id, "processed", ex=10, nx=True)
+        # We prefix the hash with "tx:" for clean Redis key management
+        redis_key = f"tx:{tx_hash}"
+
+        # 3. Redis Atomic Operation: Check if THIS EXACT PAYLOAD was seen
+        is_new_transaction = await redis_client.set(redis_key, "processed", ex=10, nx=True)
 
         if not is_new_transaction:
-            logger.warning(f"DUPLICATE BLOCKED by Redis! TX ID: {transaction.transaction_id[:8]}")
+            logger.warning(f"DUPLICATE BLOCKED by Redis! Hash: {tx_hash[:8]}")
             return {
                 "status": "ignored",
                 "message": "Duplicate transaction detected",
                 "amount": tx_data.get("Amount", 0.0),
-                "source": "Redis Cache (Duplicate)",
+                "source": "Redis",
             }
 
         # 4. Route to Redpanda Topic
-        payload_bytes = payload_str.encode("utf-8")
+        # Note: We serialize the full tx_data here so downstream services have the transaction_id
+        full_payload_str = json.dumps(tx_data, sort_keys=True)
+        payload_bytes = full_payload_str.encode("utf-8")
+
         producer.produce(TOPIC_NAME, value=payload_bytes, callback=delivery_report)
         producer.poll(0)
 
@@ -110,6 +119,7 @@ async def ingest_transaction(transaction: TransactionRequest):
             "message": "Transaction queued for fraud analysis",
             "transaction_id": transaction.transaction_id,
             "amount": tx_data.get("Amount", 0.0),
+            "source": "Redpanda",
         }
 
     except Exception as e:
