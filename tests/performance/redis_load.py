@@ -5,8 +5,8 @@ import aiohttp
 
 API_URL = "http://localhost:8000/api/v1/transactions"
 TOTAL_REQUESTS = 1000
+CONCURRENCY_LIMIT = 200  # Prevents Windows socket exhaustion
 
-# The exact same payload to test Redis blocking capabilities
 PAYLOAD = {
     "Time": 406.0,
     "V1": -2.312226542,
@@ -41,19 +41,24 @@ PAYLOAD = {
 }
 
 
-async def send_request(session, req_id):
-    start_time = time.perf_counter()
-    try:
-        async with session.post(API_URL, json=PAYLOAD) as response:
-            resp_json = await response.json()
-            elapsed_ms = (time.perf_counter() - start_time) * 1000
-            return {
-                "status": response.status,
-                "source": resp_json.get("source"),
-                "time_ms": elapsed_ms,
-            }
-    except Exception:
-        return {"status": 500, "source": "Error", "time_ms": 0}
+async def send_request(session, semaphore, req_id):
+    async with semaphore:
+        start_time = time.perf_counter()
+        try:
+            async with session.post(API_URL, json=PAYLOAD) as response:
+                resp_json = await response.json()
+                elapsed_ms = (time.perf_counter() - start_time) * 1000
+
+                # Safely get message or source, default to empty string if missing
+                response_text = str(resp_json.get("source", "")) + str(resp_json.get("message", ""))
+
+                return {
+                    "status": response.status,
+                    "text": response_text,
+                    "time_ms": elapsed_ms,
+                }
+        except Exception as e:
+            return {"status": 500, "text": f"Error: {str(e)}", "time_ms": 0}
 
 
 async def run_load_test():
@@ -61,28 +66,32 @@ async def run_load_test():
     print("-" * 60)
 
     start_total = time.perf_counter()
+    semaphore = asyncio.Semaphore(CONCURRENCY_LIMIT)
 
     async with aiohttp.ClientSession() as session:
-        tasks = [send_request(session, i) for i in range(TOTAL_REQUESTS)]
+        tasks = [send_request(session, semaphore, i) for i in range(TOTAL_REQUESTS)]
         results = await asyncio.gather(*tasks)
 
     total_time_sec = time.perf_counter() - start_total
 
-    redpanda_count = sum(1 for r in results if "Redpanda" in r["source"])
-    redis_count = sum(1 for r in results if "Redis" in r["source"])
+    # Safe checking using the 'text' key which is guaranteed to be a string
+    redpanda_count = sum(1 for r in results if "Redpanda" in r["text"])
+    redis_count = sum(1 for r in results if "Redis" in r["text"] or "Duplicate" in r["text"])
+    error_count = sum(1 for r in results if r["status"] >= 400)
+
     avg_ms = sum(r["time_ms"] for r in results) / TOTAL_REQUESTS
     rps = TOTAL_REQUESTS / total_time_sec
 
     print("--- BENCHMARK RESULTS ---")
     print(f"Total Requests     : {TOTAL_REQUESTS}")
+    print(f"Total Errors       : {error_count} (Status >= 400)")
     print(f"Total Time         : {total_time_sec:.2f} seconds")
-    print(f"Requests Per Second: {rps:.2f} RPS")
+    print(f"Requests Per Sec   : {rps:.2f} RPS")
     print(f"Average Latency    : {avg_ms:.2f} ms per request")
     print("-" * 60)
-    print(f"Routed to Redpanda (Processed) : {redpanda_count}")
-    print(f"Blocked by Redis   (Duplicates): {redis_count}")
+    print(f"Routed to Redpanda : {redpanda_count}")
+    print(f"Blocked by Redis   : {redis_count}")
     print("-" * 60)
-    print("Test completed.")
 
 
 if __name__ == "__main__":
