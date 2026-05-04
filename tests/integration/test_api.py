@@ -1,3 +1,6 @@
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 from fastapi.testclient import TestClient
 
 from src.api.main import app
@@ -5,63 +8,84 @@ from src.api.main import app
 client = TestClient(app)
 
 
+# ==========================================
+# FIXTURES (TEST DATA AND MOCKS)
+# ==========================================
+@pytest.fixture
+def valid_payload():
+    payload = {f"V{i}": 0.0 for i in range(1, 29)}
+    payload.update({"Time": 1.0, "Amount": 500.0})
+    return payload
+
+
+@pytest.fixture
+def mock_infrastructure(monkeypatch):
+    """Mocks Redis and Redpanda using standard monkeypatch."""
+    mock_redis = MagicMock()
+    mock_redis.set = AsyncMock(return_value=True)
+
+    mock_producer = MagicMock()
+
+    monkeypatch.setattr("src.api.main.redis_client", mock_redis)
+    monkeypatch.setattr("src.api.main.producer", mock_producer)
+
+    return mock_redis, mock_producer
+
+
+# ==========================================
+# 1. SYSTEM TESTS
+# ==========================================
 def test_health_check():
+    """Verifies if the system is up and running."""
     response = client.get("/")
     assert response.status_code == 200
     assert response.json()["status"] == "online"
 
 
-def test_valid_transaction_ingestion(mocker):
-    # 1. Mock Redis (The Silencer for Cache)
-    mock_redis = mocker.patch("src.api.main.redis_client", new_callable=mocker.AsyncMock)
-    mock_redis.set.return_value = True
+# ==========================================
+# 2. TRANSACTION INGESTION TESTS (HAPPY PATH)
+# ==========================================
+def test_valid_transaction_ingestion(mock_infrastructure, valid_payload):
+    """Verifies that a valid transaction is successfully ingested."""
+    mock_redis, mock_producer = mock_infrastructure
 
-    # 2. Mock Redpanda (The Silencer for Stream)
-    mocker.patch("src.api.main.producer")
-
-    payload = {
-        "Time": 0.0,
-        "V1": 0.0,
-        "V2": 0.0,
-        "V3": 0.0,
-        "V4": 0.0,
-        "V5": 0.0,
-        "V6": 0.0,
-        "V7": 0.0,
-        "V8": 0.0,
-        "V9": 0.0,
-        "V10": 0.0,
-        "V11": 0.0,
-        "V12": 0.0,
-        "V13": 0.0,
-        "V14": 0.0,
-        "V15": 0.0,
-        "V16": 0.0,
-        "V17": 0.0,
-        "V18": 0.0,
-        "V19": 0.0,
-        "V20": 0.0,
-        "V21": 0.0,
-        "V22": 0.0,
-        "V23": 0.0,
-        "V24": 0.0,
-        "V25": 0.0,
-        "V26": 0.0,
-        "V27": 0.0,
-        "V28": 0.0,
-        "Amount": 100.0,
-    }
-
-    response = client.post("/api/v1/transactions", json=payload)
+    response = client.post("/api/v1/transactions", json=valid_payload)
 
     assert response.status_code == 202
     data = response.json()
     assert data["status"] in ["success", "ignored"]
-    assert "source" in data
+
+    # Verify that the mocks were actually called
+    mock_redis.set.assert_called_once()
+    mock_producer.produce.assert_called_once()
 
 
-def test_invalid_transaction_payload():
-    bad_payload = {"Time": 100.0, "V1": 1.5}
+def test_duplicate_transaction_rejected(mock_infrastructure, valid_payload):
+    """Verifies that duplicate transactions are ignored with a 202 Accepted status."""
+    mock_redis, _ = mock_infrastructure
+    mock_redis.set = AsyncMock(return_value=False)
+
+    response = client.post("/api/v1/transactions", json=valid_payload)
+
+    assert response.status_code == 202
+    assert response.json()["status"] == "ignored"
+
+
+# ==========================================
+# 3. VALIDATION TESTS (NEGATIVE PATH)
+# ==========================================
+def test_invalid_transaction_missing_fields():
+    """Verifies that Pydantic throws a 422 error for missing payload fields."""
+    bad_payload = {"Time": 100.0, "V1": 1.5}  # Missing other V columns and Amount
 
     response = client.post("/api/v1/transactions", json=bad_payload)
+    assert response.status_code == 422
+    assert "detail" in response.json()
+
+
+def test_invalid_transaction_wrong_data_type(valid_payload):
+    """Verifies system protection against incorrect data types."""
+    valid_payload["Amount"] = "OneHundredDollars"
+
+    response = client.post("/api/v1/transactions", json=valid_payload)
     assert response.status_code == 422
