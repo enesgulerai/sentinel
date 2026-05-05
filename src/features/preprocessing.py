@@ -81,7 +81,7 @@ class FeatureEngineer:
 
         return train_df, test_df
 
-    def execute(self, raw_data_path: Path = None) -> tuple[Path, Path]:
+    def execute(self, raw_data_path: Path | None = None) -> tuple[Path, Path]:
         """
         Executes the feature engineering pipeline.
 

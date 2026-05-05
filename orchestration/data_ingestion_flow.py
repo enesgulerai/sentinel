@@ -70,7 +70,7 @@ def load_data(df: pd.DataFrame):
 
         except requests.exceptions.RequestException as e:
             error_count += 1
-            print(f"  [!] CONNECTION FAILED: {str(e)}")
+            print(f"  [!] CONNECTION FAILED: {e!s}")
 
     print(f"[LOAD] Completed. Success: {success_count}, Errors: {error_count}")
 

@@ -71,11 +71,8 @@ jobs:
           uv pip sync requirements/requirements.txt
           uv pip install bandit[toml]
 
-      - name: Run Ruff Linter
-        run: uv run ruff check .
-
-      - name: Run Ruff Formatter
-        run: uv run ruff format --check .
+      - name: Run All Code Quality Checks
+        run: task ci-check
 
       - name: Run Bandit
         run: uv run bandit -c pyproject.toml -r src/

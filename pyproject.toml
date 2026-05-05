@@ -34,17 +34,21 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = [
-    "E",  # pycodestyle errors
-    "W",  # pycodestyle warnings
-    "F",  # pyflakes
-    "I",  # isort
-    "B",  # flake8-bugbear
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade (upgrades syntax to newer Python versions)
+    "B",   # flake8-bugbear (finds common bugs)
+    "SIM", # flake8-simplify (simplifies code logic)
+    "RUF", # ruff-specific rules
+    "C4",  # flake8-comprehensions
 ]
 ignore = ["E501"]
 
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
+line-ending = "auto"
 
 [tool.bandit]
 exclude_dirs = ["tests", "experiments", ".venv"]
@@ -53,8 +57,11 @@ skips = ["B101"]
 [dependency-groups]
 dev = [
     "coverage>=7.13.5",
+    "mypy>=1.20.2",
+    "pandas-stubs>=3.0.0.260204",
     "pre-commit>=4.6.0",
     "pytest>=9.0.3",
     "pytest-cov>=7.1.0",
     "ruff>=0.15.12",
+    "types-requests>=2.33.0.20260503",
 ]

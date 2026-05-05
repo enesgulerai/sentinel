@@ -58,7 +58,7 @@ async def send_request(session, semaphore, req_id):
                     "time_ms": elapsed_ms,
                 }
         except Exception as e:
-            return {"status": 500, "text": f"Error: {str(e)}", "time_ms": 0}
+            return {"status": 500, "text": f"Error: {e!s}", "time_ms": 0}
 
 
 async def run_load_test():

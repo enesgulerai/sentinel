@@ -123,5 +123,5 @@ async def ingest_transaction(transaction: TransactionRequest):
         }
 
     except Exception as e:
-        logger.error(f"API Error during transaction ingestion: {str(e)}")
+        logger.error(f"API Error during transaction ingestion: {e!s}")
         raise HTTPException(status_code=500, detail="Internal Server Error") from e

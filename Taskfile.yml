@@ -10,21 +10,27 @@ tasks:
   # ==========================================
   # CODE QUALITY & LINTING
   # ==========================================
-  lint:
-    desc: Run Ruff linter to check for code quality issues
+  lint-fix:
+    desc: Run Ruff linter and automatically fix fixable issues
     cmds:
-      - ruff check .
+      - uv run ruff check --fix .
 
   format:
     desc: Run Ruff formatter to auto-format Python code
     cmds:
-      - ruff format .
+      - uv run ruff format .
 
   check:
-    desc: Run all code quality checks
+    desc: Run local workflow (Fix lint issues, format, and check types)
     cmds:
-      - task: lint
+      - task: lint-fix
       - task: format
+
+  ci-check:
+    desc: Run all checks strictly for CI
+    cmds:
+      - uv run ruff check .
+      - uv run ruff format --check .
 
   # ==========================================
   # ENVIRONMENT
