@@ -77,8 +77,6 @@ Once the Docker containers are up and running, you can access the core services 
 
 This project uses `pytest` for unit and integration testing, and `oha` for HTTP load testing. We use `Taskfile` to automate these processes.
 
-### Prerequisites
-
 ### Running Unit and Integration Tests
 To execute the entire test suite, which includes logic validation and idempotency checks, run the following command:
 
