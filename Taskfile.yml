@@ -74,6 +74,18 @@ tasks:
       - echo "All generated data and models have been wiped clean."
 
   # ==========================================
+  # TESTS
+  # ==========================================
+  test:
+    desc: Run all tests in the tests directory
+    cmds:
+      - pytest tests/
+
+  load-test-health:
+    desc: Run OHA load test for 1 minute with 250 concurrent workers on health endpoint
+    cmds:
+      - oha -c 250 -z 1m http://localhost:8000/
+  # ==========================================
   # INFRASTRUCTURE & DOCKER
   # ==========================================
   up:
