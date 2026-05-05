@@ -73,6 +73,29 @@ Once the Docker containers are up and running, you can access the core services 
 | **Redpanda Console** | http://localhost:8080 |
 | **Streamlit UI** | http://localhost:8501 |
 
+## Testing & Performance
+
+This project uses `pytest` for unit and integration testing, and `oha` for HTTP load testing. We use `Taskfile` to automate these processes.
+
+### Prerequisites
+
+### Running Unit and Integration Tests
+To execute the entire test suite, which includes logic validation and idempotency checks, run the following command:
+
+```bash
+    task test
+```
+
+### Running Performance Tests
+To benchmark the API Gateway's connection capacity and measure the health endpoint's throughput under heavy concurrent load (250 workers for 1 minute), execute:
+
+ ```bash
+    task load-test-health
+ ```
+ * *Note: Note on Performance Bottlenecks:
+If you observe high average latency (ms) during this extreme load test, it is because the API is currently deployed as a single, standalone Docker container. This creates a natural bottleneck at the single-process level. In the upcoming Kubernetes (K8s) deployment phase, we will implement horizontal scaling. By increasing the pod replica count behind a load balancer, the concurrent traffic will be distributed across multiple instances, effectively mitigating this latency issue and maximizing overall throughput.*
+
+
 ## Troubleshooting
 
 ### "task: command not found"
@@ -83,3 +106,15 @@ Sentinel leverages the **Taskfile** runner for efficient task automation and doc
 *   **Linux:** `sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d`
 
 Alternatively, you can visit the [official Task installation guide](https://taskfile.dev/installation/) for more options.
+
+### "oha: command not found"
+**Issue:** Running `task load-test-health` fails with a "command not found: oha" error.
+
+**Solution:** The performance testing tasks strictly depend on the `oha` HTTP load generator. You can quickly install it directly via your system's package manager:
+
+*   **Windows (Winget):** `winget install hatoo.oha`
+*   **macOS (Homebrew):** `brew install oha`
+*   **Linux (Arch):** `pacman -S oha`
+*   **Universal (Cargo/Rust):** `cargo install oha`
+
+After installation, ensure that the installation directory is added to your system's PATH environment variable.
