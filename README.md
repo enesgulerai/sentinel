@@ -80,12 +80,19 @@ This project uses `pytest` for unit and integration testing, and `oha` for HTTP 
 ### Running Unit and Integration Tests
 To execute the entire test suite, which includes logic validation and idempotency checks, run the following command:
 
+> **Prerequisite:** Before running any tasks, ensure your virtual environment is active to access project dependencies:
+
+*   **Windows:** `.venv\Scripts\activate`
+*   **macOS/Linux:** `source .venv/bin/activate`
+
 ```bash
     task test
 ```
 
 ### Running Performance Tests
 To benchmark the API Gateway's connection capacity and measure the health endpoint's throughput under heavy concurrent load (250 workers for 1 minute), execute:
+
+> **Prerequisite:** Ensure that Docker is running and your infrastructure (Redis, Redpanda) is healthy before starting load tests.
 
  ```bash
     task load-test-health
