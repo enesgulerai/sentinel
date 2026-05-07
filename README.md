@@ -62,6 +62,33 @@ The Sentinel project utilizes a microservices architecture. Start the Docker con
     task down
 ```
 
+## Local Kubernetes Development (Kind)
+
+Sentinel provides streamlined Taskfile commands for local Kubernetes orchestration, eliminating the need for complex `kubectl` management.
+
+1. **Build and Load Images:**
+   Ensure your local Kind cluster has the latest images:
+   ```bash
+   task k8s:build-load
+   ```
+
+2. **Deploy the Architecture:**
+    Apply all infrastructure and application manifests:
+    ```bash
+    task k8s:up
+    ```
+
+3. **Access the Services:**
+    Run the following command to bind all necessary K8s ports to your local machine simultaneously. This process runs in the foreground; simply press `Ctrl+C` to terminate all connections when done.
+    ```bash
+    task k8s:forward
+    ```
+
+4. **Teardown:**
+    ```bash
+    task k8s:down
+    ```
+
 ## Local Services & Ports
 
 Once the Docker containers are up and running, you can access the core services via the following local addresses:
@@ -72,6 +99,7 @@ Once the Docker containers are up and running, you can access the core services 
 | **API Gateway** | http://localhost:8000 |
 | **Redpanda Console** | http://localhost:8080 |
 | **Streamlit UI** | http://localhost:8501 |
+
 
 ## Testing & Performance
 
