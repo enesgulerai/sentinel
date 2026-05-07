@@ -108,3 +108,45 @@ tasks:
     desc: Docker - Shows the current status of running containers
     cmds:
       - docker compose ps
+
+  # ==========================================
+  # KUBERNETES
+  # ==========================================
+  k8s:build-load:
+    desc: Build local images and load them into the Kind cluster
+    cmds:
+      - docker build -f docker/backend/Dockerfile -t sentinel-api:v0.5.0 .
+      - docker build -f docker/frontend/Dockerfile -t sentinel-ui:v0.5.0 .
+      - kind load docker-image sentinel-api:v0.5.0 --name kind
+      - kind load docker-image sentinel-ui:v0.5.0 --name kind
+
+  k8s:up:
+    desc: Deploy the complete Sentinel stack to Kubernetes
+    cmds:
+      - kubectl apply -f k8s/infrastructure/
+      - kubectl apply -f k8s/apps/
+
+  k8s:down:
+    desc: Remove the Sentinel stack from Kubernetes
+    cmds:
+      - kubectl delete -f k8s/apps/ --ignore-not-found
+      - kubectl delete -f k8s/infrastructure/ --ignore-not-found
+
+  k8s:forward:
+    desc: Forward all necessary K8s ports in a single terminal
+    deps:
+      - task: _forward-api
+      - task: _forward-ui
+      - task: _forward-console
+
+  _forward-api:
+    internal: true
+    cmd: kubectl port-forward svc/api 8000:8000
+
+  _forward-ui:
+    internal: true
+    cmd: kubectl port-forward svc/ui 8501:8501
+
+  _forward-console:
+    internal: true
+    cmd: kubectl port-forward svc/console 8080:8080
