@@ -14,6 +14,7 @@
 ![Trivy](https://img.shields.io/badge/Trivy-000000?style=for-the-badge&logo=aquasecurity&logoColor=1904DA)
 ![Bandit](https://img.shields.io/badge/Bandit-000000?style=for-the-badge&logo=python&logoColor=ffdd54)
 ![Taskfile](https://img.shields.io/badge/Taskfile-000000?style=for-the-badge&logo=task&logoColor=29BEB0)
+![Kubernetes](https://img.shields.io/badge/Kubernetes-000000?style=for-the-badge&logo=kubernetes&logoColor=326CE5)
 
 </div>
 
