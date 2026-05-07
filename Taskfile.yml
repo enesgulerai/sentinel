@@ -126,6 +126,10 @@ tasks:
       - kubectl apply -f k8s/infrastructure/
       - kubectl apply -f k8s/apps/
 
+  k8s:status:
+    desc: Check the current status of all Kubernetes pods
+    cmd: kubectl get pods
+
   k8s:down:
     desc: Remove the Sentinel stack from Kubernetes
     cmds:

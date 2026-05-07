@@ -78,13 +78,19 @@ Sentinel provides streamlined Taskfile commands for local Kubernetes orchestrati
     task k8s:up
     ```
 
-3. **Access the Services:**
+3. **Check Pod Status (Crucial):**
+    Before accessing the services, ensure all pods have reached the `Running` state. If you attempt to port-forward while pods are in `Init` or `ContainerCreating` states, the connection will fail.
+    ```bash
+    task k8s:status
+    ```
+
+4. **Access the Services:**
     Run the following command to bind all necessary K8s ports to your local machine simultaneously. This process runs in the foreground; simply press `Ctrl+C` to terminate all connections when done.
     ```bash
     task k8s:forward
     ```
 
-4. **Teardown:**
+5. **Teardown:**
     ```bash
     task k8s:down
     ```
@@ -151,3 +157,17 @@ Alternatively, you can visit the [official Task installation guide](https://task
 *   **Universal (Cargo/Rust):** `cargo install oha`
 
 After installation, ensure that the installation directory is added to your system's PATH environment variable.
+
+### "Missing kind command on Windows"
+If you encounter a `"kind": executable file not found in $PATH` error during the build phase, it means the Kind CLI is not installed on your system.
+1. Open PowerShell as Administrator and install Kind via winget:
+    ```bash
+    winget install Kubernetes.kind
+    ```
+
+2. Restart your terminal (VS Code or PowerShell) to refresh the environment variables.
+
+3. Create your local Kind cluster before running the tasks:
+    ```bash
+    kind create cluster
+    ```
