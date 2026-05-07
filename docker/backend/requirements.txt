@@ -3,3 +3,4 @@ uvicorn==0.42.0
 pydantic==2.12.5
 confluent-kafka==2.13.2
 redis==7.4.0
+orjson==3.10.1

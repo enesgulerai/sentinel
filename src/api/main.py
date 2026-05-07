@@ -1,8 +1,8 @@
 import hashlib
-import json
 import os
 from contextlib import asynccontextmanager
 
+import orjson
 import redis.asyncio as redis
 from confluent_kafka import Producer
 from fastapi import FastAPI, HTTPException, status
@@ -14,36 +14,41 @@ from src.utils.logger import get_logger
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 KAFKA_BROKER = os.getenv("REDPANDA_BROKER", "localhost:19092")
+TOPIC_NAME = os.getenv("KAFKA_TOPIC", "transactions")
 
 logger = get_logger(__name__)
 
 producer = None
 redis_client = None
-TOPIC_NAME = os.getenv("KAFKA_TOPIC", "transactions")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global producer, redis_client
-    logger.info("Starting FastAPI Gateway...")
+    logger.info("Starting Sentinel ML API Gateway...")
 
     # 1. Connect to Redis (For Idempotency)
     redis_client = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0, decode_responses=True)
     try:
         await redis_client.ping()
-        logger.info(f"SUCCESS: Connected to Redis Cache at {REDIS_HOST}:{REDIS_PORT}")
+        logger.info(f"SUCCESS: Connected to Redis at {REDIS_HOST}:{REDIS_PORT}")
     except Exception as e:
         logger.error(f"FATAL: Redis connection failed -> {e}")
         raise e
 
-    # 2. Connect to Redpanda/Kafka (The Event Stream)
-    conf = {"bootstrap.servers": KAFKA_BROKER}
+    # 2. Connect to Redpanda (Optimized Producer Settings)
+    conf = {
+        "bootstrap.servers": KAFKA_BROKER,
+        "queue.buffering.max.ms": 5,  # Reduced from default 1000ms for lower latency
+        "linger.ms": 0,  # Send messages as soon as possible
+        "acks": 1,  # Leader acknowledgement is enough for speed
+    }
     try:
         producer = Producer(conf)
-        logger.info(f"SUCCESS: Connected to Redpanda Stream at {KAFKA_BROKER}")
+        logger.info(f"SUCCESS: Connected to Redpanda at {KAFKA_BROKER}")
     except Exception as e:
         logger.error(f"FATAL: Redpanda connection failed -> {e}")
-        raise e  # Fail Fast
+        raise e
 
     yield
 
@@ -57,8 +62,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Sentinel ML API",
-    description="Real-time Fraud Detection Gateway with Redis Idempotency and Kafka Event Streaming",
-    version="1.0.0",
+    description="Optimized Fraud Detection Gateway",
+    version="1.1.0",
     lifespan=lifespan,
 )
 
@@ -72,56 +77,55 @@ def delivery_report(err, msg):
 async def root():
     return {
         "status": "online",
-        "service": "Sentinel ML API Gateway",
-        "version": "1.0.0",
+        "service": "Sentinel ML API",
+        "version": "1.1.0",
     }
 
 
 @app.post("/api/v1/transactions", status_code=status.HTTP_202_ACCEPTED, tags=["Fraud Detection"])
 async def ingest_transaction(transaction: TransactionRequest):
     try:
-        # 1. Convert Pydantic model to dictionary (For Redpanda and Response)
+        # 1. Single model dump (The only one we need)
         tx_data = transaction.model_dump()
 
-        # 2. Hash payload for idempotency checking (THE REAL ARMOR)
-        # We exclude the auto-generated transaction_id to get the true fingerprint of the data
-        hash_data = transaction.model_dump(exclude={"transaction_id"})
-        hash_payload_str = json.dumps(hash_data, sort_keys=True)
-        tx_hash = hashlib.sha256(hash_payload_str.encode("utf-8")).hexdigest()
+        # 2. Optimized Hashing Logic
+        # Instead of re-dumping, we copy the dict and remove the ID (O(1) operation)
+        hash_data = tx_data.copy()
+        hash_data.pop("transaction_id", None)
 
-        # We prefix the hash with "tx:" for clean Redis key management
+        # orjson.dumps is significantly faster than json.dumps and returns bytes
+        # OPT_SORT_KEYS ensures the hash is deterministic
+        hash_payload = orjson.dumps(hash_data, option=orjson.OPT_SORT_KEYS)
+        tx_hash = hashlib.sha256(hash_payload).hexdigest()
+
         redis_key = f"tx:{tx_hash}"
 
-        # 3. Redis Atomic Operation: Check if THIS EXACT PAYLOAD was seen
-        is_new_transaction = await redis_client.set(redis_key, "processed", ex=10, nx=True)
+        # 3. Redis Atomic Idempotency Check
+        is_new = await redis_client.set(redis_key, "1", ex=10, nx=True)
 
-        if not is_new_transaction:
-            logger.warning(f"DUPLICATE BLOCKED by Redis! Hash: {tx_hash[:8]}")
+        if not is_new:
+            # Short-circuit: No need to log at INFO level for every duplicate in high-traffic
+            logger.debug(f"Duplicate blocked: {tx_hash[:8]}")
             return {
                 "status": "ignored",
                 "message": "Duplicate transaction detected",
-                "amount": tx_data.get("Amount", 0.0),
                 "source": "Redis",
             }
 
-        # 4. Route to Redpanda Topic
-        # Note: We serialize the full tx_data here so downstream services have the transaction_id
-        full_payload_str = json.dumps(tx_data, sort_keys=True)
-        payload_bytes = full_payload_str.encode("utf-8")
+        # 4. Route to Redpanda (Using pre-dumped data)
+        # We reuse tx_data to ensure the downstream gets the transaction_id
+        full_payload = orjson.dumps(tx_data)
 
-        producer.produce(TOPIC_NAME, value=payload_bytes, callback=delivery_report)
-        producer.poll(0)
-
-        logger.info(f"NEW transaction routed to Redpanda. Amount: ${tx_data.get('Amount', 0.0):.2f}")
+        producer.produce(TOPIC_NAME, value=full_payload, callback=delivery_report)
+        producer.poll(0)  # Non-blocking poll to serve delivery callbacks
 
         return {
             "status": "success",
-            "message": "Transaction queued for fraud analysis",
             "transaction_id": transaction.transaction_id,
             "amount": tx_data.get("Amount", 0.0),
             "source": "Redpanda",
         }
 
     except Exception as e:
-        logger.error(f"API Error during transaction ingestion: {e!s}")
-        raise HTTPException(status_code=500, detail="Internal Server Error") from e
+        logger.error(f"Critical Gateway Error: {e!s}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal Server Error") from e
