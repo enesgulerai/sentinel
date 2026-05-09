@@ -71,7 +71,12 @@ jobs:
           uv pip sync requirements/requirements.txt
           uv pip install bandit[toml]
 
-      - name: Run All Code Quality Checks
+      - name: Install Task
+        uses: arduino/setup-task@v2
+        with:
+          version: 3.x
+
+      - name: Run Taskfile CI Checks
         run: task ci-check
 
       - name: Run Bandit
