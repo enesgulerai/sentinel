@@ -7,7 +7,6 @@
 ![Python](https://img.shields.io/badge/python-000000?style=for-the-badge&logo=python&logoColor=ffdd54)
 ![FastAPI](https://img.shields.io/badge/FastAPI-000000?style=for-the-badge&logo=fastapi&logoColor=009688)
 ![Docker](https://img.shields.io/badge/docker-000000?style=for-the-badge&logo=docker&logoColor=2496ED)
-<br>
 ![Apache Kafka](https://img.shields.io/badge/Apache%20Kafka-000000?style=for-the-badge&logo=apachekafka&logoColor=white)
 ![Redis](https://img.shields.io/badge/redis-000000?style=for-the-badge&logo=redis&logoColor=FF4438)
 ![Prefect](https://img.shields.io/badge/Prefect-000000?style=for-the-badge&logo=prefect&logoColor=2670FF)
@@ -96,6 +95,24 @@ Sentinel provides streamlined Taskfile commands for local Kubernetes orchestrati
     task k8s:down
     ```
 
+### Optional: Architecture Stress Testing (HPA in Action)
+
+Sentinel is designed with high availability and elasticity in mind. We use Kubernetes Horizontal Pod Autoscaling (HPA) to dynamically scale the stateless API and UI layers based on traffic spikes.
+
+You can safely benchmark the API's scaling capabilities locally using [oha](https://github.com/hatoo/oha):
+
+1. **Keep the Port-Forward Running:** Ensure `task k8s:forward` is running in your first terminal.
+2. **Monitor the Autoscaler:** Open a second terminal and watch the HPA react in real-time:
+   ```bash
+   kubectl get hpa -w
+   ```
+3. **Trigger the Load Test:** Open a third terminal and blast the API with 200 concurrent workers for 60 seconds:
+    ```bash
+    oha -z 60s -c 200 http://localhost:8000/docs
+    ```
+
+    *Observe the second terminal: You will see the CPU utilization spike, prompting Kubernetes to autonomously clone the API pods (up to 5 replicas) to distribute the load, maintaining a 100% success rate without dropping connections.*
+
 ## Local Services & Ports
 
 Once the Docker containers are up and running, you can access the core services via the following local addresses:
@@ -171,4 +188,17 @@ If you encounter a `"kind": executable file not found in $PATH` error during the
 3. Create your local Kind cluster before running the tasks:
     ```bash
     kind create cluster
+    ```
+
+### HPA Targets Showing `<unknown>` (Missing Metrics Server):
+By default, local Kubernetes distributions like Kind do not include the `metrics-server`, which is strictly required for the Horizontal Pod Autoscaler (HPA) to monitor CPU/Memory usage. If your HPA cannot read metrics, install and patch the server:
+
+1. Apply the official metrics-server manifest:
+   ```bash
+   kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+   ```
+
+2. Patch the deployment to allow insecure TLS (a requirement for local Kind nodes without proper certificates):
+    ```bash
+    kubectl patch deployment metrics-server -n kube-system --type='json' -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls"}]'
     ```
