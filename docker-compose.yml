@@ -186,6 +186,26 @@ services:
         limits:
           memory: 512M
 
+  # --- Service: Postgres ---
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: sentinel-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: sentinel_password
+      POSTGRES_DB: sentinel_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - sentinel_net
+
+volumes:
+  postgres_data:
+
 networks:
   sentinel_net:
     driver: bridge
