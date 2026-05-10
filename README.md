@@ -154,6 +154,44 @@ To benchmark the API Gateway's connection capacity and measure the health endpoi
  * *Note: Note on Performance Bottlenecks:
 If you observe high average latency (ms) during this extreme load test, it is because the API is currently deployed as a single, standalone Docker container. This creates a natural bottleneck at the single-process level. In the upcoming Kubernetes (K8s) deployment phase, we will implement horizontal scaling. By increasing the pod replica count behind a load balancer, the concurrent traffic will be distributed across multiple instances, effectively mitigating this latency issue and maximizing overall throughput.*
 
+### Database Verification (Sanity Check)
+
+To ensure the end-to-end data pipeline is successfully capturing events and persisting them to PostgreSQL, you can query the database directly from within the Kubernetes cluster.
+
+Run the following command to check the latest records and their AI-assigned risk scores:
+
+1. Prerequisite: Port Forwarding
+Since the API is running inside the cluster, you must first forward the port to your local machine:
+
+```bash
+    task k8s:forward
+```
+*Note: Keep this terminal open or run it in the background.*
+
+
+2. Trigger a Test Transaction
+Send a mock transaction with all required features to the API:
+
+```bash
+Invoke-RestMethod -Uri "http://localhost:8000/api/v1/transactions" -Method Post -Headers @{"Content-Type"="application/json"} -Body '{"transaction_id": "TEST-1001", "user_id": "user_777", "Amount": 999.99, "Time": 10.0, "V1": 0.0, "V2": 0.0, "V3": 0.0, "V4": 0.0, "V5": 0.0, "V6": 0.0, "V7": 0.0, "V8": 0.0, "V9": 0.0, "V10": 0.0, "V11": 0.0, "V12": 0.0, "V13": 0.0, "V14": 0.0, "V15": 0.0, "V16": 0.0, "V17": 0.0, "V18": 0.0, "V19": 0.0, "V20": 0.0, "V21": 0.0, "V22": 0.0, "V23": 0.0, "V24": 0.0, "V25": 0.0, "V26": 0.0, "V27": 0.0, "V28": 0.0}'
+```
+
+3. Verify Inference Logs
+Check if the Consumer captured the event from Redpanda and processed it via the ONNX model:
+
+```bash
+kubectl logs deploy/sentinel-consumer
+```
+
+4. Query the Database
+Directly query the PostgreSQL statefulset to see the persisted record and its AI-assigned risk score:
+
+```bash
+    kubectl exec -it postgres-0 -- psql -U sentinel -d sentinel_db -c "SELECT transaction_id, user_id, amount, risk_score FROM transactions LIMIT 10;"
+```
+
+*Expected Output: If the pipeline is functioning correctly, you should see a table displaying the transactions that have passed through Redpanda and the AI Consumer.*
+
 
 ## Troubleshooting
 
