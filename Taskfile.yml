@@ -117,8 +117,10 @@ tasks:
     cmds:
       - docker build -f docker/backend/Dockerfile -t sentinel-api:v0.5.0 .
       - docker build -f docker/frontend/Dockerfile -t sentinel-ui:v0.5.0 .
+      - docker build -f docker/backend/Dockerfile -t sentinel-consumer:v0.5.0 .
       - kind load docker-image sentinel-api:v0.5.0 --name kind
       - kind load docker-image sentinel-ui:v0.5.0 --name kind
+      - kind load docker-image sentinel-consumer:v0.5.0 --name kind
 
   k8s:up:
     desc: Deploy the complete Sentinel stack to Kubernetes

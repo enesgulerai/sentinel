@@ -1,0 +1,81 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+type: Opaque
+stringData:
+  POSTGRES_USER: sentinel
+  POSTGRES_PASSWORD: sentinel_password
+  POSTGRES_DB: sentinel_db
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-script
+data:
+  init.sql: |
+    CREATE EXTENSION IF NOT EXISTS vector;
+
+    CREATE TABLE IF NOT EXISTS transactions (
+        id SERIAL PRIMARY KEY,
+        transaction_id VARCHAR(255) UNIQUE NOT NULL,
+        user_id VARCHAR(255) NOT NULL,
+        amount DECIMAL(10, 2) NOT NULL,
+        risk_score DECIMAL(5, 4),
+        behavior_embedding VECTOR(384),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  ports:
+  - port: 5432
+    targetPort: 5432
+  clusterIP: None
+  selector:
+    app: postgres
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  serviceName: "postgres"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: ankane/pgvector:latest
+        ports:
+        - containerPort: 5432
+        envFrom:
+        - secretRef:
+            name: postgres-secret
+        volumeMounts:
+        - name: postgres-data
+          mountPath: /var/lib/postgresql/data
+        - name: init-script
+          mountPath: /docker-entrypoint-initdb.d/init.sql
+          subPath: init.sql
+      volumes:
+      - name: init-script
+        configMap:
+          name: postgres-init-script
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
