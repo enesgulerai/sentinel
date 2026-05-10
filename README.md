@@ -14,6 +14,7 @@
 ![Bandit](https://img.shields.io/badge/Bandit-000000?style=for-the-badge&logo=python&logoColor=ffdd54)
 ![Taskfile](https://img.shields.io/badge/Taskfile-000000?style=for-the-badge&logo=task&logoColor=29BEB0)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-000000?style=for-the-badge&logo=kubernetes&logoColor=326CE5)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-000000?style=for-the-badge&logo=postgresql&logoColor=4169E1)
 
 </div>
 
@@ -63,6 +64,7 @@ The Sentinel project utilizes a microservices architecture. Start the Docker con
 ```
 
 ## Local Kubernetes Development (Kind)
+*Note: If you experience any issues or hanging pods during the Kubernetes deployment, please refer to the Troubleshooting section at the bottom of this page.*
 
 Sentinel provides streamlined Taskfile commands for local Kubernetes orchestration, eliminating the need for complex `kubectl` management.
 
