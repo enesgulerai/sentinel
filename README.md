@@ -15,6 +15,7 @@
 ![Taskfile](https://img.shields.io/badge/Taskfile-000000?style=for-the-badge&logo=task&logoColor=29BEB0)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-000000?style=for-the-badge&logo=kubernetes&logoColor=326CE5)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-000000?style=for-the-badge&logo=postgresql&logoColor=4169E1)
+![PyInstrument](https://img.shields.io/badge/PyInstrument-000000?style=for-the-badge&logo=python&logoColor=ffdd54)
 
 </div>
 
@@ -27,7 +28,7 @@
 Clone the project to your local machine and navigate into the root directory:
 
 ```bash
-    git clone https://github.com/enesgulerai/sentinel.git
+    git clone https://github.com/enesgulerdev/sentinel.git
     cd sentinel
 ```
 
