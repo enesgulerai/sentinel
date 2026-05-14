@@ -5,7 +5,9 @@ from contextlib import asynccontextmanager
 import orjson
 import redis.asyncio as redis
 from confluent_kafka import Producer
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.responses import HTMLResponse
+from pyinstrument import Profiler
 
 from src.api.schemas import TransactionRequest
 from src.utils.logger import get_logger
@@ -66,6 +68,20 @@ app = FastAPI(
     version="1.1.0",
     lifespan=lifespan,
 )
+
+
+@app.middleware("http")
+async def profile_request(request: Request, call_next):
+    if request.query_params.get("profile"):
+        profiler = Profiler(interval=0.001, async_mode="enabled")
+        profiler.start()
+
+        await call_next(request)
+
+        profiler.stop()
+        return HTMLResponse(profiler.output_html())
+
+    return await call_next(request)
 
 
 def delivery_report(err, msg):
