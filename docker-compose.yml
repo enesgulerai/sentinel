@@ -188,7 +188,7 @@ services:
 
   # --- Service: Postgres ---
   postgres:
-    image: ankane/pgvector:v0.5.1-pg15
+    image: pgvector/pgvector:pg15
     container_name: sentinel-postgres
     restart: unless-stopped
     environment:
