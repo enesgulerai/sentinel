@@ -73,18 +73,19 @@ services:
         limits:
           memory: 64M
 
-  # --- Service: API ---
+  # --- Service: API (Go Gateway) ---
   api:
-    image: sentinel-api:v0.5.0
+    image: sentinel-api-go:v1.0.0
     build:
       context: .
-      dockerfile: docker/backend/Dockerfile
-    container_name: sentinel-api
+      dockerfile: docker/api_go/Dockerfile
+    container_name: sentinel-api-go
     ports:
       - "8000:8000"
     environment:
       - REDIS_HOST=redis
       - REDPANDA_BROKER=redpanda:9092
+      - PORT=8000
     depends_on:
       redis:
         condition: service_healthy
@@ -96,10 +97,10 @@ services:
       resources:
         reservations:
           cpus: '0.1'
-          memory: 256M
+          memory: 32M
         limits:
-          cpus: '1.0'
-          memory: 1G
+          cpus: '0.5'
+          memory: 128M
 
   # --- Service: Consumer ---
   consumer:
