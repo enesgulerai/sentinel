@@ -35,13 +35,19 @@ func getEnv(key, fallback string) string {
 func initServices() {
 	log.Println("Starting Sentinel ML API Gateway (Go/Gin)...")
 
-	// 1. Redis Connection
 	redisHost := getEnv("REDIS_HOST", "localhost")
 	redisPort := getEnv("REDIS_PORT", "6379")
 
+	// Optimized Redis Pool for high concurrency
 	redisClient = redis.NewClient(&redis.Options{
-		Addr: fmt.Sprintf("%s:%s", redisHost, redisPort),
-		DB:   0,
+		Addr:         fmt.Sprintf("%s:%s", redisHost, redisPort),
+		DB:           0,
+		PoolSize:     250, // Match or exceed max concurrent workers (-c 200)
+		MinIdleConns: 50,  // Keep connections alive to prevent dial-up overhead
+		DialTimeout:  5 * time.Second,
+		ReadTimeout:  3 * time.Second,
+		WriteTimeout: 3 * time.Second,
+		PoolTimeout:  4 * time.Second, // Amount of time client waits for connection if all are busy
 	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -52,31 +58,34 @@ func initServices() {
 	}
 	log.Printf("SUCCESS: Connected to Redis at %s:%s", redisHost, redisPort)
 
-	// 2. Redpanda (Kafka) Connection
 	kafkaBroker := getEnv("REDPANDA_BROKER", "localhost:19092")
 	topicName := getEnv("KAFKA_TOPIC", "transactions")
 
-	// Using segmentio/kafka-go for high performance and no CGO requirement
+	// Optimized Redpanda Writer
 	kafkaWriter = &kafka.Writer{
 		Addr:         kafka.TCP(kafkaBroker),
 		Topic:        topicName,
 		Balancer:     &kafka.LeastBytes{},
-		BatchTimeout: 5 * time.Millisecond, // Reduced for lower latency
-		RequiredAcks: kafka.RequireOne,     // Leader acknowledgement
+		BatchTimeout: 5 * time.Millisecond,
+		RequiredAcks: kafka.RequireOne,
+		Async:        true,
+		// Enlarge inner buffers for concurrent writes
+		BatchSize:    100,
+		ReadTimeout:  3 * time.Second,
+		WriteTimeout: 3 * time.Second,
 	}
-	log.Printf("SUCCESS: Connected to Redpanda at %s", kafkaBroker)
+	log.Printf("SUCCESS: Connected to Redpanda at %s (Async Mode)", kafkaBroker)
 }
 
 func main() {
-	// Initialize external connections
 	initServices()
 
-	// Set Gin to release mode for maximum performance in production
+	// Set Gin to release mode and use a blank instance to disable stdout logging
 	gin.SetMode(gin.ReleaseMode)
-	router := gin.Default()
+	router := gin.New()
+	router.Use(gin.Recovery()) // Protects the gateway from panics without disk I/O blocking
 
-	// Profiling: Replaces PyInstrument. Go has built-in pprof.
-	// You can access it via /debug/pprof/ to see millisecond-level CPU/Memory profiling.
+	// Profiling toolchain configuration
 	pprof.Register(router)
 
 	// Health Check
@@ -91,7 +100,6 @@ func main() {
 	// Transactions Endpoint
 	router.POST("/api/v1/transactions", ingestTransaction)
 
-	// Graceful Shutdown Setup (Replaces FastAPI @asynccontextmanager lifespan)
 	apiPort := getEnv("PORT", "8000")
 	srv := &http.Server{
 		Addr:    ":" + apiPort,
@@ -104,13 +112,11 @@ func main() {
 		}
 	}()
 
-	// Wait for interrupt signal to gracefully shutdown the server
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 	log.Println("Shutting down API...")
 
-	// The context is used to inform the server it has 5 seconds to finish
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -118,22 +124,32 @@ func main() {
 		log.Fatal("Server forced to shutdown:", err)
 	}
 
-	// Close Redis and Kafka
 	redisClient.Close()
 	kafkaWriter.Close()
 
 	log.Println("Shutdown complete.")
 }
 
+// Helper function to retry critical I/O operations gracefully
+func executeWithRetry(attempts int, initialDelay time.Duration, operation func() error) error {
+	var err error
+	for i := 0; i < attempts; i++ {
+		if err = operation(); err == nil {
+			return nil
+		}
+		// Wait before retrying (incremental backoff)
+		time.Sleep(initialDelay * time.Duration(i+1))
+	}
+	return err
+}
+
 func ingestTransaction(c *gin.Context) {
-	// Parse incoming JSON into a dynamic map
 	var rawData map[string]any
 	if err := c.ShouldBindJSON(&rawData); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON payload format"})
 		return
 	}
 
-	// Extract values safely
 	txID, _ := rawData["transaction_id"].(string)
 
 	var amount float64
@@ -143,7 +159,6 @@ func ingestTransaction(c *gin.Context) {
 		amount, _ = strconv.ParseFloat(amtStr, 64)
 	}
 
-	// Optimized Hashing Logic
 	hashData := make(map[string]any)
 	for k, v := range rawData {
 		if k != "transaction_id" {
@@ -151,7 +166,6 @@ func ingestTransaction(c *gin.Context) {
 		}
 	}
 
-	// json.Marshal automatically sorts keys in Go maps, ensuring deterministic hashing
 	hashBytes, err := json.Marshal(hashData)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to process transaction payload"})
@@ -162,10 +176,17 @@ func ingestTransaction(c *gin.Context) {
 	txHash := hex.EncodeToString(hash[:])
 	redisKey := fmt.Sprintf("tx:%s", txHash)
 
-	// Redis Atomic Idempotency Check (SET NX EX 10)
-	isNew, err := redisClient.SetNX(c.Request.Context(), redisKey, "1", 10*time.Second).Result()
+	var isNew bool
+	var redisErr error
+
+	// 1. Redis Idempotency Check with Retry
+	err = executeWithRetry(3, 10*time.Millisecond, func() error {
+		isNew, redisErr = redisClient.SetNX(c.Request.Context(), redisKey, "1", 10*time.Second).Result()
+		return redisErr
+	})
+
 	if err != nil {
-		log.Printf("Redis error during idempotency check: %v", err)
+		log.Printf("Critical: Redis idempotency check failed after retries: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal Server Error"})
 		return
 	}
@@ -179,14 +200,17 @@ func ingestTransaction(c *gin.Context) {
 		return
 	}
 
-	// Route to Redpanda
 	fullPayload, _ := json.Marshal(rawData)
 
-	err = kafkaWriter.WriteMessages(c.Request.Context(), kafka.Message{
-		Value: fullPayload,
+	// 2. Kafka Write with Retry
+	err = executeWithRetry(3, 15*time.Millisecond, func() error {
+		return kafkaWriter.WriteMessages(c.Request.Context(), kafka.Message{
+			Value: fullPayload,
+		})
 	})
+
 	if err != nil {
-		log.Printf("Critical Gateway Error (Kafka): %v", err)
+		log.Printf("Critical: Gateway failed to queue transaction to Kafka after retries: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to queue transaction"})
 		return
 	}

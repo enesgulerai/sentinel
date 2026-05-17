@@ -4,18 +4,9 @@
 
 *Enterprise-grade, event-driven anomaly detection pipeline with sub-millisecond ONNX inference.*
 
-![Python](https://img.shields.io/badge/python-000000?style=for-the-badge&logo=python&logoColor=ffdd54)
-![FastAPI](https://img.shields.io/badge/FastAPI-000000?style=for-the-badge&logo=fastapi&logoColor=009688)
-![Docker](https://img.shields.io/badge/docker-000000?style=for-the-badge&logo=docker&logoColor=2496ED)
-![Apache Kafka](https://img.shields.io/badge/Apache%20Kafka-000000?style=for-the-badge&logo=apachekafka&logoColor=white)
-![Redis](https://img.shields.io/badge/redis-000000?style=for-the-badge&logo=redis&logoColor=FF4438)
-![Prefect](https://img.shields.io/badge/Prefect-000000?style=for-the-badge&logo=prefect&logoColor=2670FF)
-![Trivy](https://img.shields.io/badge/Trivy-000000?style=for-the-badge&logo=aquasecurity&logoColor=1904DA)
-![Bandit](https://img.shields.io/badge/Bandit-000000?style=for-the-badge&logo=python&logoColor=ffdd54)
-![Taskfile](https://img.shields.io/badge/Taskfile-000000?style=for-the-badge&logo=task&logoColor=29BEB0)
-![Kubernetes](https://img.shields.io/badge/Kubernetes-000000?style=for-the-badge&logo=kubernetes&logoColor=326CE5)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-000000?style=for-the-badge&logo=postgresql&logoColor=4169E1)
-![PyInstrument](https://img.shields.io/badge/PyInstrument-000000?style=for-the-badge&logo=python&logoColor=ffdd54)
+[![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat-square)](https://go.dev)
+[![Latest Release](https://img.shields.io/github/v/release/enesgulerdev/sentinel?style=flat-square&color=brgihgreen)](https://github.com/enesgulerdev/sentinel/releases)
+[![License](https://img.shields.io/github/license/enesgulerdev/sentinel?style=flat-square)](LICENSE)
 
 </div>
 
