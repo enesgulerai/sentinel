@@ -133,7 +133,7 @@ To execute the entire test suite, which includes logic validation and idempotenc
 *   **macOS/Linux:** `source .venv/bin/activate`
 
 ```bash
-    task test
+    task test:run
 ```
 
 ### Running Performance Tests
@@ -142,7 +142,7 @@ To benchmark the API Gateway's connection capacity and measure the health endpoi
 > **Prerequisite:** Ensure that Docker is running and your infrastructure (Redis, Redpanda) is healthy before starting load tests.
 
  ```bash
-    task load-test-health
+    task test:load-health
  ```
  * *Note: Note on Performance Bottlenecks:
 If you observe high average latency (ms) during this extreme load test, it is because the API is currently deployed as a single, standalone Docker container. This creates a natural bottleneck at the single-process level. In the upcoming Kubernetes (K8s) deployment phase, we will implement horizontal scaling. By increasing the pod replica count behind a load balancer, the concurrent traffic will be distributed across multiple instances, effectively mitigating this latency issue and maximizing overall throughput.*
