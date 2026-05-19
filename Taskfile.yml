@@ -91,39 +91,53 @@ tasks:
     desc: Run OHA load test for 1 minute with 250 concurrent workers on health endpoint
     cmds:
       - oha -c 250 -z 1m http://localhost:8000/
+
   # ==========================================
-  # INFRASTRUCTURE & DOCKER
+  # DOCKER
   # ==========================================
-  up:
+  docker:up:
     desc: Docker - Builds images and starts infrastructure containers in the background
     cmds:
       - docker compose up --build -d
 
-  down:
-    desc: "Stops and removes Docker containers, networks, and volumes"
+  docker:down:
+    desc: Docker - Stops and removes Docker containers, networks, and volumes
     cmds:
       - docker compose down
 
-  ps:
+  docker:ps:
     desc: Docker - Shows the current status of running containers
     cmds:
       - docker compose ps
+
+  docker:image-clear:
+    desc: Docker - Forcefully removes all unused and dangling images to free up space
+    cmds:
+      - docker image prune -a -f
 
   # ==========================================
   # KUBERNETES
   # ==========================================
   k8s:build-load:
-    desc: Build local images and load them into the Kind cluster
+    desc: Kubernetes - Build local images and load all dependencies into the Kind cluster
     cmds:
-      - docker build -f docker/backend/Dockerfile -t sentinel-api:v0.5.0 .
-      - docker build -f docker/frontend/Dockerfile -t sentinel-ui:v0.5.0 .
-      - docker build -f docker/backend/Dockerfile -t sentinel-consumer:v0.5.0 .
-      - kind load docker-image sentinel-api:v0.5.0 --name kind
-      - kind load docker-image sentinel-ui:v0.5.0 --name kind
-      - kind load docker-image sentinel-consumer:v0.5.0 --name kind
+      # 1. Pull necessary external images to host machine
+      - docker pull busybox:1.28
+      - docker pull docker.redpanda.com/redpandadata/console:v2.4.5
+
+      # 2. Build local Go and Python images
+      # Adjust the Dockerfile paths (-f) if your directory structure is different
+      - docker build -f docker/api_go/Dockerfile -t sentinel-api-go:v1.0.0 .
+      - docker build -f docker/backend/Dockerfile -t sentinel-consumer:v1.0.0 .
+
+      # 3. Load everything directly into Kind's internal registry
+      - kind load docker-image busybox:1.28 --name kind
+      - kind load docker-image docker.redpanda.com/redpandadata/console:v2.4.5 --name kind
+      - kind load docker-image sentinel-api-go:v1.0.0 --name kind
+      - kind load docker-image sentinel-consumer:v1.0.0 --name kind
 
   k8s:up:
-    desc: Deploy the complete Sentinel stack to Kubernetes
+    desc: Kubernetes - Deploys entire infrastructure and application stack sequentially
     cmds:
       - kubectl apply -f k8s/infrastructure/
       - kubectl apply -f k8s/apps/
@@ -133,7 +147,7 @@ tasks:
     cmd: kubectl get pods
 
   k8s:down:
-    desc: Remove the Sentinel stack from Kubernetes
+    desc: Kubernetes - Remove the Sentinel stack from Kubernetes
     cmds:
       - kubectl delete -f k8s/apps/ --ignore-not-found
       - kubectl delete -f k8s/infrastructure/ --ignore-not-found
@@ -148,10 +162,6 @@ tasks:
   _forward-api:
     internal: true
     cmd: kubectl port-forward svc/api 8000:8000
-
-  _forward-ui:
-    internal: true
-    cmd: kubectl port-forward svc/ui 8501:8501
 
   _forward-console:
     internal: true
