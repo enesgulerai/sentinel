@@ -4,11 +4,11 @@ FROM golang:1.26-alpine AS builder
 WORKDIR /app
 
 # Copy go.mod and go.sum from the source directory
-COPY src/api_go/go.mod src/api_go/go.sum ./
+COPY src/api/go.mod src/api/go.sum ./
 RUN go mod download
 
 # Copy the actual Go source code
-COPY src/api_go/ .
+COPY src/api/ .
 
 # Compile the binary with production optimizations
 # CGO_ENABLED=0 removes C dependency for static linking
