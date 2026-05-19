@@ -1,0 +1,16 @@
+# --- Core Consumer Dependencies ---
+aiokafka==0.14.0
+
+# --- ML & Data Inference ---
+numpy
+onnxruntime
+joblib
+scikit-learn
+
+# --- Database ---
+psycopg[binary]==3.3.4
+
+# --- OpenTelemetry (Tracing) ---
+opentelemetry-api==1.41.1
+opentelemetry-sdk==1.41.1
+opentelemetry-exporter-otlp==1.41.1
