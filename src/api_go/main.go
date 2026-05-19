@@ -11,6 +11,8 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -18,11 +20,27 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"github.com/segmentio/kafka-go"
+
+	// --- OTEL IMPORTS ---
+	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 )
 
 var (
 	redisClient *redis.Client
 	kafkaWriter *kafka.Writer
+
+	// Metrics & Asynchronous Logging
+	totalRequests uint64
+	totalLatency  uint64
+	recentLogs    []map[string]string
+	logMutex      sync.Mutex
+	logChannel    = make(chan map[string]string, 10000)
 )
 
 func getEnv(key, fallback string) string {
@@ -32,22 +50,46 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
+// --- OTEL INITIALIZATION ---
+func initTracer() func(context.Context) error {
+	jaegerEndpoint := getEnv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4318")
+
+	exporter, err := otlptracehttp.New(context.Background(),
+		otlptracehttp.WithEndpoint(jaegerEndpoint),
+		otlptracehttp.WithInsecure(),
+	)
+	if err != nil {
+		log.Fatalf("FATAL: Failed to create OTel exporter: %v", err)
+	}
+
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(exporter),
+		sdktrace.WithResource(resource.NewWithAttributes(
+			semconv.SchemaURL,
+			semconv.ServiceNameKey.String("sentinel-api"),
+		)),
+	)
+
+	otel.SetTracerProvider(tp)
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+	return tp.Shutdown
+}
+
 func initServices() {
 	log.Println("Starting Sentinel ML API Gateway (Go/Gin)...")
 
 	redisHost := getEnv("REDIS_HOST", "localhost")
 	redisPort := getEnv("REDIS_PORT", "6379")
 
-	// Optimized Redis Pool for high concurrency
 	redisClient = redis.NewClient(&redis.Options{
 		Addr:         fmt.Sprintf("%s:%s", redisHost, redisPort),
 		DB:           0,
-		PoolSize:     250, // Match or exceed max concurrent workers (-c 200)
-		MinIdleConns: 50,  // Keep connections alive to prevent dial-up overhead
+		PoolSize:     250,
+		MinIdleConns: 50,
 		DialTimeout:  5 * time.Second,
 		ReadTimeout:  3 * time.Second,
 		WriteTimeout: 3 * time.Second,
-		PoolTimeout:  4 * time.Second, // Amount of time client waits for connection if all are busy
+		PoolTimeout:  4 * time.Second,
 	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -61,7 +103,6 @@ func initServices() {
 	kafkaBroker := getEnv("REDPANDA_BROKER", "localhost:19092")
 	topicName := getEnv("KAFKA_TOPIC", "transactions")
 
-	// Optimized Redpanda Writer
 	kafkaWriter = &kafka.Writer{
 		Addr:         kafka.TCP(kafkaBroker),
 		Topic:        topicName,
@@ -69,7 +110,6 @@ func initServices() {
 		BatchTimeout: 5 * time.Millisecond,
 		RequiredAcks: kafka.RequireOne,
 		Async:        true,
-		// Enlarge inner buffers for concurrent writes
 		BatchSize:    100,
 		ReadTimeout:  3 * time.Second,
 		WriteTimeout: 3 * time.Second,
@@ -77,27 +117,98 @@ func initServices() {
 	log.Printf("SUCCESS: Connected to Redpanda at %s (Async Mode)", kafkaBroker)
 }
 
+// Atomic Metrics Middleware
+func metricsMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now()
+		c.Next()
+		duration := time.Since(start).Microseconds()
+		atomic.AddUint64(&totalRequests, 1)
+		atomic.AddUint64(&totalLatency, uint64(duration))
+	}
+}
+
+// Non-blocking asynchronous log sender
+func addLogAsync(txID string, amount float64, status string) {
+	if txID == "" {
+		txID = "UNKNOWN"
+	}
+	select {
+	case logChannel <- map[string]string{
+		"id":     txID,
+		"amount": fmt.Sprintf("%.2f", amount),
+		"status": status,
+	}:
+	default:
+		// Drop log if channel is full to prevent blocking
+	}
+}
+
 func main() {
 	initServices()
 
-	// Set Gin to release mode and use a blank instance to disable stdout logging
+	// --- OTEL START ---
+	shutdownTracer := initTracer()
+	defer func() {
+		if err := shutdownTracer(context.Background()); err != nil {
+			log.Printf("Error shutting down tracer: %v", err)
+		}
+	}()
+	// --- OTEL END ---
+
+	// Background worker for logs
+	go func() {
+		for newLog := range logChannel {
+			logMutex.Lock()
+			recentLogs = append([]map[string]string{newLog}, recentLogs...)
+			if len(recentLogs) > 5 {
+				recentLogs = recentLogs[:5]
+			}
+			logMutex.Unlock()
+		}
+	}()
+
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
-	router.Use(gin.Recovery()) // Protects the gateway from panics without disk I/O blocking
+	router.Use(gin.Recovery())
 
-	// Profiling toolchain configuration
+	// --- OTEL GIN MIDDLEWARE ---
+	router.Use(otelgin.Middleware("sentinel-api"))
+
+	router.Use(metricsMiddleware())
+
 	pprof.Register(router)
 
-	// Health Check
 	router.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"status":  "online",
 			"service": "Sentinel ML API (Go)",
-			"version": "1.1.0",
+			"version": "1.0.0",
 		})
 	})
 
-	// Transactions Endpoint
+	// Secure Metrics Endpoint
+	router.GET("/metrics", func(c *gin.Context) {
+		reqs := atomic.SwapUint64(&totalRequests, 0)
+		lat := atomic.SwapUint64(&totalLatency, 0)
+
+		avgLat := 0.0
+		if reqs > 0 {
+			avgLat = float64(lat) / float64(reqs) / 1000.0
+		}
+
+		logMutex.Lock()
+		logsCopy := make([]map[string]string, len(recentLogs))
+		copy(logsCopy, recentLogs)
+		logMutex.Unlock()
+
+		c.JSON(http.StatusOK, gin.H{
+			"rps":         reqs,
+			"avg_latency": avgLat,
+			"logs":        logsCopy,
+		})
+	})
+
 	router.POST("/api/v1/transactions", ingestTransaction)
 
 	apiPort := getEnv("PORT", "8000")
@@ -126,24 +237,26 @@ func main() {
 
 	redisClient.Close()
 	kafkaWriter.Close()
-
 	log.Println("Shutdown complete.")
 }
 
-// Helper function to retry critical I/O operations gracefully
 func executeWithRetry(attempts int, initialDelay time.Duration, operation func() error) error {
 	var err error
 	for i := 0; i < attempts; i++ {
 		if err = operation(); err == nil {
 			return nil
 		}
-		// Wait before retrying (incremental backoff)
 		time.Sleep(initialDelay * time.Duration(i+1))
 	}
 	return err
 }
 
 func ingestTransaction(c *gin.Context) {
+	// --- OTEL SPAN START ---
+	tracer := otel.Tracer("sentinel-api")
+	ctx, span := tracer.Start(c.Request.Context(), "ingestTransaction")
+	defer span.End()
+
 	var rawData map[string]any
 	if err := c.ShouldBindJSON(&rawData); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON payload format"})
@@ -179,11 +292,14 @@ func ingestTransaction(c *gin.Context) {
 	var isNew bool
 	var redisErr error
 
-	// 1. Redis Idempotency Check with Retry
+	// --- OTEL REDIS SPAN ---
+	_, redisSpan := tracer.Start(ctx, "Redis-SetNX")
 	err = executeWithRetry(3, 10*time.Millisecond, func() error {
-		isNew, redisErr = redisClient.SetNX(c.Request.Context(), redisKey, "1", 10*time.Second).Result()
+		// Notice we use 'ctx' here to carry the trace forward
+		isNew, redisErr = redisClient.SetNX(ctx, redisKey, "1", 10*time.Second).Result()
 		return redisErr
 	})
+	redisSpan.End()
 
 	if err != nil {
 		log.Printf("Critical: Redis idempotency check failed after retries: %v", err)
@@ -192,6 +308,7 @@ func ingestTransaction(c *gin.Context) {
 	}
 
 	if !isNew {
+		addLogAsync(txID, amount, "BLOCKED")
 		c.JSON(http.StatusAccepted, gin.H{
 			"status":  "ignored",
 			"message": "Duplicate transaction detected",
@@ -202,12 +319,27 @@ func ingestTransaction(c *gin.Context) {
 
 	fullPayload, _ := json.Marshal(rawData)
 
-	// 2. Kafka Write with Retry
+	// --- OTEL KAFKA SPAN ---
+	_, kafkaSpan := tracer.Start(ctx, "Kafka-Write")
+
+	carrier := propagation.MapCarrier{}
+	otel.GetTextMapPropagator().Inject(ctx, carrier)
+
+	var kafkaHeaders []kafka.Header
+	for k, v := range carrier {
+		kafkaHeaders = append(kafkaHeaders, kafka.Header{
+			Key:   k,
+			Value: []byte(v),
+		})
+	}
+
 	err = executeWithRetry(3, 15*time.Millisecond, func() error {
-		return kafkaWriter.WriteMessages(c.Request.Context(), kafka.Message{
-			Value: fullPayload,
+		return kafkaWriter.WriteMessages(ctx, kafka.Message{
+			Headers: kafkaHeaders,
+			Value:   fullPayload,
 		})
 	})
+	kafkaSpan.End()
 
 	if err != nil {
 		log.Printf("Critical: Gateway failed to queue transaction to Kafka after retries: %v", err)
@@ -215,6 +347,7 @@ func ingestTransaction(c *gin.Context) {
 		return
 	}
 
+	addLogAsync(txID, amount, "PASSED")
 	c.JSON(http.StatusAccepted, gin.H{
 		"status":         "success",
 		"transaction_id": txID,
