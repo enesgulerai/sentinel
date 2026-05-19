@@ -11,6 +11,14 @@ import onnxruntime as ort
 import psycopg
 from aiokafka import AIOKafkaConsumer
 
+# --- OTEL IMPORTS ---
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.propagate import extract
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
 from src.utils.logger import get_logger
 
 warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
@@ -27,6 +35,25 @@ DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://sentinel:sentinel_passwor
 
 BATCH_SIZE = 500
 POLL_TIMEOUT_MS = 1000
+
+
+# --- OTEL INITIALIZATION ---
+def init_tracer():
+    resource = Resource.create({"service.name": "sentinel-consumer"})
+    provider = TracerProvider(resource=resource)
+
+    # We use gRPC port (4317) just like Go does for consistency
+    jaeger_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
+
+    exporter = OTLPSpanExporter(endpoint=jaeger_endpoint, insecure=True)
+    processor = BatchSpanProcessor(exporter)
+    provider.add_span_processor(processor)
+
+    trace.set_tracer_provider(provider)
+    return trace.get_tracer(__name__)
+
+
+tracer = init_tracer()
 
 
 async def start_inference_engine():
@@ -72,8 +99,20 @@ async def start_inference_engine():
             batch_data = []
             valid_msgs = []
 
+            # Context list to hold trace backgrounds for the current batch
+            batch_contexts = []
+
             for _tp, messages in result.items():
                 for msg in messages:
+                    # --- OTEL CONTEXT EXTRACTION ---
+                    # Read the hidden tracking numbers (headers) dropped by Go
+                    carrier = {}
+                    if msg.headers:
+                        for key, value in msg.headers:
+                            carrier[key] = value.decode("utf-8")
+
+                    ctx = extract(carrier)
+
                     try:
                         transaction = json.loads(msg.value.decode("utf-8"))
 
@@ -84,12 +123,22 @@ async def start_inference_engine():
 
                         batch_data.append(row)
                         valid_msgs.append(transaction)
+                        batch_contexts.append(ctx)  # Store the context for this specific row
+
                     except Exception as e:
                         logger.warning(f"Failed to parse message: {e}")
                         continue
 
             if not batch_data:
                 continue
+
+            # --- START BATCH PROCESSING SPANS ---
+            # We open a span for EVERY item in the batch using its original Go context
+            # This links the Python execution time directly to the specific Go API request
+            spans = []
+            for ctx in batch_contexts:
+                span = tracer.start_span("Consumer-Process-Batch", context=ctx)
+                spans.append(span)
 
             X_batch = np.array(batch_data, dtype=np.float32)
 
@@ -131,6 +180,11 @@ async def start_inference_engine():
                 except Exception as db_err:
                     logger.error(f"Database Insert Error: {db_err}")
                     await db_conn.rollback()
+
+            # --- CLOSE BATCH SPANS ---
+            # Now that the DB write is done, close all the individual trace spans
+            for span in spans:
+                span.end()
 
             if len(valid_msgs) > 50 or frauds_in_batch > 0:
                 logger.info(f"Processed batch of {len(valid_msgs)} txs. Frauds found: {frauds_in_batch}. Saved to DB.")
