@@ -34,14 +34,14 @@ The data ingestion process requires a Google Drive File ID to fetch the raw data
 Install all required Python packages and set up the local development environment. This command utilizes `uv` to create a virtual environment and strictly syncs the dependencies locked in `uv.lock`.
 
 ```bash
-    task install
+    task env:install
 ```
 
 ### 4. Execute the ML Pipeline
 Run the complete machine learning pipeline. This automated task will fetch the raw dataset using your provided `.env` variable, apply preprocessing transformations, and train the baseline model.
 
 ```bash
-    task pipeline
+    task ml:pipeline
 ```
 
 ### 5. Launch and Manage Application
@@ -49,14 +49,16 @@ The Sentinel project utilizes a microservices architecture. Start the Docker con
 
 ```bash
     # Start all services
-    task up
+    task docker:up
 
     # Stop and remove containers, networks, and volumes
-    task down
+    task docker:down
 ```
 
 ## Local Kubernetes Development (Kind)
-*Note: If you experience any issues or hanging pods during the Kubernetes deployment, please refer to the Troubleshooting section at the bottom of this page.*
+*Note 1: The local Kubernetes cluster configuration is currently undergoing infrastructure updates to support newly integrated OpenTelemetry tracing across the Go/Gin API Gateway. Full cluster orchestrations will be active in the upcoming release.*
+
+*Note 2: If you experience any issues or hanging pods during the Kubernetes deployment, please refer to the Troubleshooting section at the bottom of this page.*
 
 Sentinel provides streamlined Taskfile commands for local Kubernetes orchestration, eliminating the need for complex `kubectl` management.
 
@@ -114,9 +116,8 @@ Once the Docker containers are up and running, you can access the core services 
 | Service | Local URL |
 | :--- | :--- |
 | **Prefect Dashboard** | http://localhost:4200 |
-| **API Gateway** | http://localhost:8000 |
+| **API Gateway (Go)** | http://localhost:8000 |
 | **Redpanda Console** | http://localhost:8080 |
-| **Streamlit UI** | http://localhost:8501 |
 
 
 ## Testing & Performance
