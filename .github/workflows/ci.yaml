@@ -77,7 +77,7 @@ jobs:
           version: 3.x
 
       - name: Run Taskfile CI Checks
-        run: task ci-check
+        run: task qa:ci-check
 
       - name: Run Bandit
         run: uv run bandit -c pyproject.toml -r src/
