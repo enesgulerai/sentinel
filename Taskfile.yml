@@ -10,24 +10,24 @@ tasks:
   # ==========================================
   # CODE QUALITY & LINTING
   # ==========================================
-  lint-fix:
-    desc: Run Ruff linter and automatically fix fixable issues
+  qa:lint-fix:
+    desc: QA - Run Ruff linter and automatically fix fixable issues
     cmds:
       - uv run ruff check --fix .
 
-  format:
-    desc: Run Ruff formatter to auto-format Python code
+  qa:format:
+    desc: QA - Run Ruff formatter to auto-format Python code
     cmds:
       - uv run ruff format .
 
-  check:
-    desc: Run local workflow (Fix lint issues, format, and check types)
+  qa:check:
+    desc: QA - Run local workflow (Fix lint issues, format, and check types)
     cmds:
-      - task: lint-fix
-      - task: format
+      - task: qa:lint-fix
+      - task: qa:format
 
-  ci-check:
-    desc: Run all checks strictly for CI
+  qa:ci-check:
+    desc: QA - Run all checks strictly for CI
     cmds:
       - uv run ruff check .
       - uv run ruff format --check .
@@ -35,8 +35,8 @@ tasks:
   # ==========================================
   # ENVIRONMENT
   # ==========================================
-  install:
-    desc: Installs project dependencies and sets up the development environment
+  env:install:
+    desc: ENV - Installs project dependencies and sets up the development environment
     cmds:
       - uv sync
       - uv run pre-commit install
@@ -44,32 +44,32 @@ tasks:
   # ==========================================
   # MLOPS & DATA PIPELINE
   # ==========================================
-  fetch:
-    desc: Downloads raw data and verifies integrity using SHA-256
+  ml:fetch:
+    desc: ML - Downloads raw data and verifies integrity using SHA-256
     cmds:
       - uv run python -m src.data.ingestion
 
-  preprocess:
-    desc: Splits train/test sets and applies preprocessing without data leakage
-    deps: [fetch]
+  ml:preprocess:
+    desc: ML - Splits train/test sets and applies preprocessing without data leakage
+    deps: [ml:fetch]
     cmds:
       - uv run python -m src.features.preprocessing
 
-  train:
-    desc: Trains the champion model (XGBoost) and exports it to ONNX format
-    deps: [preprocess]
+  ml:train:
+    desc: ML - Trains the champion model (XGBoost) and exports it to ONNX format
+    deps: [ml:preprocess]
     cmds:
       - uv run python -m src.models.trainer
 
-  pipeline:
-    desc: Runs the complete end-to-end machine learning pipeline
-    deps: [train]
+  ml:pipeline:
+    desc: ML - Runs the complete end-to-end machine learning pipeline
+    deps: [ml:train]
     silent: true
     cmds:
       - 'echo "SUCCESS: Full Machine Learning Pipeline Completed!"'
 
-  clean:
-    desc: Wipes all generated datasets, scaled files, and trained models
+  ml:clean:
+    desc: ML - Wipes all generated datasets, scaled files, and trained models
     silent: true
     ignore_error: true
     cmds:
@@ -82,13 +82,13 @@ tasks:
   # ==========================================
   # TESTS
   # ==========================================
-  test:
-    desc: Run all tests in the tests directory
+  test:run:
+    desc: TEST - Run all unit and integration tests in the tests directory
     cmds:
       - pytest tests/
 
-  load-test-health:
-    desc: Run OHA load test for 1 minute with 250 concurrent workers on health endpoint
+  test:load-health:
+    desc: TEST - Run OHA load test for 1 minute with 250 concurrent workers on health endpoint
     cmds:
       - oha -c 250 -z 1m http://localhost:8000/
 
