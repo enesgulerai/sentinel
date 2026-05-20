@@ -121,20 +121,11 @@ tasks:
   k8s:build-load:
     desc: Kubernetes - Build local images and load all dependencies into the Kind cluster
     cmds:
-      # 1. Pull necessary external images to host machine
-      - docker pull busybox:1.28
-      - docker pull docker.redpanda.com/redpandadata/console:v2.4.5
+      - docker build -f docker/api/Dockerfile -t sentinel-api:1.0.0 .
+      - docker build -f docker/consumer/Dockerfile -t sentinel-consumer:1.0.0 .
 
-      # 2. Build local Go and Python images
-      # Adjust the Dockerfile paths (-f) if your directory structure is different
-      - docker build -f docker/api_go/Dockerfile -t sentinel-api-go:v1.0.0 .
-      - docker build -f docker/backend/Dockerfile -t sentinel-consumer:v1.0.0 .
-
-      # 3. Load everything directly into Kind's internal registry
-      - kind load docker-image busybox:1.28 --name kind
-      - kind load docker-image docker.redpanda.com/redpandadata/console:v2.4.5 --name kind
-      - kind load docker-image sentinel-api-go:v1.0.0 --name kind
-      - kind load docker-image sentinel-consumer:v1.0.0 --name kind
+      - kind load docker-image sentinel-api:1.0.0 --name kind
+      - kind load docker-image sentinel-consumer:1.0.0 --name kind
 
   k8s:up:
     desc: Kubernetes - Deploys entire infrastructure and application stack sequentially
@@ -153,15 +144,14 @@ tasks:
       - kubectl delete -f k8s/infrastructure/ --ignore-not-found
 
   k8s:forward:
-    desc: Forward all necessary K8s ports in a single terminal
+    desc: Forward all necessary K8s ports in parallel
     deps:
       - task: _forward-api
-      - task: _forward-ui
       - task: _forward-console
 
   _forward-api:
     internal: true
-    cmd: kubectl port-forward svc/api 8000:8000
+    cmd: kubectl port-forward svc/sentinel-api-service 8000:8000
 
   _forward-console:
     internal: true
