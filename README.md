@@ -55,59 +55,85 @@ The Sentinel project utilizes a microservices architecture. Start the Docker con
     task docker:down
 ```
 
-## Local Kubernetes Development (Kind)
-*Note 1: The local Kubernetes cluster configuration is currently undergoing infrastructure updates to support newly integrated OpenTelemetry tracing across the Go/Gin API Gateway. Full cluster orchestrations will be active in the upcoming release.*
+## Kubernetes Orchestration & Autoscaling (Local Development via Kind)
+*Note: If you experience any issues or hanging pods during the Kubernetes deployment, please refer to the Troubleshooting section at the bottom of this page.*
 
-*Note 2: If you experience any issues or hanging pods during the Kubernetes deployment, please refer to the Troubleshooting section at the bottom of this page.*
+Sentinel provides streamlined `Taskfile` commands for local Kubernetes orchestration, eliminating the need for complex `kubectl` management.
 
-Sentinel provides streamlined Taskfile commands for local Kubernetes orchestration, eliminating the need for complex `kubectl` management.
+### Prerequisites: Cluster & Metrics Server
+Before running the deployment tasks, you need to create the local Kind cluster and install the Metrics Server (required for Horizontal Pod Autoscaling).
 
-1. **Build and Load Images:**
-   Ensure your local Kind cluster has the latest images:
-   ```bash
-   task k8s:build-load
-   ```
+Create the cluster:
+```bash
+    kind create cluster
+```
 
-2. **Deploy the Architecture:**
-    Apply all infrastructure and application manifests:
-    ```bash
+Apply the official metrics-server manifest:
+```bash
+    kubectl apply -f [https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml](https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml)
+```
+
+Patch the deployment to allow insecure TLS (a requirement for local Kind nodes without proper certificates):
+```bash
+    # For Linux/macOS (Bash/Zsh):
+    kubectl patch deployment metrics-server -n kube-system --type='json' -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls"}]'
+```
+Windows PowerShell Users: If the command above fails due to JSON formatting errors, use a patch file instead:
+
+```bash
+    Set-Content -Path patch.json -Value '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+    kubectl patch -n kube-system deployment metrics-server --type=json --patch-file patch.json
+    Remove-Item patch.json
+```
+
+### Streamlined Deployment Workflow
+#### 1. Build and Load Images:
+Ensure your local Kind cluster has the latest images built directly from your source code.
+```bash
+    task k8s:build-load
+```
+
+#### 2. Deploy the Architecture:
+Apply all infrastructure (Redis, Redpanda, Postgres) and application (API, Consumer) manifests sequentially.
+```bash
     task k8s:up
-    ```
+```
 
-3. **Check Pod Status (Crucial):**
-    Before accessing the services, ensure all pods have reached the `Running` state. If you attempt to port-forward while pods are in `Init` or `ContainerCreating` states, the connection will fail.
-    ```bash
+#### 3. Check Pod Status (Crucial):
+Before accessing the services, ensure all pods have reached the Running state. If you attempt to port-forward while pods are in Init or ContainerCreating states, the connection will fail.
+```bash
     task k8s:status
-    ```
+```
 
-4. **Access the Services:**
-    Run the following command to bind all necessary K8s ports to your local machine simultaneously. This process runs in the foreground; simply press `Ctrl+C` to terminate all connections when done.
-    ```bash
+#### 4. Access the Services:
+Run the following command to bind all necessary K8s ports (API Gateway and Redpanda Console) to your local machine simultaneously. This process runs in the foreground; simply press Ctrl+C to terminate all connections when done.
+```bash
     task k8s:forward
-    ```
+```
 
-5. **Teardown:**
-    ```bash
+#### 5. Teardown:
+Clean up the entire Sentinel stack from your Kubernetes cluster.
+```bash
     task k8s:down
-    ```
+```
+
 
 ### Optional: Architecture Stress Testing (HPA in Action)
 
-Sentinel is designed with high availability and elasticity in mind. We use Kubernetes Horizontal Pod Autoscaling (HPA) to dynamically scale the stateless API and UI layers based on traffic spikes.
+Sentinel is designed with high availability and elasticity in mind. We use Kubernetes Horizontal Pod Autoscaling (HPA) to dynamically scale the stateless API layer based on sudden traffic spikes.
 
 You can safely benchmark the API's scaling capabilities locally using [oha](https://github.com/hatoo/oha):
 
 1. **Keep the Port-Forward Running:** Ensure `task k8s:forward` is running in your first terminal.
 2. **Monitor the Autoscaler:** Open a second terminal and watch the HPA react in real-time:
    ```bash
-   kubectl get hpa -w
+   kubectl get hpa sentinel-api-hpa -w
    ```
-3. **Trigger the Load Test:** Open a third terminal and blast the API with 200 concurrent workers for 60 seconds:
+3. Trigger the Load Test: Open a third terminal and blast the API with 250 concurrent workers for 60 seconds:
     ```bash
-    oha -z 60s -c 200 http://localhost:8000/docs
+    task test:load-health
     ```
-
-    *Observe the second terminal: You will see the CPU utilization spike, prompting Kubernetes to autonomously clone the API pods (up to 5 replicas) to distribute the load, maintaining a 100% success rate without dropping connections.*
+    *Observe the second terminal: You will see the CPU utilization spike dramatically, prompting Kubernetes to autonomously clone the API pods (up to 5 replicas) to distribute the load, maintaining a 100% success rate without dropping connections.*
 
 ## Local Services & Ports
 
@@ -115,9 +141,9 @@ Once the Docker containers are up and running, you can access the core services 
 
 | Service | Local URL |
 | :--- | :--- |
-| **Prefect Dashboard** | http://localhost:4200 |
-| **API Gateway (Go)** | http://localhost:8000 |
-| **Redpanda Console** | http://localhost:8080 |
+| **Prefect** | http://localhost:4200 |
+| **API Gateway** | http://localhost:8000 |
+| **Redpanda** | http://localhost:8080 |
 
 
 ## Testing & Performance
@@ -221,17 +247,4 @@ If you encounter a `"kind": executable file not found in $PATH` error during the
 3. Create your local Kind cluster before running the tasks:
     ```bash
     kind create cluster
-    ```
-
-### HPA Targets Showing `<unknown>` (Missing Metrics Server):
-By default, local Kubernetes distributions like Kind do not include the `metrics-server`, which is strictly required for the Horizontal Pod Autoscaler (HPA) to monitor CPU/Memory usage. If your HPA cannot read metrics, install and patch the server:
-
-1. Apply the official metrics-server manifest:
-   ```bash
-   kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
-   ```
-
-2. Patch the deployment to allow insecure TLS (a requirement for local Kind nodes without proper certificates):
-    ```bash
-    kubectl patch deployment metrics-server -n kube-system --type='json' -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls"}]'
     ```
