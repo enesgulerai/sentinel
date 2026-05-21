@@ -70,7 +70,7 @@ Create the cluster:
 
 Apply the official metrics-server manifest:
 ```bash
-    kubectl apply -f [https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml](https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml)
+    kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 ```
 
 Patch the deployment to allow insecure TLS (a requirement for local Kind nodes without proper certificates):
