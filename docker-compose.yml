@@ -118,6 +118,8 @@ services:
     depends_on:
       redpanda:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
     networks:
       - sentinel_net
     deploy:
@@ -145,6 +147,11 @@ services:
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - sentinel_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentinel -d sentinel_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   # --- Service: Jaeger ---
   jaeger:
