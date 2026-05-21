@@ -129,44 +129,6 @@ services:
           cpus: '1.0'
           memory: 1G
 
-  # --- Service: Prefect ---
-  prefect:
-    image: prefecthq/prefect:3-python3.11
-    container_name: sentinel-prefect
-    command: ["prefect", "server", "start", "--host", "0.0.0.0"]
-    ports:
-      - "4200:4200"
-    networks:
-      - sentinel_net
-    deploy:
-      resources:
-        reservations:
-          memory: 256M
-        limits:
-          cpus: "1.0"
-          memory: 1G
-
-  # --- Service: Orchestrator ---
-  orchestrator:
-    image: sentinel-orchestrator:1.0.0
-    build:
-      context: .
-      dockerfile: docker/orchestration/Dockerfile
-    container_name: sentinel-orchestrator
-    restart: always
-    environment:
-      - PREFECT_API_URL=http://prefect:4200/api
-    depends_on:
-      - prefect
-    networks:
-      - sentinel_net
-    deploy:
-      resources:
-        reservations:
-          memory: 128M
-        limits:
-          memory: 512M
-
   # --- Service: Postgres ---
   postgres:
     image: pgvector/pgvector:pg15
