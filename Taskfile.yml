@@ -118,12 +118,35 @@ tasks:
   # ==========================================
   # KUBERNETES
   # ==========================================
+  k8s:start:
+    desc: Kubernetes - One-click local environment setup! Creates cluster, builds images, and deploys the stack.
+    cmds:
+      - task: _cluster-create
+      - task: k8s:build-load
+      - task: k8s:up
+      - cmd: echo "Kubernetes cluster is successfully provisioned and workloads are deployed!"
+        silent: true
+      - cmd: echo "Run 'task k8s:status' to monitor pod startup."
+        silent: true
+      - cmd: echo "Once all pods are 'Running', execute 'task k8s:forward' in a new terminal."
+        silent: true
+
+  _cluster-create:
+    desc: Internal task to create multi-node cluster and configure workload isolation
+    internal: true
+    cmds:
+      - kind create cluster --config k8s/config/kind-config.yaml
+      # Node 1: Dedicated for Stateful Storage (Postgres, Redis, Redpanda)
+      - kubectl label nodes kind-worker role=storage --overwrite
+      # Node 2: Dedicated & Tainted for AI Inference (Consumer)
+      - kubectl taint nodes kind-worker2 dedicated=ai-inference:NoSchedule --overwrite=true
+      - kubectl label nodes kind-worker2 role=ai-inference --overwrite
+
   k8s:build-load:
     desc: Kubernetes - Build local images and load all dependencies into the Kind cluster
     cmds:
       - docker build -f docker/api/Dockerfile -t sentinel-api:1.0.0 .
       - docker build -f docker/consumer/Dockerfile -t sentinel-consumer:1.0.0 .
-
       - kind load docker-image sentinel-api:1.0.0 --name kind
       - kind load docker-image sentinel-consumer:1.0.0 --name kind
 
@@ -134,8 +157,8 @@ tasks:
       - kubectl apply -f k8s/apps/
 
   k8s:status:
-    desc: Check the current status of all Kubernetes pods
-    cmd: kubectl get pods
+    desc: Kubernetes - Check the current status of all Kubernetes pods
+    cmd: kubectl get pods -o wide
 
   k8s:down:
     desc: Kubernetes - Remove the Sentinel stack from Kubernetes
@@ -144,7 +167,7 @@ tasks:
       - kubectl delete -f k8s/infrastructure/ --ignore-not-found
 
   k8s:forward:
-    desc: Forward all necessary K8s ports in parallel
+    desc: Kubernetes - Forward all necessary K8s ports in parallel
     deps:
       - task: _forward-api
       - task: _forward-console

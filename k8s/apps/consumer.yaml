@@ -12,6 +12,20 @@ spec:
       labels:
         app: sentinel-consumer
     spec:
+      tolerations:
+      - key: "dedicated"
+        operator: "Equal"
+        value: "ai-inference"
+        effect: "NoSchedule"
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: role
+                operator: In
+                values:
+                - ai-inference
       initContainers:
       - name: wait-for-redpanda
         image: busybox:1.28
@@ -19,23 +33,19 @@ spec:
       - name: wait-for-postgres
         image: busybox:1.28
         command: ['sh', '-c', "until nc -zv postgres 5432; do echo waiting for postgres; sleep 2; done"]
-
       containers:
       - name: consumer
-        image: sentinel-consumer:1.0.0 # Versiyonu güncelledik!
+        image: sentinel-consumer:1.0.0
         imagePullPolicy: IfNotPresent
         command: ["python", "-m", "src.inference.consumer"]
-
         envFrom:
         - secretRef:
             name: postgres-secret
-
         env:
         - name: REDPANDA_BROKER
           value: "redpanda:9092"
         - name: DATABASE_URL
           value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/$(POSTGRES_DB)"
-
         resources:
           requests:
             cpu: "200m"
