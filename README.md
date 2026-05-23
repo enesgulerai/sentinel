@@ -45,78 +45,44 @@ Run the complete machine learning pipeline. This automated task will fetch the r
 ```
 
 ### 5. Launch and Manage Application
-The Sentinel project utilizes a microservices architecture. Start the Docker containers to spin up the Prefect orchestration server, API gateway, and all other core services in detached mode:
+The Sentinel project utilizes a microservices architecture. Start the Docker containers to spin up the API gateway, and all other core services in detached mode:
 
 ```bash
     # Start all services
     task docker:up
 
     # Stop and remove containers, networks, and volumes
-    task docker:down
+    task docker:off
 ```
 
-## Kubernetes Orchestration & Autoscaling (Local Development via Kind)
-*Note: If you experience any issues or hanging pods during the Kubernetes deployment, please refer to the Troubleshooting section at the bottom of this page.*
+## Kubernetes Orchestration & Workload Isolation (Local Development via Kind)
+*Note: If you experience any issues during the Kubernetes deployment, please refer to the Troubleshooting section at the bottom of this page.*
 
-Sentinel provides streamlined `Taskfile` commands for local Kubernetes orchestration, eliminating the need for complex `kubectl` management.
+Sentinel provides streamlined `Taskfile` commands for local Kubernetes orchestration. The automated setup provisions a multi-node cluster and configures strict workload isolation (Taints, Tolerations, and Node Affinity) to eliminate resource contention between the heavy AI inference engine and stateful data stores.
 
-### Prerequisites: Cluster & Metrics Server
-Before running the deployment tasks, you need to create the local Kind cluster and install the Metrics Server (required for Horizontal Pod Autoscaling).
-
-Create the cluster:
+### 1. Provision & Deploy the Architecture
+Run the start command to execute the entire infrastructure setup automatically. This single command creates the multi-node Kind cluster, applies hardware isolation rules, builds the Docker images, loads them into the cluster, and deploys all application and infrastructure manifests sequentially.
 ```bash
-    kind create cluster
+    task k8s:start
 ```
 
-Apply the official metrics-server manifest:
-```bash
-    kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
-```
-
-Patch the deployment to allow insecure TLS (a requirement for local Kind nodes without proper certificates):
-```bash
-    # For Linux/macOS (Bash/Zsh):
-    kubectl patch deployment metrics-server -n kube-system --type='json' -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls"}]'
-```
-Windows PowerShell Users: If the command above fails due to JSON formatting errors, use a patch file instead:
-
-```bash
-    Set-Content -Path patch.json -Value '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
-    kubectl patch -n kube-system deployment metrics-server --type=json --patch-file patch.json
-    Remove-Item patch.json
-```
-
-### Streamlined Deployment Workflow
-#### 1. Build and Load Images:
-Ensure your local Kind cluster has the latest images built directly from your source code.
-```bash
-    task k8s:build-load
-```
-
-#### 2. Deploy the Architecture:
-Apply all infrastructure (Redis, Redpanda, Postgres) and application (API, Consumer) manifests sequentially.
-```bash
-    task k8s:up
-```
-
-#### 3. Check Pod Status (Crucial):
-Before accessing the services, ensure all pods have reached the Running state. If you attempt to port-forward while pods are in Init or ContainerCreating states, the connection will fail.
+### 2. Check Pod Status (Crucial)
+Before accessing the services, ensure all pods have reached the `Running` state. If you attempt to port-forward while pods are in `Init` or `ContainerCreating` states, the connection will fail.
 ```bash
     task k8s:status
 ```
 
-#### 4. Access the Services:
-Run the following command to bind all necessary K8s ports (API Gateway and Redpanda Console) to your local machine simultaneously. This process runs in the foreground; simply press Ctrl+C to terminate all connections when done.
+### 3. Access the Services
+Run the following command to bind all necessary K8s ports (API Gateway and Redpanda Console) to your local machine simultaneously. This process runs in the foreground; simply press `Ctrl+C` to terminate all connections when done.
 ```bash
     task k8s:forward
 ```
 
-#### 5. Teardown:
-Clean up the entire Sentinel stack from your Kubernetes cluster.
+### 4. Teardown & Clean
+Once you are finished, clean up the entire Sentinel stack and completely destroy the local Kind cluster and its associated data to free up system resources.
 ```bash
-    task k8s:down
+    task k8s:off
 ```
-
 
 ### Optional: Architecture Stress Testing (HPA in Action)
 
@@ -141,7 +107,6 @@ Once the Docker containers are up and running, you can access the core services 
 
 | Service | Local URL |
 | :--- | :--- |
-| **Prefect** | http://localhost:4200 |
 | **API Gateway** | http://localhost:8000 |
 | **Redpanda** | http://localhost:8080 |
 
@@ -170,81 +135,61 @@ To benchmark the API Gateway's connection capacity and measure the health endpoi
  ```bash
     task test:load-health
  ```
- * *Note: Note on Performance Bottlenecks:
+ *Note: Note on Performance Bottlenecks:
 If you observe high average latency (ms) during this extreme load test, it is because the API is currently deployed as a single, standalone Docker container. This creates a natural bottleneck at the single-process level. In the upcoming Kubernetes (K8s) deployment phase, we will implement horizontal scaling. By increasing the pod replica count behind a load balancer, the concurrent traffic will be distributed across multiple instances, effectively mitigating this latency issue and maximizing overall throughput.*
 
-### Database Verification (Sanity Check)
+### End-to-End Verification (Sanity Check)
 
-To ensure the end-to-end data pipeline is successfully capturing events and persisting them to PostgreSQL, you can query the database directly from within the Kubernetes cluster.
+To ensure the data pipeline is successfully capturing events, running AI inference, and persisting results, you can trigger a mock transaction and query the database directly.
 
-Run the following command to check the latest records and their AI-assigned risk scores:
-
-1. Prerequisite: Port Forwarding
-Since the API is running inside the cluster, you must first forward the port to your local machine:
-
+**1. Forward the API Port**
+Keep this running in a separate terminal:
 ```bash
     task k8s:forward
 ```
-*Note: Keep this terminal open or run it in the background.*
 
+**2. Trigger a Test Transaction**
+Send a mock JSON payload to the Go API Gateway:
 
-2. Trigger a Test Transaction
-Send a mock transaction with all required features to the API:
-
+**For Linux, macOS, or Git Bash:**
 ```bash
-Invoke-RestMethod -Uri "http://localhost:8000/api/v1/transactions" -Method Post -Headers @{"Content-Type"="application/json"} -Body '{"transaction_id": "TEST-1001", "user_id": "user_777", "Amount": 999.99, "Time": 10.0, "V1": 0.0, "V2": 0.0, "V3": 0.0, "V4": 0.0, "V5": 0.0, "V6": 0.0, "V7": 0.0, "V8": 0.0, "V9": 0.0, "V10": 0.0, "V11": 0.0, "V12": 0.0, "V13": 0.0, "V14": 0.0, "V15": 0.0, "V16": 0.0, "V17": 0.0, "V18": 0.0, "V19": 0.0, "V20": 0.0, "V21": 0.0, "V22": 0.0, "V23": 0.0, "V24": 0.0, "V25": 0.0, "V26": 0.0, "V27": 0.0, "V28": 0.0}'
+    curl -X POST http://localhost:8000/api/v1/transactions \
+  -H "Content-Type: application/json" \
+  -d '{"transaction_id": "TEST-1001", "user_id": "usr_777", "Amount": 999.99, "Time": 10.0, "V1": 0.0, "V2": 0.0, "V3": 0.0}'
+```
+**For Windows PowerShell:**
+```powershell
+    Invoke-RestMethod -Uri "http://localhost:8000/api/v1/transactions" -Method Post -Headers @{"Content-Type"="application/json"} -Body '{"transaction_id": "TEST-1001", "user_id": "usr_777", "Amount": 999.99, "Time": 10.0, "V1": 0.0, "V2": 0.0, "V3": 0.0}'
+```
+*(Note: The full AI model requires all V1-V28 features, omitted here for brevity.)*
+
+**3. Verify Persistence & AI Risk Score**
+Query the PostgreSQL statefulset directly to see the AI-assigned risk score:
+```bash
+    kubectl exec -it postgres-0 -- psql -U sentinel -d sentinel_db -c "SELECT transaction_id, risk_score, created_at FROM transactions LIMIT 5;"
 ```
 
-3. Verify Inference Logs
-Check if the Consumer captured the event from Redpanda and processed it via the ONNX model:
-
-```bash
-kubectl logs deploy/sentinel-consumer
-```
-
-4. Query the Database
-Directly query the PostgreSQL statefulset to see the persisted record and its AI-assigned risk score:
-
-```bash
-    kubectl exec -it postgres-0 -- psql -U sentinel -d sentinel_db -c "SELECT transaction_id, user_id, amount, risk_score FROM transactions LIMIT 10;"
-```
-
-*Expected Output: If the pipeline is functioning correctly, you should see a table displaying the transactions that have passed through Redpanda and the AI Consumer.*
-
+*Expected Output: A table displaying the transaction and its newly calculated risk score, proving the End-to-End event-driven flow is fully operational.*
 
 ## Troubleshooting
 
-### "task: command not found"
-Sentinel leverages the **Taskfile** runner for efficient task automation and documentation. If the `task` command is not recognized, you need to install the task runner on your system:
+### `task: command not found`
+Sentinel leverages the Taskfile runner for all automation. If the command is not recognized, install it:
+* **macOS (Homebrew):** `brew install go-task`
+* **Windows (Chocolatey/Scoop):** `choco install go-task` or `scoop install task`
+* **Linux:** `sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d`
 
-*   **macOS (Homebrew):** `brew install go-task/tap/go-task`
-*   **Windows (Chocolatey or Scoop):** `choco install go-task` or `scoop install task`
-*   **Linux:** `sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d`
+### `oha: command not found`
+The local load-testing tasks strictly depend on the `oha` HTTP load generator:
+* **macOS (Homebrew):** `brew install oha`
+* **Windows (Winget):** `winget install hatoo.oha`
+* **Linux (Arch):** `pacman -S oha`
+* **Universal (Cargo):** `cargo install oha`
 
-Alternatively, you can visit the [official Task installation guide](https://taskfile.dev/installation/) for more options.
+### `kind: command not found`
+If the Kubernetes provisioning fails due to a missing Kind CLI, install it and restart your terminal:
+* **macOS (Homebrew):** `brew install kind`
+* **Windows (Winget):** `winget install Kubernetes.kind`
+* **Linux:** `curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64 && chmod +x ./kind && sudo mv ./kind /usr/local/bin/kind`
 
-### "oha: command not found"
-**Issue:** Running `task load-test-health` fails with a "command not found: oha" error.
-
-**Solution:** The performance testing tasks strictly depend on the `oha` HTTP load generator. You can quickly install it directly via your system's package manager:
-
-*   **Windows (Winget):** `winget install hatoo.oha`
-*   **macOS (Homebrew):** `brew install oha`
-*   **Linux (Arch):** `pacman -S oha`
-*   **Universal (Cargo/Rust):** `cargo install oha`
-
-After installation, ensure that the installation directory is added to your system's PATH environment variable.
-
-### "Missing kind command on Windows"
-If you encounter a `"kind": executable file not found in $PATH` error during the build phase, it means the Kind CLI is not installed on your system.
-1. Open PowerShell as Administrator and install Kind via winget:
-    ```bash
-    winget install Kubernetes.kind
-    ```
-
-2. Restart your terminal (VS Code or PowerShell) to refresh the environment variables.
-
-3. Create your local Kind cluster before running the tasks:
-    ```bash
-    kind create cluster
-    ```
+*(Note: Do not run `kind create cluster` manually. Always use `task k8s:start` to ensure the custom multi-node infrastructure and workload isolation rules are applied correctly.)*
