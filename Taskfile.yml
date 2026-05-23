@@ -95,29 +95,49 @@ tasks:
   # ==========================================
   # DOCKER
   # ==========================================
+
+  # ----- START PART -----
   docker:up:
     desc: Docker - Builds images and starts infrastructure containers in the background
     cmds:
       - docker compose up --build -d
+      - cmd: echo "All infrastructure containers are successfully running."
+        silent: true
+      - cmd: 'echo "API Gateway: http://localhost:8000"'
+        silent: true
+      - cmd: 'echo "Redpanda Console: http://localhost:8080"'
+        silent: true
+
+  # ----- OFF PART -----
+  docker:off:
+    desc: Docker - Sequentially stops containers and clears all unused images
+    cmds:
+      - task: docker:down
+      - task: docker:clear
+      - cmd: echo "Docker environment has been completely shut down and cleaned."
+        silent: true
 
   docker:down:
     desc: Docker - Stops and removes Docker containers, networks, and volumes
     cmds:
       - docker compose down
 
+  docker:clear:
+    desc: Docker - Forcefully removes all unused and dangling images to free up space
+    cmds:
+      - docker image prune -a -f
+
+  # ----- STATUS PART -----
   docker:ps:
     desc: Docker - Shows the current status of running containers
     cmds:
       - docker compose ps
 
-  docker:image-clear:
-    desc: Docker - Forcefully removes all unused and dangling images to free up space
-    cmds:
-      - docker image prune -a -f
-
   # ==========================================
   # KUBERNETES
   # ==========================================
+
+  # ----- START PART -----
   k8s:start:
     desc: Kubernetes - One-click local environment setup! Creates cluster, builds images, and deploys the stack.
     cmds:
@@ -156,9 +176,14 @@ tasks:
       - kubectl apply -f k8s/infrastructure/
       - kubectl apply -f k8s/apps/
 
-  k8s:status:
-    desc: Kubernetes - Check the current status of all Kubernetes pods
-    cmd: kubectl get pods -o wide
+  # ----- OFF PART -----
+  k8s:off:
+    desc: Kubernetes - Sequentially removes the stack and completely destroys the cluster
+    cmds:
+      - task: k8s:down
+      - task: k8s:clean
+      - cmd: echo "Kubernetes environment has been completely shut down and cleaned."
+        silent: true
 
   k8s:down:
     desc: Kubernetes - Remove the Sentinel stack from Kubernetes
@@ -166,6 +191,19 @@ tasks:
       - kubectl delete -f k8s/apps/ --ignore-not-found
       - kubectl delete -f k8s/infrastructure/ --ignore-not-found
 
+  k8s:clean:
+    desc: Kubernetes - Completely destroys the local Kind cluster and all its data
+    cmds:
+      - kind delete cluster
+      - cmd: echo "Kubernetes cluster and all associated data have been completely wiped clean."
+        silent: true
+
+  # ----- STATUS PART -----
+  k8s:status:
+    desc: Kubernetes - Check the current status of all Kubernetes pods
+    cmd: kubectl get pods -o wide
+
+  # ----- FORWARD PART -----
   k8s:forward:
     desc: Kubernetes - Forward all necessary K8s ports in parallel
     deps:
