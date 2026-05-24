@@ -92,6 +92,16 @@ tasks:
     cmds:
       - oha -c 250 -z 1m http://localhost:8000/
 
+  test:traffic:
+    desc: TEST - Generate random live transaction traffic for Dashboard telemetry simulation
+    cmds:
+      - cmd: echo "Installing required dependencies..."
+        silent: true
+      - pip install -q requests
+      - cmd: echo "Starting live traffic generator... Press Ctrl+C to stop."
+        silent: true
+      - python tests/performance/generate_traffic.py
+
   # ==========================================
   # DOCKER
   # ==========================================
@@ -104,6 +114,8 @@ tasks:
       - cmd: echo "All infrastructure containers are successfully running."
         silent: true
       - cmd: 'echo "API Gateway: http://localhost:8000"'
+        silent: true
+      - cmd: 'echo "Dashboard: http://localhost:8000/api/v1/dashboard"'
         silent: true
       - cmd: 'echo "Redpanda Console: http://localhost:8080"'
         silent: true
