@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -18,8 +19,14 @@ import (
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
+	_ "github.com/lib/pq" // Driver for PostgreSQL
 	"github.com/redis/go-redis/v9"
 	"github.com/segmentio/kafka-go"
+
+	// --- UI IMPORTS ---
+	"sentinel-api/ui/dashboard"
+
+	"github.com/a-h/templ"
 
 	// --- OTEL IMPORTS ---
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
@@ -34,6 +41,7 @@ import (
 var (
 	redisClient *redis.Client
 	kafkaWriter *kafka.Writer
+	db          *sql.DB // Production-grade PostgreSQL connection pool
 
 	// Metrics & Asynchronous Logging
 	totalRequests uint64
@@ -78,6 +86,7 @@ func initTracer() func(context.Context) error {
 func initServices() {
 	log.Println("Starting Sentinel ML API Gateway (Go/Gin)...")
 
+	// --- REDIS CONFIG ---
 	redisHost := getEnv("REDIS_HOST", "localhost")
 	redisPort := getEnv("REDIS_PORT", "6379")
 
@@ -100,6 +109,33 @@ func initServices() {
 	}
 	log.Printf("SUCCESS: Connected to Redis at %s:%s", redisHost, redisPort)
 
+	// --- POSTGRESQL CONFIG (PRODUCTION-GRADE POOL) ---
+	pgHost := getEnv("POSTGRES_HOST", "localhost")
+	pgPort := getEnv("POSTGRES_PORT", "5432")
+	pgUser := getEnv("POSTGRES_USER", "postgres")
+	pgPass := getEnv("POSTGRES_PASSWORD", "password")
+	pgName := getEnv("POSTGRES_DB", "sentinel")
+
+	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		pgHost, pgPort, pgUser, pgPass, pgName)
+
+	var err error
+	db, err = sql.Open("postgres", dsn)
+	if err != nil {
+		log.Fatalf("FATAL: Failed to open PostgreSQL driver: %v", err)
+	}
+
+	// Optimize connection pool constraints for high-throughput
+	db.SetMaxOpenConns(50)
+	db.SetMaxIdleConns(10)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
+	if err := db.PingContext(ctx); err != nil {
+		log.Fatalf("FATAL: PostgreSQL connection failed -> %v", err)
+	}
+	log.Printf("SUCCESS: Connected to PostgreSQL Pool at %s:%s", pgHost, pgPort)
+
+	// --- KAFKA CONFIG ---
 	kafkaBroker := getEnv("REDPANDA_BROKER", "localhost:19092")
 	topicName := getEnv("KAFKA_TOPIC", "transactions")
 
@@ -141,6 +177,16 @@ func addLogAsync(txID string, amount float64, status string) {
 	}:
 	default:
 		// Drop log if channel is full to prevent blocking
+	}
+}
+
+// Helper function to render Templ components with Gin
+func renderTempl(c *gin.Context, status int, template templ.Component) {
+	c.Status(status)
+	c.Header("Content-Type", "text/html")
+	err := template.Render(c.Request.Context(), c.Writer)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "Template rendering error")
 	}
 }
 
@@ -209,6 +255,60 @@ func main() {
 		})
 	})
 
+	// --- UI ROUTES START ---
+	dashboardGroup := router.Group("/api/v1/dashboard")
+	{
+		// Serves the main HTML shell
+		dashboardGroup.GET("/", func(c *gin.Context) {
+			renderTempl(c, http.StatusOK, dashboard.DashboardPage())
+		})
+
+		// Production-grade real-time streaming channel
+		dashboardGroup.GET("/stream", func(c *gin.Context) {
+			// Bound the execution time using context to prevent connection starvation
+			ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+			defer cancel()
+
+			// Query the latest 10 inferences processed by the system
+			query := `
+				SELECT transaction_id, user_id, amount, risk_score 
+				FROM transactions 
+				ORDER BY created_at DESC 
+				LIMIT 10`
+
+			rows, err := db.QueryContext(ctx, query)
+			if err != nil {
+				log.Printf("ERROR: Failed to fetch transaction stream: %v", err)
+				c.String(http.StatusInternalServerError, "<tr><td colspan='4' class='px-6 py-4 text-center text-red-500'>Telemetry pipeline error</td></tr>")
+				return
+			}
+			defer rows.Close()
+
+			var transactions []dashboard.Transaction
+			for rows.Next() {
+				var tx dashboard.Transaction
+				if err := rows.Scan(&tx.TransactionID, &tx.UserID, &tx.Amount, &tx.RiskScore); err != nil {
+					log.Printf("WARN: Error parsing transaction row: %v", err)
+					continue
+				}
+				transactions = append(transactions, tx)
+			}
+
+			if err := rows.Err(); err != nil {
+				log.Printf("ERROR: Database row streaming failure: %v", err)
+			}
+
+			// Graceful structural fallback for empty states
+			if len(transactions) == 0 {
+				c.String(http.StatusOK, "<tr><td colspan='4' class='px-6 py-12 text-center text-slate-400'>No recent transactions found in database.</td></tr>")
+				return
+			}
+
+			renderTempl(c, http.StatusOK, dashboard.TransactionRows(transactions))
+		})
+	}
+	// --- UI ROUTES END ---
+
 	router.POST("/api/v1/transactions", ingestTransaction)
 
 	apiPort := getEnv("PORT", "8000")
@@ -235,6 +335,9 @@ func main() {
 		log.Fatal("Server forced to shutdown:", err)
 	}
 
+	if db != nil {
+		db.Close()
+	}
 	redisClient.Close()
 	kafkaWriter.Close()
 	log.Println("Shutdown complete.")
@@ -295,7 +398,6 @@ func ingestTransaction(c *gin.Context) {
 	// --- OTEL REDIS SPAN ---
 	_, redisSpan := tracer.Start(ctx, "Redis-SetNX")
 	err = executeWithRetry(3, 10*time.Millisecond, func() error {
-		// Notice we use 'ctx' here to carry the trace forward
 		isNew, redisErr = redisClient.SetNX(ctx, redisKey, "1", 10*time.Second).Result()
 		return redisErr
 	})
