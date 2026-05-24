@@ -271,9 +271,9 @@ func main() {
 
 			// Query the latest 10 inferences processed by the system
 			query := `
-				SELECT transaction_id, user_id, amount, risk_score 
-				FROM transactions 
-				ORDER BY created_at DESC 
+				SELECT transaction_id, user_id, amount, risk_score
+				FROM transactions
+				ORDER BY created_at DESC
 				LIMIT 10`
 
 			rows, err := db.QueryContext(ctx, query)
