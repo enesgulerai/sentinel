@@ -87,10 +87,17 @@ services:
       - REDPANDA_BROKER=redpanda:9092
       - OTEL_EXPORTER_OTLP_ENDPOINT=jaeger:4318
       - PORT=8000
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=sentinel
+      - POSTGRES_PASSWORD=sentinel_password
+      - POSTGRES_DB=sentinel_db
     depends_on:
       redis:
         condition: service_healthy
       redpanda:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     networks:
       - sentinel_net
@@ -158,8 +165,8 @@ services:
     image: jaegertracing/all-in-one:1.57
     container_name: sentinel-jaeger
     ports:
-      - "16686:16686" # Jaeger Web UI (Traces can be visualized here)
-      - "4317:4317"   # OTLP gRPC port (Go API will send traces here)
+      - "16686:16686" # Jaeger Web UI
+      - "4317:4317"   # OTLP gRPC port
       - "4318:4318"   # OTLP HTTP port
     networks:
       - sentinel_net
