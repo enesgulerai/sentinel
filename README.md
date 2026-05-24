@@ -107,9 +107,9 @@ Once the Docker containers are up and running, you can access the core services 
 
 | Service | Local URL |
 | :--- | :--- |
+| **Dashboard:** | http://localhost:8000/api/v1/dashboard |
 | **API Gateway** | http://localhost:8000 |
 | **Redpanda** | http://localhost:8080 |
-
 
 ## Testing & Performance
 
@@ -137,6 +137,21 @@ To benchmark the API Gateway's connection capacity and measure the health endpoi
  ```
  *Note: Note on Performance Bottlenecks:
 If you observe high average latency (ms) during this extreme load test, it is because the API is currently deployed as a single, standalone Docker container. This creates a natural bottleneck at the single-process level. In the upcoming Kubernetes (K8s) deployment phase, we will implement horizontal scaling. By increasing the pod replica count behind a load balancer, the concurrent traffic will be distributed across multiple instances, effectively mitigating this latency issue and maximizing overall throughput.*
+
+### Live Telemetry Simulation (UI Test)
+
+To observe the real-time AI fraud detection stream in action, you can generate live mock traffic that flows through the ingestion pipeline (Redpanda/Kafka) and reflects directly on the Web UI.
+
+**1. Open the Dashboard**
+Ensure your infrastructure is running (`task docker:up`), then navigate to the telemetry dashboard in your browser:
+http://localhost:8000/api/v1/dashboard
+
+**2. Generate Live Traffic**
+Open a new terminal window in the project root and start the automated traffic generator:
+
+```bash
+task test:traffic
+```
 
 ### End-to-End Verification (Sanity Check)
 
