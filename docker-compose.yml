@@ -75,7 +75,7 @@ services:
 
   # --- Service: API ---
   api:
-    image: sentinel-api:1.0.0
+    image: sentinel-api:${IMAGE_TAG}
     build:
       context: .
       dockerfile: docker/api/Dockerfile
@@ -112,7 +112,7 @@ services:
 
   # --- Service: Consumer ---
   consumer:
-    image: sentinel-consumer:1.0.0
+    image: sentinel-consumer:${IMAGE_TAG}
     build:
       context: .
       dockerfile: docker/consumer/Dockerfile

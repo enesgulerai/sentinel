@@ -160,7 +160,7 @@ func metricsMiddleware() gin.HandlerFunc {
 		c.Next()
 		duration := time.Since(start).Microseconds()
 		atomic.AddUint64(&totalRequests, 1)
-		atomic.AddUint64(&totalLatency, uint64(duration))
+		atomic.AddUint64(&totalLatency, uint64(duration)) // #nosec G115
 	}
 }
 
@@ -313,8 +313,9 @@ func main() {
 
 	apiPort := getEnv("PORT", "8000")
 	srv := &http.Server{
-		Addr:    ":" + apiPort,
-		Handler: router,
+		Addr:              ":" + apiPort,
+		Handler:           router,
+		ReadHeaderTimeout: 5 * time.Second, // Fixes G112 (Slowloris)
 	}
 
 	go func() {
@@ -336,10 +337,26 @@ func main() {
 	}
 
 	if db != nil {
-		db.Close()
+		if err := db.Close(); err != nil {
+			log.Printf("Error closing database: %v\n", err)
+		}
 	}
-	redisClient.Close()
-	kafkaWriter.Close()
+
+	if err := redisClient.Close(); err != nil {
+		log.Printf("Error closing redis client: %v\n", err)
+	}
+
+	if err := kafkaWriter.Close(); err != nil {
+		log.Printf("Error closing kafka writer: %v\n", err)
+	}
+
+	if err := redisClient.Close(); err != nil {
+		log.Printf("Error closing redis client: %v\n", err)
+	}
+
+	if err := kafkaWriter.Close(); err != nil {
+		log.Printf("Error closing kafka writer: %v\n", err)
+	}
 	log.Println("Shutdown complete.")
 }
 

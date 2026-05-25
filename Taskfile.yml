@@ -108,17 +108,15 @@ tasks:
 
   # ----- START PART -----
   docker:up:
-    desc: Docker - Builds images and starts infrastructure containers in the background
+    desc: "Start all services using the current Git SHA image tags"
+    vars:
+      GIT_SHA:
+        sh: git rev-parse --short HEAD
+    env:
+      IMAGE_TAG: '{{.GIT_SHA}}'
     cmds:
-      - docker compose up --build -d
-      - cmd: echo "All infrastructure containers are successfully running."
-        silent: true
-      - cmd: 'echo "API Gateway: http://localhost:8000"'
-        silent: true
-      - cmd: 'echo "Dashboard: http://localhost:8000/api/v1/dashboard"'
-        silent: true
-      - cmd: 'echo "Redpanda Console: http://localhost:8080"'
-        silent: true
+      - echo "Starting all services with IMAGE_TAG={{.GIT_SHA}}"
+      - docker compose up -d
 
   # ----- OFF PART -----
   docker:off:
@@ -229,3 +227,45 @@ tasks:
   _forward-console:
     internal: true
     cmd: kubectl port-forward svc/console 8080:8080
+
+  # ==========================================
+  # SECURITY
+  # ==========================================
+  security:sast:
+    desc: "Security - Run static application security testing (SAST) and vulnerability checks on Go code"
+    dir: src/api
+    cmds:
+      - gosec ./...
+      - govulncheck ./...
+
+  security:infra:
+    desc: "Security - Scan filesystem, IaC (Terraform), and dependencies for vulnerabilities using Trivy"
+    cmds:
+      - trivy fs .
+
+  security:all:
+    desc: "Security - Run all security checks (SAST and Infrastructure)"
+    deps: [security:sast, security:infra]
+
+  # --- Build Part ---
+  build:api:
+    desc: "Build - Build the Go API Docker image using the current Git SHA as the tag"
+    vars:
+      GIT_SHA:
+        sh: git rev-parse --short HEAD
+    cmds:
+      - echo "Building API image with tag -> sentinel-api:{{.GIT_SHA}}"
+      - docker build -t sentinel-api:{{.GIT_SHA}} -f ./docker/api/Dockerfile .
+
+  build:consumer:
+    desc: "Build - Build the Python Consumer Docker image using the current Git SHA as the tag"
+    vars:
+      GIT_SHA:
+        sh: git rev-parse --short HEAD
+    cmds:
+      - echo "Building Consumer image with tag -> sentinel-consumer:{{.GIT_SHA}}"
+      - docker build -t sentinel-consumer:{{.GIT_SHA}} -f ./docker/consumer/Dockerfile .
+
+  build:all:
+    desc: Build - Build all project Docker images with Git SHA tags
+    deps: [build:api, build:consumer]
