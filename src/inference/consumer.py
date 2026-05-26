@@ -28,7 +28,6 @@ MODEL_PATH = PROJECT_ROOT / "models" / "fraud_xgboost.onnx"
 SCALER_PATH = PROJECT_ROOT / "models" / "robust_scaler.joblib"
 
 REDPANDA_BROKER = os.getenv("REDPANDA_BROKER", "localhost:19092")
-# UPDATE: Python now only listens to the validated data stream produced by Rust
 TOPIC_NAME = os.getenv("KAFKA_TOPIC", "clean-events")
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://sentinel:sentinel_password@localhost:5432/sentinel_db")
 
@@ -104,7 +103,6 @@ async def start_inference_engine():
                     ctx = extract(carrier)
 
                     try:
-                        # We trust Rust has perfectly formatted this JSON
                         transaction = json.loads(msg.value.decode("utf-8"))
 
                         row = [transaction.get("Time", 0.0)]
@@ -127,51 +125,62 @@ async def start_inference_engine():
                 span = tracer.start_span("Consumer-Process-Batch", context=ctx)
                 spans.append(span)
 
-            X_batch = np.array(batch_data, dtype=np.float32)
-            time_amount_cols = X_batch[:, [0, 29]]
-            scaled_time_amount = scaler.transform(time_amount_cols)
+            try:
+                X_batch = np.array(batch_data, dtype=np.float32)
+                time_amount_cols = X_batch[:, [0, 29]]
+                scaled_time_amount = scaler.transform(time_amount_cols)
 
-            X_batch[:, 0] = scaled_time_amount[:, 0]
-            X_batch[:, 29] = scaled_time_amount[:, 1]
+                X_batch[:, 0] = scaled_time_amount[:, 0]
+                X_batch[:, 29] = scaled_time_amount[:, 1]
 
-            outputs = session.run(None, {input_name: X_batch})
-            fraud_probs = outputs[1]
+                outputs = session.run(None, {input_name: X_batch})
+                fraud_probs = outputs[1]
 
-            db_records = []
-            frauds_in_batch = 0
+                db_records = []
+                frauds_in_batch = 0
 
-            for i, prob_dict in enumerate(fraud_probs):
-                fraud_prob = prob_dict.get(1, 0.0) if isinstance(prob_dict, dict) else prob_dict[1]
-                amt = valid_msgs[i].get("Amount", 0.0)
-                tx_id = valid_msgs[i].get("transaction_id", "Unknown")
-                user_id = valid_msgs[i].get("user_id", "anonymous")
+                for i, prob_dict in enumerate(fraud_probs):
+                    fraud_prob = prob_dict.get(1, 0.0) if isinstance(prob_dict, dict) else prob_dict[1]
+                    amt = valid_msgs[i].get("Amount", 0.0)
+                    tx_id = valid_msgs[i].get("transaction_id", "Unknown")
+                    user_id = valid_msgs[i].get("user_id", "anonymous")
 
-                if fraud_prob > 0.50:
-                    frauds_in_batch += 1
-                    logger.warning(
-                        f"FRAUD DETECTED! Prob: {fraud_prob * 100:.2f}% | Amount: ${amt:.2f} | TX: {tx_id[:8]}"
-                    )
+                    if fraud_prob > 0.50:
+                        frauds_in_batch += 1
+                        logger.warning(
+                            f"FRAUD DETECTED! Prob: {fraud_prob * 100:.2f}% | Amount: ${amt:.2f} | TX: {tx_id[:8]}"
+                        )
 
-                db_records.append((tx_id, user_id, amt, float(fraud_prob)))
+                    db_records.append((tx_id, user_id, amt, float(fraud_prob)))
 
-            if db_records:
-                insert_query = """
-                    INSERT INTO transactions (transaction_id, user_id, amount, risk_score)
-                    VALUES (%s, %s, %s, %s)
-                    ON CONFLICT (transaction_id) DO NOTHING;
-                """
-                try:
+                if db_records:
+                    insert_query = """
+                        INSERT INTO transactions (transaction_id, user_id, amount, risk_score)
+                        VALUES (%s, %s, %s, %s)
+                        ON CONFLICT (transaction_id) DO NOTHING;
+                    """
                     await db_cursor.executemany(insert_query, db_records)
                     await db_conn.commit()
-                except Exception as db_err:
-                    logger.error(f"Database Insert Error: {db_err}")
-                    await db_conn.rollback()
 
-            for span in spans:
-                span.end()
+                for span in spans:
+                    span.set_status(trace.Status(trace.StatusCode.OK))
 
-            if len(valid_msgs) > 0:
-                logger.info(f"Processed batch of {len(valid_msgs)} txs. Frauds found: {frauds_in_batch}. Saved to DB.")
+                if len(valid_msgs) > 0:
+                    logger.info(
+                        f"Processed batch of {len(valid_msgs)} txs. Frauds found: {frauds_in_batch}. Saved to DB."
+                    )
+
+            except Exception as process_err:
+                logger.error(f"Batch Processing Error: {process_err}")
+                await db_conn.rollback()
+                for span in spans:
+                    span.set_status(trace.Status(trace.StatusCode.ERROR, str(process_err)))
+                    span.record_exception(process_err)
+
+            finally:
+                # Her halükarda span'leri kapat ki ölçüm bitsin
+                for span in spans:
+                    span.end()
 
     except asyncio.CancelledError:
         logger.info("\nGracefully shutting down the AI engine (Cancelled)...")
