@@ -137,7 +137,7 @@ func initServices() {
 
 	// --- KAFKA CONFIG ---
 	kafkaBroker := getEnv("REDPANDA_BROKER", "localhost:19092")
-	topicName := getEnv("KAFKA_TOPIC", "transactions")
+	topicName := getEnv("KAFKA_TOPIC", "raw-events")
 
 	kafkaWriter = &kafka.Writer{
 		Addr:         kafka.TCP(kafkaBroker),
