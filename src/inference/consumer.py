@@ -10,8 +10,6 @@ import numpy as np
 import onnxruntime as ort
 import psycopg
 from aiokafka import AIOKafkaConsumer
-
-# --- OTEL IMPORTS ---
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.propagate import extract
@@ -30,25 +28,21 @@ MODEL_PATH = PROJECT_ROOT / "models" / "fraud_xgboost.onnx"
 SCALER_PATH = PROJECT_ROOT / "models" / "robust_scaler.joblib"
 
 REDPANDA_BROKER = os.getenv("REDPANDA_BROKER", "localhost:19092")
-TOPIC_NAME = os.getenv("KAFKA_TOPIC", "transactions")
+# UPDATE: Python now only listens to the validated data stream produced by Rust
+TOPIC_NAME = os.getenv("KAFKA_TOPIC", "clean-events")
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://sentinel:sentinel_password@localhost:5432/sentinel_db")
 
 BATCH_SIZE = 500
 POLL_TIMEOUT_MS = 1000
 
 
-# --- OTEL INITIALIZATION ---
 def init_tracer():
-    resource = Resource.create({"service.name": "sentinel-consumer"})
+    resource = Resource.create({"service.name": "sentinel-inference-consumer"})
     provider = TracerProvider(resource=resource)
-
-    # We use gRPC port (4317) just like Go does for consistency
     jaeger_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
-
     exporter = OTLPSpanExporter(endpoint=jaeger_endpoint, insecure=True)
     processor = BatchSpanProcessor(exporter)
     provider.add_span_processor(processor)
-
     trace.set_tracer_provider(provider)
     return trace.get_tracer(__name__)
 
@@ -57,7 +51,7 @@ tracer = init_tracer()
 
 
 async def start_inference_engine():
-    logger.info("Starting Async AI Inference Engine (AIOKafka Consumer)...")
+    logger.info("Starting Async AI Inference Engine...")
 
     if not MODEL_PATH.exists() or not SCALER_PATH.exists():
         logger.error("Model or Scaler not found. Run pipeline first.")
@@ -86,7 +80,7 @@ async def start_inference_engine():
     )
 
     await consumer.start()
-    logger.info(f"Subscribed to topic: '{TOPIC_NAME}'. Awaiting data...")
+    logger.info(f"Subscribed to topic: '{TOPIC_NAME}'. Awaiting validated data from Rust...")
     logger.info("-" * 60)
 
     try:
@@ -98,14 +92,10 @@ async def start_inference_engine():
 
             batch_data = []
             valid_msgs = []
-
-            # Context list to hold trace backgrounds for the current batch
             batch_contexts = []
 
             for _tp, messages in result.items():
                 for msg in messages:
-                    # --- OTEL CONTEXT EXTRACTION ---
-                    # Read the hidden tracking numbers (headers) dropped by Go
                     carrier = {}
                     if msg.headers:
                         for key, value in msg.headers:
@@ -114,6 +104,7 @@ async def start_inference_engine():
                     ctx = extract(carrier)
 
                     try:
+                        # We trust Rust has perfectly formatted this JSON
                         transaction = json.loads(msg.value.decode("utf-8"))
 
                         row = [transaction.get("Time", 0.0)]
@@ -123,25 +114,20 @@ async def start_inference_engine():
 
                         batch_data.append(row)
                         valid_msgs.append(transaction)
-                        batch_contexts.append(ctx)  # Store the context for this specific row
-
+                        batch_contexts.append(ctx)
                     except Exception as e:
-                        logger.warning(f"Failed to parse message: {e}")
+                        logger.warning(f"Deserialization failed despite validation: {e}")
                         continue
 
             if not batch_data:
                 continue
 
-            # --- START BATCH PROCESSING SPANS ---
-            # We open a span for EVERY item in the batch using its original Go context
-            # This links the Python execution time directly to the specific Go API request
             spans = []
             for ctx in batch_contexts:
                 span = tracer.start_span("Consumer-Process-Batch", context=ctx)
                 spans.append(span)
 
             X_batch = np.array(batch_data, dtype=np.float32)
-
             time_amount_cols = X_batch[:, [0, 29]]
             scaled_time_amount = scaler.transform(time_amount_cols)
 
@@ -163,7 +149,7 @@ async def start_inference_engine():
                 if fraud_prob > 0.50:
                     frauds_in_batch += 1
                     logger.warning(
-                        f"FRAUD DETECTED! Prob: %{fraud_prob * 100:.2f} | Amount: ${amt:.2f} | TX: {tx_id[:8]}"
+                        f"FRAUD DETECTED! Prob: {fraud_prob * 100:.2f}% | Amount: ${amt:.2f} | TX: {tx_id[:8]}"
                     )
 
                 db_records.append((tx_id, user_id, amt, float(fraud_prob)))
@@ -181,12 +167,10 @@ async def start_inference_engine():
                     logger.error(f"Database Insert Error: {db_err}")
                     await db_conn.rollback()
 
-            # --- CLOSE BATCH SPANS ---
-            # Now that the DB write is done, close all the individual trace spans
             for span in spans:
                 span.end()
 
-            if len(valid_msgs) > 50 or frauds_in_batch > 0:
+            if len(valid_msgs) > 0:
                 logger.info(f"Processed batch of {len(valid_msgs)} txs. Frauds found: {frauds_in_batch}. Saved to DB.")
 
     except asyncio.CancelledError:
