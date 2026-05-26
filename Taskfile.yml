@@ -243,9 +243,15 @@ tasks:
     cmds:
       - trivy fs .
 
+  security:rust:
+    desc: "Run DevSecOps linter (Clippy) on Rust code"
+    dir: src/validator
+    cmds:
+      - cargo clippy -- -D warnings
+
   security:all:
-    desc: "Security - Run all security checks (SAST and Infrastructure)"
-    deps: [security:sast, security:infra]
+    desc: "Security - Run all security checks (SAST, Infrastructure, and Rust)"
+    deps: [security:sast, security:infra, security:rust]
 
   # --- Build Part ---
   build:api:

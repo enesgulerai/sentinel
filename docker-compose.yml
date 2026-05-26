@@ -112,7 +112,7 @@ services:
 
   # --- Service: Consumer ---
   consumer:
-    image: sentinel-consumer:${IMAGE_TAG}
+    image: sentinel-consumer:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: docker/consumer/Dockerfile
@@ -120,6 +120,7 @@ services:
     command: ["python", "-m", "src.inference.consumer"]
     environment:
       - REDPANDA_BROKER=redpanda:9092
+      - KAFKA_TOPIC=clean-events
       - DATABASE_URL=postgresql://sentinel:sentinel_password@postgres:5432/sentinel_db
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
     depends_on:
@@ -170,6 +171,25 @@ services:
       - "4318:4318"   # OTLP HTTP port
     networks:
       - sentinel_net
+
+  # --- Service: Validator ---
+  validator:
+    image: sentinel-validator:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: docker/validator/Dockerfile
+    container_name: sentinel-validator
+    environment:
+      - REDPANDA_BROKER=redpanda:9092
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    networks:
+      - sentinel_net
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
 volumes:
   postgres_data:
