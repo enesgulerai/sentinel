@@ -4,6 +4,15 @@ use rskafka::record::Record;
 use serde::Deserialize;
 use std::time::Duration;
 use std::env;
+use std::collections::BTreeMap;
+
+use opentelemetry::{global, KeyValue};
+use opentelemetry::trace::{Tracer, Span, Status};
+use opentelemetry::propagation::Extractor;
+use opentelemetry_sdk::trace as sdktrace;
+use opentelemetry_sdk::Resource;
+use opentelemetry_sdk::trace::TracerProvider;
+use opentelemetry_otlp::WithExportConfig;
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
@@ -18,9 +27,49 @@ struct FraudEvent {
     Amount: f64,
 }
 
+// Extractor to read OpenTelemetry Context from Kafka Headers
+struct KafkaHeaderExtractor<'a>(&'a BTreeMap<String, Vec<u8>>);
+
+impl<'a> Extractor for KafkaHeaderExtractor<'a> {
+    fn get(&self, key: &str) -> Option<&str> {
+        self.0.get(key).and_then(|v| std::str::from_utf8(v).ok())
+    }
+
+    fn keys(&self) -> Vec<&str> {
+        self.0.keys().map(|k| k.as_str()).collect()
+    }
+}
+
+fn init_tracer() {
+    let endpoint = env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
+        .unwrap_or_else(|_| "http://jaeger:4318/v1/traces".to_string());
+
+    let exporter = opentelemetry_otlp::new_exporter()
+        .http()
+        .with_endpoint(endpoint);
+
+    let _ = opentelemetry_otlp::new_pipeline()
+        .tracing()
+        .with_exporter(exporter)
+        .with_trace_config(
+            sdktrace::config().with_resource(Resource::new(vec![KeyValue::new(
+                "service.name",
+                "sentinel-validator",
+            )])),
+        )
+        .install_batch(opentelemetry_sdk::runtime::Tokio)
+        .expect("Failed to initialize OTel pipeline");
+
+    global::set_text_map_propagator(opentelemetry_sdk::propagation::TraceContextPropagator::new());
+}
+
 #[tokio::main]
 async fn main() {
     println!("Sentinel Rust Validator initializing...");
+
+    // Initialize OpenTelemetry
+    init_tracer();
+    let tracer = global::tracer("sentinel-validator");
 
     let connection_string = env::var("REDPANDA_BROKER").unwrap_or_else(|_| "localhost:19092".to_string());
     let client = match ClientBuilder::new(vec![connection_string.to_owned()]).build().await {
@@ -58,6 +107,14 @@ async fn main() {
                 for record_and_offset in records {
                     current_offset = record_and_offset.offset + 1;
 
+                    // 1. Extract context from incoming Kafka headers
+                    let parent_context = global::get_text_map_propagator(|prop| {
+                        prop.extract(&KafkaHeaderExtractor(&record_and_offset.record.headers))
+                    });
+
+                    // 2. Start a new span linked to the Go API's trace
+                    let mut span = tracer.start_with_context("Rust-Validate-Event", &parent_context);
+
                     if let Some(value) = &record_and_offset.record.value {
                         let payload = String::from_utf8_lossy(value);
 
@@ -74,13 +131,19 @@ async fn main() {
 
                                 if let Err(e) = clean_partition_client.produce(vec![clean_record], Compression::NoCompression).await {
                                     println!("ERROR: Failed to forward event {}: {:?}", valid_event.transaction_id, e);
+                                    span.set_status(Status::Error { description: format!("Produce Error: {:?}", e).into() });
+                                } else {
+                                    span.set_status(Status::Ok);
                                 }
                             },
                             Err(e) => {
                                 println!("INVALID: Trash data blocked. Reason: {}. Payload: {}", e, payload);
+                                span.set_status(Status::Error { description: format!("Validation Error: {}", e).into() });
                             }
                         }
                     }
+                    // End the span
+                    span.end();
                 }
             },
             Err(e) => {
