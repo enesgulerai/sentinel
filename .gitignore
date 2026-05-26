@@ -49,3 +49,16 @@ htmlcov/
 nosetests.xml
 coverage.xml
 *,cover
+
+# Terraform
+*.tfvars
+*.pem
+
+# Rust
+/src/validator/target/
+**/*.rs.bk
+Cargo.lock
+
+# Docker / Logs
+*.log
+.docker/
