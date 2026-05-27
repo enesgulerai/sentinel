@@ -5,6 +5,8 @@
 *Enterprise-grade, event-driven anomaly detection pipeline with sub-millisecond ONNX inference.*
 
 [![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat-square)](https://go.dev)
+[![Python Version](https://img.shields.io/badge/Python-3.11.9-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org)
+[![Rust Version](https://img.shields.io/badge/Rust-1.95.0-000000?style=flat-square&logo=rust&logoColor=white)](https://www.rust-lang.org)
 [![Latest Release](https://img.shields.io/github/v/release/enesgulerdev/sentinel?style=flat-square&color=brgihgreen)](https://github.com/enesgulerdev/sentinel/releases)
 [![License](https://img.shields.io/github/license/enesgulerdev/sentinel?style=flat-square)](LICENSE)
 
