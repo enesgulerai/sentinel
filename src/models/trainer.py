@@ -65,7 +65,6 @@ class ModelTrainer:
             eval_metric="logloss",
         )
 
-        # Use .values to strip metadata and prevent serving skew in ONNX
         model.fit(X_train.values, y_train.values)
 
         # Evaluation (also using .values)
@@ -100,7 +99,6 @@ class ModelTrainer:
         try:
             onnx_model = onnxmltools.convert_xgboost(model, initial_types=initial_type)
 
-            # Save versioned and latest models
             onnxmltools.utils.save_model(onnx_model, str(versioned_path))
             onnxmltools.utils.save_model(onnx_model, str(latest_path))
 

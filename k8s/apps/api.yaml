@@ -5,7 +5,7 @@ metadata:
   labels:
     app: sentinel-api
 spec:
-  replicas: 3 # 27 milyon isteği göğüsleyecek o mahşerin üç atlısı!
+  replicas: 3
   selector:
     matchLabels:
       app: sentinel-api
@@ -14,7 +14,7 @@ spec:
       labels:
         app: sentinel-api
     spec:
-      # --- INIT CONTAINERS (Enforces strict startup order) ---
+      # --- INIT CONTAINERS ---
       initContainers:
       - name: wait-for-redis
         image: busybox:1.28

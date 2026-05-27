@@ -19,7 +19,7 @@ import (
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
-	_ "github.com/lib/pq" // Driver for PostgreSQL
+	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
 	"github.com/segmentio/kafka-go"
 
@@ -41,7 +41,7 @@ import (
 var (
 	redisClient *redis.Client
 	kafkaWriter *kafka.Writer
-	db          *sql.DB // Production-grade PostgreSQL connection pool
+	db          *sql.DB
 
 	// Metrics & Asynchronous Logging
 	totalRequests uint64
@@ -315,7 +315,7 @@ func main() {
 	srv := &http.Server{
 		Addr:              ":" + apiPort,
 		Handler:           router,
-		ReadHeaderTimeout: 5 * time.Second, // Fixes G112 (Slowloris)
+		ReadHeaderTimeout: 5 * time.Second,
 	}
 
 	go func() {

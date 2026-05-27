@@ -178,7 +178,6 @@ async def start_inference_engine():
                     span.record_exception(process_err)
 
             finally:
-                # Her halükarda span'leri kapat ki ölçüm bitsin
                 for span in spans:
                     span.end()
 
