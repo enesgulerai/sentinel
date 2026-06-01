@@ -8,8 +8,147 @@ tasks:
       - task --list
 
   # ==========================================
+  # DOCKER
+  # ==========================================
+
+  # ON - OFF
+  docker:on:
+    desc: "Start all services using the current Git SHA image tags"
+    vars:
+      GIT_SHA:
+        sh: git rev-parse --short HEAD
+    env:
+      IMAGE_TAG: '{{.GIT_SHA}}'
+    cmds:
+      - echo "Starting all services with IMAGE_TAG={{.GIT_SHA}}"
+      - docker compose up -d
+
+
+  docker:off:
+    desc: Docker - Sequentially stops containers and clears all unused images
+    cmds:
+      - task: docker:down
+      - task: docker:clear
+      - cmd: echo "Docker environment has been completely shut down and cleaned."
+        silent: true
+
+  # OFF TASKS
+  docker:down:
+    desc: Docker - Stops and removes Docker containers, networks, and volumes
+    cmds:
+      - docker compose down
+
+  docker:clear:
+    desc: Docker - Forcefully removes all unused and dangling images to free up space
+    cmds:
+      - docker image prune -a -f
+
+  # STATUS TASKS
+  docker:ps:
+    desc: Docker - Shows the current status of running containers
+    cmds:
+      - docker compose ps
+
+  # ==========================================
+  # KUBERNETES
+  # ==========================================
+
+  # ON - OFF
+  k8s:on:
+    desc: K8s - One-click local environment setup! Creates cluster, builds images, and deploys the stack.
+    cmds:
+      - task: _cluster-create
+      - task: k8s:build-load
+      - task: k8s:up
+      - cmd: echo "Kubernetes cluster is successfully provisioned and workloads are deployed!"
+        silent: true
+      - cmd: echo "Run 'task k8s:status' to monitor pod startup."
+        silent: true
+      - cmd: echo "Once all pods are 'Running', execute 'task k8s:forward' in a new terminal."
+        silent: true
+
+  k8s:off:
+    desc: K8s - Sequentially removes the stack and completely destroys the cluster
+    cmds:
+      - task: k8s:down
+      - task: k8s:clean
+      - cmd: echo "Kubernetes environment has been completely shut down and cleaned."
+        silent: true
+
+  # ON TASKS
+  _cluster-create:
+    desc: K8s - Internal task to create multi-node cluster and configure workload isolation
+    internal: true
+    cmds:
+      - kind create cluster --config k8s/config/kind-config.yaml
+      # Node 1: Dedicated for Stateful Storage (Postgres, Redis, Redpanda)
+      - kubectl label nodes kind-worker role=storage --overwrite
+      # Node 2: Dedicated & Tainted for AI Inference (Consumer)
+      - kubectl taint nodes kind-worker2 dedicated=ai-inference:NoSchedule --overwrite=true
+      - kubectl label nodes kind-worker2 role=ai-inference --overwrite
+
+  k8s:build-load:
+    desc: K8s - Build local images and load all dependencies into the Kind cluster
+    cmds:
+      - docker build -f docker/api/Dockerfile -t sentinel-api:1.0.0 .
+      - docker build -f docker/consumer/Dockerfile -t sentinel-consumer:1.0.0 .
+      - kind load docker-image sentinel-api:1.0.0 --name kind
+      - kind load docker-image sentinel-consumer:1.0.0 --name kind
+
+  k8s:up:
+    desc: K8s - Deploys entire infrastructure and application stack sequentially
+    cmds:
+      - kubectl apply -f k8s/infrastructure/
+      - kubectl apply -f k8s/apps/
+
+  # OFF TASKS
+
+  k8s:down:
+    desc: K8s - Remove the Sentinel stack from Kubernetes
+    cmds:
+      - kubectl delete -f k8s/apps/ --ignore-not-found
+      - kubectl delete -f k8s/infrastructure/ --ignore-not-found
+
+  k8s:clean:
+    desc: K8s - Completely destroys the local Kind cluster and all its data
+    cmds:
+      - kind delete cluster
+      - cmd: echo "Kubernetes cluster and all associated data have been completely wiped clean."
+        silent: true
+
+  # STATUS TASKS
+  k8s:status:
+    desc: K8s - Check the current status of all Kubernetes pods
+    cmd: kubectl get pods -o wide
+
+  # FORWARD TASKS
+  k8s:forward:
+    desc: K8s - Forward all necessary K8s ports in parallel
+    deps:
+      - task: _forward-api
+      - task: _forward-console
+
+  _forward-api:
+    internal: true
+    cmd: kubectl port-forward svc/sentinel-api-service 8000:8000
+
+  _forward-console:
+    internal: true
+    cmd: kubectl port-forward svc/console 8080:8080
+
+
+  # ==========================================
   # CODE QUALITY & LINTING
   # ==========================================
+
+  # ON
+  qa:on:
+    desc: QA - Run local workflow (Fix lint issues, format, and check types)
+    cmds:
+      - task: qa:lint-fix
+      - task: qa:format
+
+  # LINT - FORMAT TASKS
   qa:lint-fix:
     desc: QA - Run Ruff linter and automatically fix fixable issues
     cmds:
@@ -19,18 +158,6 @@ tasks:
     desc: QA - Run Ruff formatter to auto-format Python code
     cmds:
       - uv run ruff format .
-
-  qa:check:
-    desc: QA - Run local workflow (Fix lint issues, format, and check types)
-    cmds:
-      - task: qa:lint-fix
-      - task: qa:format
-
-  qa:ci-check:
-    desc: QA - Run all checks strictly for CI
-    cmds:
-      - uv run ruff check .
-      - uv run ruff format --check .
 
   # ==========================================
   # ENVIRONMENT
@@ -44,6 +171,14 @@ tasks:
   # ==========================================
   # MLOPS & DATA PIPELINE
   # ==========================================
+
+  ml:pipeline:
+    desc: ML - Runs the complete end-to-end machine learning pipeline
+    deps: [ml:train]
+    silent: true
+    cmds:
+      - 'echo "SUCCESS: Full Machine Learning Pipeline Completed!"'
+
   ml:fetch:
     desc: ML - Downloads raw data and verifies integrity using SHA-256
     cmds:
@@ -60,13 +195,6 @@ tasks:
     deps: [ml:preprocess]
     cmds:
       - uv run python -m src.models.trainer
-
-  ml:pipeline:
-    desc: ML - Runs the complete end-to-end machine learning pipeline
-    deps: [ml:train]
-    silent: true
-    cmds:
-      - 'echo "SUCCESS: Full Machine Learning Pipeline Completed!"'
 
   ml:clean:
     desc: ML - Wipes all generated datasets, scaled files, and trained models
@@ -103,175 +231,44 @@ tasks:
       - python tests/performance/generate_traffic.py
 
   # ==========================================
-  # DOCKER
-  # ==========================================
-
-  # ----- START PART -----
-  docker:up:
-    desc: "Start all services using the current Git SHA image tags"
-    vars:
-      GIT_SHA:
-        sh: git rev-parse --short HEAD
-    env:
-      IMAGE_TAG: '{{.GIT_SHA}}'
-    cmds:
-      - echo "Starting all services with IMAGE_TAG={{.GIT_SHA}}"
-      - docker compose up -d
-
-  # ----- OFF PART -----
-  docker:off:
-    desc: Docker - Sequentially stops containers and clears all unused images
-    cmds:
-      - task: docker:down
-      - task: docker:clear
-      - cmd: echo "Docker environment has been completely shut down and cleaned."
-        silent: true
-
-  docker:down:
-    desc: Docker - Stops and removes Docker containers, networks, and volumes
-    cmds:
-      - docker compose down
-
-  docker:clear:
-    desc: Docker - Forcefully removes all unused and dangling images to free up space
-    cmds:
-      - docker image prune -a -f
-
-  # ----- STATUS PART -----
-  docker:ps:
-    desc: Docker - Shows the current status of running containers
-    cmds:
-      - docker compose ps
-
-  # ==========================================
-  # KUBERNETES
-  # ==========================================
-
-  # ----- START PART -----
-  k8s:start:
-    desc: Kubernetes - One-click local environment setup! Creates cluster, builds images, and deploys the stack.
-    cmds:
-      - task: _cluster-create
-      - task: k8s:build-load
-      - task: k8s:up
-      - cmd: echo "Kubernetes cluster is successfully provisioned and workloads are deployed!"
-        silent: true
-      - cmd: echo "Run 'task k8s:status' to monitor pod startup."
-        silent: true
-      - cmd: echo "Once all pods are 'Running', execute 'task k8s:forward' in a new terminal."
-        silent: true
-
-  _cluster-create:
-    desc: Internal task to create multi-node cluster and configure workload isolation
-    internal: true
-    cmds:
-      - kind create cluster --config k8s/config/kind-config.yaml
-      # Node 1: Dedicated for Stateful Storage (Postgres, Redis, Redpanda)
-      - kubectl label nodes kind-worker role=storage --overwrite
-      # Node 2: Dedicated & Tainted for AI Inference (Consumer)
-      - kubectl taint nodes kind-worker2 dedicated=ai-inference:NoSchedule --overwrite=true
-      - kubectl label nodes kind-worker2 role=ai-inference --overwrite
-
-  k8s:build-load:
-    desc: Kubernetes - Build local images and load all dependencies into the Kind cluster
-    cmds:
-      - docker build -f docker/api/Dockerfile -t sentinel-api:1.0.0 .
-      - docker build -f docker/consumer/Dockerfile -t sentinel-consumer:1.0.0 .
-      - kind load docker-image sentinel-api:1.0.0 --name kind
-      - kind load docker-image sentinel-consumer:1.0.0 --name kind
-
-  k8s:up:
-    desc: Kubernetes - Deploys entire infrastructure and application stack sequentially
-    cmds:
-      - kubectl apply -f k8s/infrastructure/
-      - kubectl apply -f k8s/apps/
-
-  # ----- OFF PART -----
-  k8s:off:
-    desc: Kubernetes - Sequentially removes the stack and completely destroys the cluster
-    cmds:
-      - task: k8s:down
-      - task: k8s:clean
-      - cmd: echo "Kubernetes environment has been completely shut down and cleaned."
-        silent: true
-
-  k8s:down:
-    desc: Kubernetes - Remove the Sentinel stack from Kubernetes
-    cmds:
-      - kubectl delete -f k8s/apps/ --ignore-not-found
-      - kubectl delete -f k8s/infrastructure/ --ignore-not-found
-
-  k8s:clean:
-    desc: Kubernetes - Completely destroys the local Kind cluster and all its data
-    cmds:
-      - kind delete cluster
-      - cmd: echo "Kubernetes cluster and all associated data have been completely wiped clean."
-        silent: true
-
-  # ----- STATUS PART -----
-  k8s:status:
-    desc: Kubernetes - Check the current status of all Kubernetes pods
-    cmd: kubectl get pods -o wide
-
-  # ----- FORWARD PART -----
-  k8s:forward:
-    desc: Kubernetes - Forward all necessary K8s ports in parallel
-    deps:
-      - task: _forward-api
-      - task: _forward-console
-
-  _forward-api:
-    internal: true
-    cmd: kubectl port-forward svc/sentinel-api-service 8000:8000
-
-  _forward-console:
-    internal: true
-    cmd: kubectl port-forward svc/console 8080:8080
-
-  # ==========================================
   # SECURITY
   # ==========================================
+
+  # ON
+  security:on:
+    desc: "SEC - Run all security checks (SAST, Infrastructure, and Rust)"
+    deps: [security:sast, security:infra, security:rust]
+
+  # ON TASKS
   security:sast:
-    desc: "Security - Run static application security testing (SAST) and vulnerability checks on Go code"
+    desc: "SEC - Run static application security testing (SAST) and vulnerability checks on Go code"
     dir: src/api
     cmds:
       - gosec ./...
       - govulncheck ./...
 
   security:infra:
-    desc: "Security - Scan filesystem, IaC (Terraform), and dependencies for vulnerabilities using Trivy"
+    desc: "SEC - Scan filesystem, IaC (Terraform), and dependencies for vulnerabilities using Trivy"
     cmds:
       - trivy fs .
 
   security:rust:
-    desc: "Run DevSecOps linter (Clippy) on Rust code"
+    desc: "SEC - Run DevSecOps linter (Clippy) on Rust code"
     dir: src/validator
     cmds:
       - cargo clippy -- -D warnings
 
-  security:all:
-    desc: "Security - Run all security checks (SAST, Infrastructure, and Rust)"
-    deps: [security:sast, security:infra, security:rust]
-
-  # --- Build Part ---
-  build:api:
-    desc: "Build - Build the Go API Docker image using the current Git SHA as the tag"
-    vars:
-      GIT_SHA:
-        sh: git rev-parse --short HEAD
+  # ==========================================
+  # CI/CD
+  # ==========================================
+  jenkins:on:
+    desc: "CI - Start Jenkins container in the background"
+    dir: docker/jenkins
     cmds:
-      - echo "Building API image with tag -> sentinel-api:{{.GIT_SHA}}"
-      - docker build -t sentinel-api:{{.GIT_SHA}} -f ./docker/api/Dockerfile .
+      - docker compose up -d
 
-  build:consumer:
-    desc: "Build - Build the Python Consumer Docker image using the current Git SHA as the tag"
-    vars:
-      GIT_SHA:
-        sh: git rev-parse --short HEAD
+  jenkins:off:
+    desc: "CI - Stop and remove Jenkins container"
+    dir: docker/jenkins
     cmds:
-      - echo "Building Consumer image with tag -> sentinel-consumer:{{.GIT_SHA}}"
-      - docker build -t sentinel-consumer:{{.GIT_SHA}} -f ./docker/consumer/Dockerfile .
-
-  build:all:
-    desc: Build - Build all project Docker images with Git SHA tags
-    deps: [build:api, build:consumer]
+      - docker compose down

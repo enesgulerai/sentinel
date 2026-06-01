@@ -51,7 +51,7 @@ The Sentinel project utilizes a microservices architecture. Start the Docker con
 
 ```bash
     # Start all services
-    task docker:up
+    task docker:on
 
     # Stop and remove containers, networks, and volumes
     task docker:off
@@ -65,7 +65,7 @@ Sentinel provides streamlined `Taskfile` commands for local Kubernetes orchestra
 ### 1. Provision & Deploy the Architecture
 Run the start command to execute the entire infrastructure setup automatically. This single command creates the multi-node Kind cluster, applies hardware isolation rules, builds the Docker images, loads them into the cluster, and deploys all application and infrastructure manifests sequentially.
 ```bash
-    task k8s:start
+    task k8s:on
 ```
 
 ### 2. Check Pod Status (Crucial)
