@@ -29,10 +29,8 @@ data/processed/*
 !data/processed/.gitkeep
 
 # Machine Learning Artifacts
-models/*.onnx
-models/*.joblib
-models/*.pkl
-models/*.h5
+models/*
+
 !models/.gitkeep
 
 # Jupyter/Notebooks
