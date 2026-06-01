@@ -23,6 +23,8 @@ RUN uv pip install --no-cache -r requirements.txt
 # Stage 2: Runtime
 FROM python:3.11-slim
 
+LABEL org.opencontainers.image.source="https://github.com/enesgulerdev/sentinel"
+
 # Enforce the use of the virtual environment
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

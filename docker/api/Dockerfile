@@ -18,6 +18,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o sentinel-api main.go
 # Stage 2: Create the final ultra-lightweight runtime image
 FROM alpine:3.19
 
+LABEL org.opencontainers.image.source="https://github.com/enesgulerdev/sentinel"
+
 WORKDIR /app
 
 # Install ca-certificates for secure external network communications

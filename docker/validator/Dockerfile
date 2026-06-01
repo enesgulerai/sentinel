@@ -9,6 +9,9 @@ RUN cargo build --release
 
 # STAGE 2: Runtime
 FROM debian:bookworm-slim
+
+LABEL org.opencontainers.image.source="https://github.com/enesgulerdev/sentinel"
+
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y libssl3 ca-certificates && rm -rf /var/lib/apt/lists/*
