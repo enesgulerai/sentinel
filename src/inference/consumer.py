@@ -23,9 +23,14 @@ warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
 
 logger = get_logger(__name__)
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-MODEL_PATH = PROJECT_ROOT / "models" / "fraud_xgboost.onnx"
-SCALER_PATH = PROJECT_ROOT / "models" / "robust_scaler.joblib"
+# Dynamically route the path depending on the execution environment
+if Path("/app/models").exists():
+    MODEL_PATH = Path("/app/models/fraud_xgboost.onnx")
+    SCALER_PATH = Path("/app/models/robust_scaler.joblib")
+else:
+    PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+    MODEL_PATH = PROJECT_ROOT / "models" / "fraud_xgboost.onnx"
+    SCALER_PATH = PROJECT_ROOT / "models" / "robust_scaler.joblib"
 
 REDPANDA_BROKER = os.getenv("REDPANDA_BROKER", "localhost:19092")
 TOPIC_NAME = os.getenv("KAFKA_TOPIC", "clean-events")
@@ -53,7 +58,7 @@ async def start_inference_engine():
     logger.info("Starting Async AI Inference Engine...")
 
     if not MODEL_PATH.exists() or not SCALER_PATH.exists():
-        logger.error("Model or Scaler not found. Run pipeline first.")
+        logger.error(f"Model or Scaler not found at paths: {MODEL_PATH}, {SCALER_PATH}. Run pipeline first.")
         return
 
     logger.info("Loading highly optimized ONNX model & Scaler...")

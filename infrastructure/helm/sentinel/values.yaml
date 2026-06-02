@@ -1,0 +1,76 @@
+# ==========================================
+# SENTINEL GLOBAL CONFIGURATION
+# ==========================================
+global:
+  environment: production
+  imagePullPolicy: IfNotPresent
+
+# ==========================================
+# 1. GO API GATEWAY
+# ==========================================
+api:
+  enabled: true
+  replicaCount: 3
+  image:
+    repository: ghcr.io/enesgulerdev/sentinel-api
+    tag: 9e4cd78
+    pullPolicy: IfNotPresent
+  service:
+    type: LoadBalancer
+    port: 8000
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "500m"
+      memory: "128Mi"
+
+# ==========================================
+# 2. RUST VALIDATOR
+# ==========================================
+validator:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: ghcr.io/enesgulerdev/sentinel-validator
+    tag: 9e4cd78
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "64Mi"
+    limits:
+      cpu: "500m"
+      memory: "256Mi"
+
+# ==========================================
+# 3. PYTHON ML CONSUMER
+# ==========================================
+consumer:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ghcr.io/enesgulerdev/sentinel-consumer
+    tag: 9e4cd78
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "1"
+      memory: "1Gi"
+
+
+# ==========================================
+# CUSTOM INFRASTRUCTURE COMPONENTS
+# ==========================================
+postgres:
+  enabled: true
+redis:
+  enabled: true
+redpanda:
+  enabled: true
+console:
+  enabled: true

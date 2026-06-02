@@ -1,0 +1,36 @@
+{{- if .Values.validator.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sentinel-validator
+  labels:
+    app: sentinel-validator
+spec:
+  replicas: {{ .Values.validator.replicaCount }}
+  selector:
+    matchLabels:
+      app: sentinel-validator
+  template:
+    metadata:
+      labels:
+        app: sentinel-validator
+    spec:
+      initContainers:
+        - name: wait-for-redpanda
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z redpanda 9092; do echo "Waiting for Redpanda..."; sleep 2; done;']
+
+      containers:
+        - name: validator
+          image: "{{ .Values.validator.image.repository }}:{{ .Values.validator.image.tag }}"
+          imagePullPolicy: {{ .Values.validator.image.pullPolicy }}
+          ports:
+            - containerPort: 8080
+
+          env:
+            - name: REDPANDA_BROKER
+              value: "redpanda:9092"
+
+          resources:
+            {{- toYaml .Values.validator.resources | nindent 12 }}
+{{- end }}
