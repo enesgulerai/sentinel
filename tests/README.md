@@ -1,18 +1,31 @@
-# Testing & Performance
+# Sentinel Test Architecture
 
-This project uses `pytest` for unit and integration testing, and `oha` for HTTP load testing. We use `Taskfile` to automate these processes.
+This project utilizes a high-performance polyglot monorepo architecture. Our testing suite reflects this by using native testing frameworks for each language ecosystem, fully orchestrated via `Taskfile`. 
 
-## Running Unit and Integration Tests
-To execute the entire test suite, which includes logic validation and idempotency checks, run the following command:
+External infrastructure dependencies (Redis, Redpanda, PostgreSQL) are mocked in-memory using dependency injection. This ensures all unit and integration tests run in milliseconds, completely isolated and deterministic.
 
-> **Prerequisite:** Before running any tasks, ensure your virtual environment is active to access project dependencies:
+## Testing Stack
+* **Go (API Gateway):** Native `testing` package, `httptest`, and `redismock`.
+* **Rust (Validator):** Native `cargo test` for strict schema and serialization validation.
+* **Python (ML Consumer):** `pytest` with `pytest-asyncio` and `AsyncMock` for complex data pipelines.
+* **Load Testing:** `oha` (Rust-based, ultra-fast HTTP load generator).
 
-*   **Windows:** `.venv\Scripts\activate`
-*   **macOS/Linux:** `source .venv/bin/activate`
+## Prerequisites
+Before running the tests, ensure you have the Go and Rust toolchains installed. For the Python ML Consumer tests, you must activate your virtual environment:
 
+* **Windows:** `.venv\Scripts\activate`
+* **macOS/Linux:** `source .venv/bin/activate`
+
+---
+
+## Running the Tests
+
+### 1. Execute the Entire Polyglot Suite
+To run the Go, Rust, and Python test suites sequentially, use the master orchestration command:
 ```bash
-    task test:run
+    task test:all
 ```
+*Note: This task enforces a strict pipeline. If any language's test suite fails, the chain will halt immediately to prevent faulty code from proceeding.*
 
 ## Running Performance Tests
 To benchmark the API Gateway's connection capacity and measure the health endpoint's throughput under heavy concurrent load (250 workers for 1 minute), execute:
@@ -22,8 +35,8 @@ To benchmark the API Gateway's connection capacity and measure the health endpoi
  ```bash
     task test:load-health
  ```
- *Note on Performance Bottlenecks:
-If you observe high average latency (ms) during this extreme load test, it is because the API is currently deployed as a single, standalone Docker container. This creates a natural bottleneck at the single-process level. In the upcoming Kubernetes (K8s) deployment phase, we will implement horizontal scaling. By increasing the pod replica count behind a load balancer, the concurrent traffic will be distributed across multiple instances, effectively mitigating this latency issue and maximizing overall throughput.*
+
+*Note on Performance Bottlenecks: If you observe high average latency (ms) during this extreme load test, it is because the API is currently deployed as a single, standalone Docker container. This creates a natural bottleneck at the single-process level. In the upcoming Kubernetes (K8s) deployment phase, we will implement horizontal scaling. By increasing the pod replica count behind a load balancer, the concurrent traffic will be distributed across multiple instances, effectively mitigating this latency issue and maximizing overall throughput.*
 
 ## Live Telemetry Simulation (UI Test)
 
