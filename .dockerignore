@@ -1,6 +1,7 @@
 # Git & Hooks
 .git/
 .gitignore
+.gitattributes
 .pre-commit-config.yaml
 
 # Python & Caches
@@ -35,7 +36,11 @@ docs/
 README.md
 Taskfile.yml
 docker-compose.yml
-k8s/
+infrastructure/
+
+# Package Managers
+pyproject.toml
+uv.lock
 
 # Testing & Jupyter
 tests/

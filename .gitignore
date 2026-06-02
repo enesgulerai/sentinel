@@ -12,6 +12,8 @@ __pycache__/
 
 # Security & Configurations
 .env
+.env.*
+!.env.example
 
 # IDEs & OS
 .vscode/
@@ -30,7 +32,6 @@ data/processed/*
 
 # Machine Learning Artifacts
 models/*
-
 !models/.gitkeep
 
 # Jupyter/Notebooks
@@ -39,6 +40,7 @@ models/*
 # Logs
 logs/*.log
 !logs/.gitkeep
+*.log
 
 # Testing & Coverage
 .coverage
@@ -49,14 +51,17 @@ coverage.xml
 *,cover
 
 # Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
 *.tfvars
+*.tfvars.json
 *.pem
 
 # Rust
 /src/validator/target/
 **/*.rs.bk
-Cargo.lock
 
-# Docker / Logs
-*.log
+# Docker
 .docker/
