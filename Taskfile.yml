@@ -212,18 +212,37 @@ tasks:
   # ==========================================
   # TESTS
   # ==========================================
-  test:run:
-    desc: TEST - Run all unit and integration tests in the tests directory
+  test:all:
+    desc: "TEST - Run all test suites sequentially (API, Validator, Consumer)"
     cmds:
-      - pytest tests/
+      - task: test:api
+      - task: test:validator
+      - task: test:consumer
+
+  test:api:
+    desc: "TEST - Run Go API unit and integration tests"
+    dir: src/api
+    cmds:
+      - go test -v .
+
+  test:consumer:
+    desc: "TEST - Run Python ML Consumer unit tests with Pytest"
+    cmds:
+      - pytest tests/unit/test_consumer.py -v
+
+  test:validator:
+    desc: "TEST - Run Rust Validator unit tests via Cargo"
+    dir: src/validator/src
+    cmds:
+      - cargo test
 
   test:load-health:
-    desc: TEST - Run OHA load test for 1 minute with 250 concurrent workers on health endpoint
+    desc: "TEST - Run OHA load test for 1 minute with 250 concurrent workers on health endpoint"
     cmds:
       - oha -c 250 -z 1m http://localhost:8000/
 
   test:traffic:
-    desc: TEST - Generate random live transaction traffic for Dashboard telemetry simulation
+    desc: "TEST - Generate random live transaction traffic for Dashboard telemetry simulation"
     cmds:
       - cmd: echo "Installing required dependencies..."
         silent: true

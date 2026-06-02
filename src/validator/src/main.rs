@@ -16,6 +16,7 @@ use opentelemetry_otlp::WithExportConfig;
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
+#[allow(dead_code)]
 struct FraudEvent {
     transaction_id: String,
     user_id: Option<String>,
@@ -152,5 +153,73 @@ async fn main() {
         }
 
         tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+}
+
+
+// ==========================================
+// UNIT TESTS (Validator Schema & Logic)
+// ==========================================
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // Helper function to generate a flawless base payload
+    fn get_valid_json() -> String {
+        r#"{
+            "transaction_id": "TX-RUST-001",
+            "user_id": "usr_999",
+            "Time": 406.0, "V1": -2.3, "V2": 1.9, "V3": -1.6, "V4": 3.9,
+            "V5": -0.5, "V6": -1.4, "V7": -2.5, "V8": 1.3, "V9": -2.7,
+            "V10": -2.7, "V11": 3.2, "V12": -2.8, "V13": -0.5, "V14": -4.2,
+            "V15": 0.3, "V16": -1.1, "V17": -2.8, "V18": -0.01, "V19": 0.4,
+            "V20": 0.1, "V21": 0.5, "V22": -0.03, "V23": -0.4, "V24": 0.3,
+            "V25": 0.04, "V26": 0.1, "V27": 0.2, "V28": -0.1,
+            "Amount": 1505.0
+        }"#.to_string()
+    }
+
+    #[test]
+    fn test_valid_payload_passes() {
+        let payload = get_valid_json();
+        let result = serde_json::from_str::<FraudEvent>(&payload);
+
+        assert!(result.is_ok(), "Valid JSON should parse without errors");
+
+        let event = result.unwrap();
+        assert_eq!(event.transaction_id, "TX-RUST-001");
+        assert_eq!(event.Amount, 1505.0);
+        assert_eq!(event.user_id, Some("usr_999".to_string()));
+    }
+
+    #[test]
+    fn test_optional_user_id_allowed() {
+        // user_id is Option<String>, so removing it should NOT fail the validation
+        let payload = get_valid_json().replace(r#""user_id": "usr_999","#, "");
+        let result = serde_json::from_str::<FraudEvent>(&payload);
+
+        assert!(result.is_ok(), "Payload missing optional user_id should pass");
+        assert_eq!(result.unwrap().user_id, None);
+    }
+
+    #[test]
+    fn test_missing_required_field_fails() {
+        let payload = get_valid_json().replace(r#""Amount""#, r#""MissingAmount""#);
+        let result = serde_json::from_str::<FraudEvent>(&payload);
+
+        assert!(result.is_err(), "Payload missing required field MUST fail");
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("missing field `Amount`"), "Error should pinpoint missing field. Actual error: {}", err_msg);
+    }
+
+    #[test]
+    fn test_type_mismatch_fails() {
+        // Changing Amount from float (1505.0) to string ("1505.0")
+        let payload = get_valid_json().replace(r#""Amount": 1505.0"#, r#""Amount": "1505.0""#);
+        let result = serde_json::from_str::<FraudEvent>(&payload);
+
+        assert!(result.is_err(), "Payload with wrong data type MUST fail");
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("invalid type"), "Error should pinpoint type mismatch");
     }
 }

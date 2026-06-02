@@ -38,9 +38,14 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 )
 
+type KafkaProducer interface {
+	WriteMessages(ctx context.Context, msgs ...kafka.Message) error
+	Close() error
+}
+
 var (
 	redisClient *redis.Client
-	kafkaWriter *kafka.Writer
+	kafkaWriter KafkaProducer
 	db          *sql.DB
 
 	// Metrics & Asynchronous Logging
