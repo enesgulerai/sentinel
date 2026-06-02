@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sentinel-console
+  labels:
+    app: console
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: console
+  template:
+    metadata:
+      labels:
+        app: console
+    spec:
+      initContainers:
+      - name: wait-for-redpanda
+        image: busybox:1.36
+        command: ['sh', '-c', 'until nc -z redpanda 9092; do echo "Waiting for Redpanda to become ready..."; sleep 2; done;']
+      containers:
+      - name: console
+        image: docker.redpanda.com/redpandadata/console:v2.4.5
+        env:
+        - name: KAFKA_BROKERS
+          value: "redpanda:9092"
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "64Mi"
+          limits:
+            cpu: "200m"
+            memory: "256Mi"
+        readinessProbe:
+          httpGet:
+            path: /admin/health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /admin/health
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: console
+spec:
+  selector:
+    app: console
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
