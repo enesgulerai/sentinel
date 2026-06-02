@@ -80,7 +80,7 @@ tasks:
     desc: K8s - Internal task to create multi-node cluster and configure workload isolation
     internal: true
     cmds:
-      - kind create cluster --config k8s/config/kind-config.yaml
+      - kind create cluster --config infrastructure/k8s/config/kind-config.yaml
       # Node 1: Dedicated for Stateful Storage (Postgres, Redis, Redpanda)
       - kubectl label nodes kind-worker role=storage --overwrite
       # Node 2: Dedicated & Tainted for AI Inference (Consumer)
@@ -90,24 +90,26 @@ tasks:
   k8s:build-load:
     desc: K8s - Build local images and load all dependencies into the Kind cluster
     cmds:
-      - docker build -f docker/api/Dockerfile -t sentinel-api:1.0.0 .
-      - docker build -f docker/consumer/Dockerfile -t sentinel-consumer:1.0.0 .
-      - kind load docker-image sentinel-api:1.0.0 --name kind
-      - kind load docker-image sentinel-consumer:1.0.0 --name kind
+      - docker build -f docker/api/Dockerfile -t ghcr.io/enesgulerdev/sentinel-api:9e4cd78 .
+      - docker build -f docker/consumer/Dockerfile -t ghcr.io/enesgulerdev/sentinel-consumer:9e4cd78 .
+      - docker build -f docker/validator/Dockerfile -t ghcr.io/enesgulerdev/sentinel-validator:9e4cd78 .
+      - kind load docker-image ghcr.io/enesgulerdev/sentinel-api:9e4cd78 --name kind
+      - kind load docker-image ghcr.io/enesgulerdev/sentinel-consumer:9e4cd78 --name kind
+      - kind load docker-image ghcr.io/enesgulerdev/sentinel-validator:9e4cd78 --name kind
 
   k8s:up:
     desc: K8s - Deploys entire infrastructure and application stack sequentially
     cmds:
-      - kubectl apply -f k8s/infrastructure/
-      - kubectl apply -f k8s/apps/
+      - kubectl apply -f infrastructure/k8s/infrastructure/
+      - kubectl apply -f infrastructure/k8s/apps/
 
   # OFF TASKS
 
   k8s:down:
     desc: K8s - Remove the Sentinel stack from Kubernetes
     cmds:
-      - kubectl delete -f k8s/apps/ --ignore-not-found
-      - kubectl delete -f k8s/infrastructure/ --ignore-not-found
+      - kubectl delete -f infrastructure/k8s/apps/ --ignore-not-found
+      - kubectl delete -f infrastructure/k8s/infrastructure/ --ignore-not-found
 
   k8s:clean:
     desc: K8s - Completely destroys the local Kind cluster and all its data
