@@ -32,6 +32,8 @@ data/processed/*
 
 # Machine Learning Artifacts
 models/*
+!models/*.onnx
+!models/*.joblib
 !models/.gitkeep
 
 # Jupyter/Notebooks
