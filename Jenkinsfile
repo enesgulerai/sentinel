@@ -44,7 +44,7 @@ pipeline {
                 echo 'Updating Helm values.yaml with the new image tags...'
                 script {
                     sh """
-                        sed -i '/repository: ghcr.io\\/enesgulerdev\\/sentinel-/!b;n;s/tag: .*/tag: ${IMAGE_TAG}/' infrastructure/helm/sentinel/values.yaml
+                        sed -i '/repository: ghcr.io\\/enesgulerdev\\/sentinel-/!b;n;s/tag: .*/tag: ${env.IMAGE_TAG}/' infrastructure/helm/sentinel/values.yaml
                     """
 
                     // Configure Git as Jenkins user
