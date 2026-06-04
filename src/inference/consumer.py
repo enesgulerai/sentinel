@@ -25,12 +25,18 @@ logger = get_logger(__name__)
 
 # Dynamically route the path depending on the execution environment
 if Path("/app/models").exists():
-    MODEL_PATH = Path("/app/models/fraud_xgboost.onnx")
-    SCALER_PATH = Path("/app/models/robust_scaler.joblib")
+    models_dir = Path("/app/models")
 else:
     PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-    MODEL_PATH = PROJECT_ROOT / "models" / "fraud_xgboost.onnx"
-    SCALER_PATH = PROJECT_ROOT / "models" / "robust_scaler.joblib"
+    models_dir = PROJECT_ROOT / "models"
+
+onnx_files = list(models_dir.glob("*.onnx"))
+
+if not onnx_files:
+    raise FileNotFoundError(f"No .onnx model found in {models_dir}. Run training pipeline first.")
+
+MODEL_PATH = sorted(onnx_files)[-1]
+SCALER_PATH = models_dir / "robust_scaler.joblib"
 
 REDPANDA_BROKER = os.getenv("REDPANDA_BROKER", "localhost:19092")
 TOPIC_NAME = os.getenv("KAFKA_TOPIC", "clean-events")
