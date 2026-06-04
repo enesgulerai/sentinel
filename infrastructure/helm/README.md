@@ -6,32 +6,24 @@ This directory contains the Helm manifests designed to autonomously deploy all i
 
 Follow these steps to bootstrap the entire system from scratch in your local Kubernetes environment (Docker Desktop K8s, Minikube, etc.).
 
-### 1. Prerequisite: Build the Local ML Image
-To ensure the Consumer image containing the machine learning models (`.onnx`, `.joblib`) is correctly utilized by Kubernetes locally (bypassing the remote registry via `imagePullPolicy: Never`), build and cache the image from the project root:
-
+### 1. Deployment
+Run the following command to automatically build the local ML image (bypassing the remote registry) and deploy the unified Helm chart into an isolated namespace:
 ```bash
-    docker build -f docker/consumer/Dockerfile -t sentinel-consumer:local-dev .
+    task helm:on
 ```
 
-### 2. Deployment
-Deploy the infrastructure into an isolated namespace and start all services with a single command:
-```bash
-    cd infrastructure/helm
-    helm upgrade --install sentinel-prod ./sentinel -n sentinel-namespace --create-namespace
-```
-
-### 3. Monitoring
+### 2. Monitoring
 Watch all pods transition to the Running state in real-time (this typically takes 1-2 minutes):
 ```bash
-    kubectl get pods -n sentinel-namespace -w
+    task helm:status
 ```
 *Tail the logs to watch the asynchronous ML engine autonomously process validated data from the Redpanda queue:*
 ```bash
     kubectl logs -l app=sentinel-consumer -n sentinel-namespace -f
 ```
 
-### 4. Teardown
-To cleanly remove the entire system without leaving any dangling resources behind:
+### 3. Teardown
+Once finished, completely remove the Helm release and clean up all associated resources cleanly:
 ```bash
-    helm uninstall sentinel-prod -n sentinel-namespace
+    task helm:off
 ```
