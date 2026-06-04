@@ -51,9 +51,9 @@ consumer:
   enabled: true
   replicaCount: 1
   image:
-    repository: ghcr.io/enesgulerdev/sentinel-consumer
-    tag: 9e4cd78
-    pullPolicy: IfNotPresent
+    repository: sentinel-consumer
+    tag: local-dev
+    pullPolicy: Never
   resources:
     requests:
       cpu: "200m"

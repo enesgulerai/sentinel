@@ -80,3 +80,4 @@ Sentinel is built with a strictly modular architecture. While this guide covers 
 
 * **[Infrastructure & Kubernetes](infrastructure/k8s/README.md)**: Enterprise deployment manifests, service configurations, and orchestration details for scaling Sentinel in the cloud.
 * **[Testing Suite](tests/README.md)**: Comprehensive unit tests, integration tests, and mock fixtures ensuring system reliability.
+* **[Helm Deployment](infrastructure/helm/README.md)**: Unified and autonomous Helm charts for seamless local provisioning, encapsulating all stateful dependencies and isolated ML workloads.

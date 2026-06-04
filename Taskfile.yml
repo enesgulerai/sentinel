@@ -13,7 +13,7 @@ tasks:
 
   # ON - OFF
   docker:on:
-    desc: "Start all services using the current Git SHA image tags"
+    desc: "Docker - Start all services using the current Git SHA image tags"
     vars:
       GIT_SHA:
         sh: git rev-parse --short HEAD
@@ -25,7 +25,7 @@ tasks:
 
 
   docker:off:
-    desc: Docker - Sequentially stops containers and clears all unused images
+    desc: "Docker - Sequentially stops containers and clears all unused images"
     cmds:
       - task: docker:down
       - task: docker:clear
@@ -34,7 +34,7 @@ tasks:
 
   # OFF TASKS
   docker:down:
-    desc: Docker - Stops and removes Docker containers, networks, and volumes
+    desc: "Docker - Stops and removes Docker containers, networks, and volumes"
     cmds:
       - docker compose down
 
@@ -138,6 +138,24 @@ tasks:
     internal: true
     cmd: kubectl port-forward svc/console 8080:8080
 
+  # ==========================================
+  # HELM
+  # ==========================================
+  helm:on:
+    desc: Helm - Build the local ML image and deploy the Sentinel infrastructure autonomously
+    cmds:
+      - docker build -f docker/consumer/Dockerfile -t sentinel-consumer:local-dev .
+      - helm upgrade --install sentinel-prod ./infrastructure/helm/sentinel -n sentinel-namespace --create-namespace
+
+  helm:status:
+    desc: Helm - Watch the real-time status of the Sentinel Helm deployment
+    cmds:
+      - kubectl get pods -n sentinel-namespace -w
+
+  helm:off:
+    desc: Helm - Uninstall the Sentinel Helm release and clean up resources
+    cmds:
+      - helm uninstall sentinel-prod -n sentinel-namespace
 
   # ==========================================
   # CODE QUALITY & LINTING
