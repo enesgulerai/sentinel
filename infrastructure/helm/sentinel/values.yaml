@@ -51,7 +51,7 @@ consumer:
   enabled: true
   replicaCount: 1
   image:
-    repository: sentinel-consumer
+    repository: ghcr.io/enesgulerdev/sentinel-consumer
     tag: ${IMAGE_TAG}
     pullPolicy: IfNotPresent
   resources:
