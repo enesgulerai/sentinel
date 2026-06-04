@@ -53,7 +53,10 @@ The Sentinel project utilizes a microservices architecture. Start the Docker con
     # Start all services
     task docker:on
 
-    # Stop and remove containers, networks, and volumes
+    # Stop services gracefully but keep images intact (Use this if you are heading to the Kubernetes documentation!)
+    task docker:down
+
+    # Stop and remove all containers, networks, volumes, and images (Full Wipe)
     task docker:off
 ```
 
