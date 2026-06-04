@@ -13,7 +13,7 @@ api:
   replicaCount: 3
   image:
     repository: ghcr.io/enesgulerdev/sentinel-api
-    tag: ${IMAGE_TAG}
+    tag: def3cf0
     pullPolicy: IfNotPresent
   service:
     type: LoadBalancer
@@ -34,7 +34,7 @@ validator:
   replicaCount: 2
   image:
     repository: ghcr.io/enesgulerdev/sentinel-validator
-    tag: ${IMAGE_TAG}
+    tag: def3cf0
     pullPolicy: IfNotPresent
   resources:
     requests:
