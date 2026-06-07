@@ -1,29 +1,65 @@
-# Sentinel Local Infrastructure (Helm)
+# Sentinel Local Infrastructure
 
-This directory contains the Helm manifests designed to autonomously deploy all independent components of the Sentinel project (pgvector-supported Postgres, Redis, Redpanda, Go API, Rust Validator, and Asynchronous Python ML Consumer) as a single, unified system in a local Kubernetes environment.
+This directory contains the Infrastructure as Code (IaC) configuration designed to autonomously deploy all independent components of the Sentinel project (Postgres, Redis, Redpanda, Go API Gateway, Rust Validator, and Asynchronous Python ML Consumer) as a single, unified system.
 
-## Quick Start
+## Advanced Architecture: Solving the "Noisy Neighbor" Problem
+To achieve sub-millisecond tail latencies and strict resource isolation, we utilize advanced Kubernetes scheduling:
+* **Storage Isolation (Node Affinity):** I/O-heavy datastores (Postgres, Redis, Redpanda) are forced onto dedicated storage nodes.
+* **AI Inference Quarantine (Taints & Tolerations):** The CPU-hungry XGBoost AI inference engine operates in absolute quarantine. It can consume 100% of its dedicated node's CPU without causing latency degradation to the Go API.
+* **Zero-Waste Auto-Scaling (HPA):** The stateless Go API Gateway is governed by a Horizontal Pod Autoscaler (HPA), dynamically cloning itself to absorb traffic spikes while maintaining strict, optimized memory limits (256Mi).
 
-Follow these steps to bootstrap the entire system from scratch in your local Kubernetes environment (Docker Desktop K8s, Minikube, etc.).
+---
 
-### 1. Deployment
-Run the following command to automatically build the local ML image (bypassing the remote registry) and deploy the unified Helm chart into an isolated namespace:
+## Quick Start (Helm)
+
+Follow these steps to bootstrap the entire system in your local Kubernetes environment.
+
+### 1. Provision & Deploy
+Run the following task to deploy the unified Helm chart into an isolated namespace. This replaces legacy raw K8s manifests with a Single Source of Truth.
 ```bash
-    task helm:on
+task helm:on
 ```
 
-### 2. Monitoring
-Watch all pods transition to the Running state in real-time (this typically takes 1-2 minutes):
+### 2. Verify System Status
+Watch all pods transition to the Running state. (Note: Redpanda and Postgres may take a minute to establish quorum and initialize).
 ```bash
-    task helm:status
-```
-*Tail the logs to watch the asynchronous ML engine autonomously process validated data from the Redpanda queue:*
-```bash
-    kubectl logs -l app=sentinel-consumer -n sentinel-namespace -f
+task helm:status
 ```
 
-### 3. Teardown
-Once finished, completely remove the Helm release and clean up all associated resources cleanly:
+### 3. Establish Connections (Crucial)
+Before testing, you must bind the isolated K8s network to your local machine. Run this and leave the terminal open:
 ```bash
-    task helm:off
+task helm:forward
+```
+
+## End-to-End Verification
+Option A: The Sanity Check (Manual)
+Send a single payload to the API and verify it traverses the entire pipeline (API -> Redis -> Redpanda -> Rust -> Python -> Postgres).
+
+**1. Inject Event:**
+```bash
+curl -X POST http://localhost:8000/api/v1/transactions \
+  -H "Content-Type: application/json" \
+  -d '{"transaction_id": "TEST-1001", "user_id": "usr_777", "Amount": 999.99, "Time": 10.0, "V1": 0.0, "V2": 0.0, "V3": 0.0}'
+```
+*(Ensure all features up to V28 are provided to bypass the Rust Validator).*
+
+**2. Verify AI Persistence:**
+Directly query the database to confirm the AI assigned a risk score:
+
+```bash
+kubectl exec -it -n sentinel-namespace $(kubectl get pods -n sentinel-namespace -l app=postgres -o jsonpath='{.items[0].metadata.name}') -- psql -U sentinel -d sentinel_db -c "SELECT transaction_id, risk_score, created_at FROM transactions ORDER BY created_at DESC LIMIT 5;"
+```
+
+### Option B: The K6 Stress Test (Elasticity Check)
+Blast the API with high-concurrency traffic to watch the HPA auto-scaler in action.
+```bash
+k6 run tests/fixtures/loadtest.js
+```
+*Monitor the autoscaler scaling the API from 1 to 5 replicas dynamically: `kubectl get hpa -n sentinel-namespace -w`*
+
+## Teardown
+Once finished, completely remove the Helm release and clean up all associated resources:
+```bash
+task helm:off
 ```
