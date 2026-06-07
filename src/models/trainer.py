@@ -63,6 +63,7 @@ class ModelTrainer:
             random_state=42,
             n_jobs=-1,
             eval_metric="logloss",
+            tree_method="hist",
         )
 
         model.fit(X_train.values, y_train.values)
