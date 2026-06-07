@@ -29,7 +29,7 @@ RUN apk --no-cache add ca-certificates
 COPY --from=builder /app/sentinel-api .
 
 # Expose the Go API gateway port
-EXPOSE 8081
+EXPOSE 8000
 
 # Execute the static binary
 CMD ["./sentinel-api"]
