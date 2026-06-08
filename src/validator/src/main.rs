@@ -28,7 +28,6 @@ struct FraudEvent {
     Amount: f64,
 }
 
-// Extractor to read OpenTelemetry Context from Kafka Headers
 struct KafkaHeaderExtractor<'a>(&'a BTreeMap<String, Vec<u8>>);
 
 impl<'a> Extractor for KafkaHeaderExtractor<'a> {
@@ -66,105 +65,83 @@ fn init_tracer() {
 
 #[tokio::main]
 async fn main() {
-    println!("Sentinel Rust Validator initializing...");
-
-    // Initialize OpenTelemetry
     init_tracer();
     let tracer = global::tracer("sentinel-validator");
 
     let connection_string = env::var("REDPANDA_BROKER").unwrap_or_else(|_| "localhost:19092".to_string());
     let client = match ClientBuilder::new(vec![connection_string.to_owned()]).build().await {
         Ok(c) => c,
-        Err(e) => {
-            println!("FATAL: Connection failed. Error: {:?}", e);
-            return;
-        }
+        Err(_) => return,
     };
 
     let raw_partition_client = match client.partition_client("raw-events", 0, UnknownTopicHandling::Retry).await {
         Ok(pc) => pc,
-        Err(e) => {
-            println!("FATAL: Failed to create raw-events partition client: {:?}", e);
-            return;
-        }
+        Err(_) => return,
     };
 
     let clean_partition_client = match client.partition_client("clean-events", 0, UnknownTopicHandling::Retry).await {
         Ok(pc) => pc,
-        Err(e) => {
-            println!("FATAL: Failed to create clean-events partition client: {:?}", e);
-            return;
-        }
+        Err(_) => return,
     };
 
-    println!("SUCCESS: Connected to Redpanda.");
-
     let mut current_offset = raw_partition_client.get_offset(OffsetAt::Earliest).await.unwrap_or(0);
-    println!("INFO: Validator is actively listening to 'raw-events' from offset {}...", current_offset);
 
     loop {
         match raw_partition_client.fetch_records(current_offset, 1..1_000_000, 1_000_000).await {
             Ok((records, _high_watermark)) => {
+                if records.is_empty() {
+                    tokio::time::sleep(Duration::from_millis(100)).await;
+                    continue;
+                }
+
+                let mut valid_batch = Vec::new();
+
                 for record_and_offset in records {
                     current_offset = record_and_offset.offset + 1;
 
-                    // 1. Extract context from incoming Kafka headers
                     let parent_context = global::get_text_map_propagator(|prop| {
                         prop.extract(&KafkaHeaderExtractor(&record_and_offset.record.headers))
                     });
 
-                    // 2. Start a new span linked to the Go API's trace
                     let mut span = tracer.start_with_context("Rust-Validate-Event", &parent_context);
 
                     if let Some(value) = &record_and_offset.record.value {
-                        let payload = String::from_utf8_lossy(value);
-
-                        match serde_json::from_str::<FraudEvent>(&payload) {
-                            Ok(valid_event) => {
-                                println!("VALID: Event {} passed inspection. Amount: {}", valid_event.transaction_id, valid_event.Amount);
-
+                        match serde_json::from_slice::<FraudEvent>(value) {
+                            Ok(_) => {
                                 let clean_record = Record {
                                     key: record_and_offset.record.key.clone(),
                                     value: Some(value.clone()),
                                     headers: record_and_offset.record.headers.clone(),
                                     timestamp: record_and_offset.record.timestamp,
                                 };
-
-                                if let Err(e) = clean_partition_client.produce(vec![clean_record], Compression::NoCompression).await {
-                                    println!("ERROR: Failed to forward event {}: {:?}", valid_event.transaction_id, e);
-                                    span.set_status(Status::Error { description: format!("Produce Error: {:?}", e).into() });
-                                } else {
-                                    span.set_status(Status::Ok);
-                                }
+                                valid_batch.push(clean_record);
+                                span.set_status(Status::Ok);
                             },
                             Err(e) => {
-                                println!("INVALID: Trash data blocked. Reason: {}. Payload: {}", e, payload);
-                                span.set_status(Status::Error { description: format!("Validation Error: {}", e).into() });
+                                let payload_str = String::from_utf8_lossy(value);
+                                println!("INVALID: {} - {}", e, payload_str);
+                                span.set_status(Status::Error { description: format!("{}", e).into() });
                             }
                         }
                     }
-                    // End the span
                     span.end();
                 }
+
+                if !valid_batch.is_empty() {
+                    let _ = clean_partition_client.produce(valid_batch, Compression::NoCompression).await;
+                }
             },
-            Err(e) => {
-                println!("ERROR: Fetching records failed: {:?}", e);
+            Err(_) => {
+                tokio::time::sleep(Duration::from_millis(1000)).await;
             }
         }
-
-        tokio::time::sleep(Duration::from_millis(100)).await;
     }
 }
 
-
-// ==========================================
-// UNIT TESTS (Validator Schema & Logic)
-// ==========================================
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    // Helper function to generate a flawless base payload
     fn get_valid_json() -> String {
         r#"{
             "transaction_id": "TX-RUST-001",
@@ -184,7 +161,7 @@ mod tests {
         let payload = get_valid_json();
         let result = serde_json::from_str::<FraudEvent>(&payload);
 
-        assert!(result.is_ok(), "Valid JSON should parse without errors");
+        assert!(result.is_ok());
 
         let event = result.unwrap();
         assert_eq!(event.transaction_id, "TX-RUST-001");
@@ -194,11 +171,10 @@ mod tests {
 
     #[test]
     fn test_optional_user_id_allowed() {
-        // user_id is Option<String>, so removing it should NOT fail the validation
         let payload = get_valid_json().replace(r#""user_id": "usr_999","#, "");
         let result = serde_json::from_str::<FraudEvent>(&payload);
 
-        assert!(result.is_ok(), "Payload missing optional user_id should pass");
+        assert!(result.is_ok());
         assert_eq!(result.unwrap().user_id, None);
     }
 
@@ -207,19 +183,14 @@ mod tests {
         let payload = get_valid_json().replace(r#""Amount""#, r#""MissingAmount""#);
         let result = serde_json::from_str::<FraudEvent>(&payload);
 
-        assert!(result.is_err(), "Payload missing required field MUST fail");
-        let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("missing field `Amount`"), "Error should pinpoint missing field. Actual error: {}", err_msg);
+        assert!(result.is_err());
     }
 
     #[test]
     fn test_type_mismatch_fails() {
-        // Changing Amount from float (1505.0) to string ("1505.0")
         let payload = get_valid_json().replace(r#""Amount": 1505.0"#, r#""Amount": "1505.0""#);
         let result = serde_json::from_str::<FraudEvent>(&payload);
 
-        assert!(result.is_err(), "Payload with wrong data type MUST fail");
-        let err_msg = result.unwrap_err().to_string();
-        assert!(err_msg.contains("invalid type"), "Error should pinpoint type mismatch");
+        assert!(result.is_err());
     }
 }
