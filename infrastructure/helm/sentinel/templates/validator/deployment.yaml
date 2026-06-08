@@ -28,8 +28,9 @@ spec:
             - containerPort: 8080
 
           env:
-            - name: REDPANDA_BROKER
-              value: "redpanda:9092"
+            {{- if .Values.validator.env }}
+            {{- toYaml .Values.validator.env | nindent 12 }}
+            {{- end }}
 
           resources:
             {{- toYaml .Values.validator.resources | nindent 12 }}

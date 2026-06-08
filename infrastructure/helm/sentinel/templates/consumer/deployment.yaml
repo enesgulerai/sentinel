@@ -44,10 +44,9 @@ spec:
                 name: postgres-secret
 
           env:
-            - name: REDPANDA_BROKER
-              value: "redpanda:9092"
-            - name: DATABASE_URL
-              value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/$(POSTGRES_DB)"
+            {{- if .Values.consumer.env }}
+            {{- toYaml .Values.consumer.env | nindent 12 }}
+            {{- end }}
 
           resources:
             {{- toYaml .Values.consumer.resources | nindent 12 }}

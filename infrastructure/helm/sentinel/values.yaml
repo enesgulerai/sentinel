@@ -18,6 +18,19 @@ api:
   service:
     type: LoadBalancer
     port: 8000
+  env:
+    - name: REDPANDA_BROKER
+      value: "redpanda:9092"
+    - name: REDIS_HOST
+      value: "redis"
+    - name: REDIS_URL
+      value: "redis:6379"
+    - name: POSTGRES_HOST
+      value: "postgres"
+    - name: POSTGRES_PORT
+      value: "5432"
+    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+      value: "http://jaeger:4318/v1/traces"
   resources:
     requests:
       cpu: "100m"
@@ -42,6 +55,11 @@ validator:
     repository: ghcr.io/enesgulerdev/sentinel-validator
     tag: 621489a
     pullPolicy: IfNotPresent
+  env:
+    - name: REDPANDA_BROKER
+      value: "redpanda:9092"
+    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+      value: "http://jaeger:4318/v1/traces"
   resources:
     requests:
       cpu: "100m"
@@ -60,6 +78,11 @@ consumer:
     repository: ghcr.io/enesgulerdev/sentinel-consumer
     tag: 621489a
     pullPolicy: IfNotPresent
+  env:
+    - name: REDPANDA_BROKER
+      value: "redpanda:9092"
+    - name: DATABASE_URL
+      value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/$(POSTGRES_DB)"
   resources:
     requests:
       cpu: "200m"
@@ -67,7 +90,6 @@ consumer:
     limits:
       cpu: "1"
       memory: "256Mi"
-
 
 # ==========================================
 # CUSTOM INFRASTRUCTURE COMPONENTS
