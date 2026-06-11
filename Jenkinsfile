@@ -47,11 +47,9 @@ pipeline {
                         sed -i '/repository: ghcr.io\\/enesgulerdev\\/sentinel-/!b;n;s/tag: .*/tag: ${env.IMAGE_TAG}/' infrastructure/helm/sentinel/values.yaml
                     """
 
-                    // Configure Git as Jenkins user
                     sh "git config user.email 'jenkins@sentinel.local'"
                     sh "git config user.name 'Jenkins CI'"
 
-                    // Commit and push the changes back to GitHub
                     sh "git add infrastructure/helm/sentinel/values.yaml"
                     sh "git commit -m 'chore(gitops): auto-update image tags to ${IMAGE_TAG} [skip ci]'"
 

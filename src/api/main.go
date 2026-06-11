@@ -48,7 +48,6 @@ var (
 	kafkaWriter KafkaProducer
 	db          *sql.DB
 
-	// Metrics & Asynchronous Logging
 	totalRequests uint64
 	totalLatency  uint64
 	recentLogs    []map[string]string
@@ -114,7 +113,7 @@ func initServices() {
 	}
 	log.Printf("SUCCESS: Connected to Redis at %s:%s", redisHost, redisPort)
 
-	// --- POSTGRESQL CONFIG (PRODUCTION-GRADE POOL) ---
+	// --- POSTGRESQL CONFIG ---
 	pgHost := getEnv("POSTGRES_HOST", "localhost")
 	pgPort := getEnv("POSTGRES_PORT", "5432")
 	pgUser := getEnv("POSTGRES_USER", "postgres")
@@ -130,7 +129,6 @@ func initServices() {
 		log.Fatalf("FATAL: Failed to open PostgreSQL driver: %v", err)
 	}
 
-	// Optimize connection pool constraints for high-throughput
 	db.SetMaxOpenConns(50)
 	db.SetMaxIdleConns(10)
 	db.SetConnMaxLifetime(5 * time.Minute)
@@ -158,18 +156,16 @@ func initServices() {
 	log.Printf("SUCCESS: Connected to Redpanda at %s (Async Mode)", kafkaBroker)
 }
 
-// Atomic Metrics Middleware
 func metricsMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		c.Next()
 		duration := time.Since(start).Microseconds()
 		atomic.AddUint64(&totalRequests, 1)
-		atomic.AddUint64(&totalLatency, uint64(duration)) // #nosec G115
+		atomic.AddUint64(&totalLatency, uint64(duration))
 	}
 }
 
-// Non-blocking asynchronous log sender
 func addLogAsync(txID string, amount float64, status string) {
 	if txID == "" {
 		txID = "UNKNOWN"
@@ -181,11 +177,9 @@ func addLogAsync(txID string, amount float64, status string) {
 		"status": status,
 	}:
 	default:
-		// Drop log if channel is full to prevent blocking
 	}
 }
 
-// Helper function to render Templ components with Gin
 func renderTempl(c *gin.Context, status int, template templ.Component) {
 	c.Status(status)
 	c.Header("Content-Type", "text/html")
@@ -207,7 +201,6 @@ func main() {
 	}()
 	// --- OTEL END ---
 
-	// Background worker for logs
 	go func() {
 		for newLog := range logChannel {
 			logMutex.Lock()
@@ -238,7 +231,6 @@ func main() {
 		})
 	})
 
-	// Secure Metrics Endpoint
 	router.GET("/metrics", func(c *gin.Context) {
 		reqs := atomic.SwapUint64(&totalRequests, 0)
 		lat := atomic.SwapUint64(&totalLatency, 0)
@@ -263,18 +255,14 @@ func main() {
 	// --- UI ROUTES START ---
 	dashboardGroup := router.Group("/api/v1/dashboard")
 	{
-		// Serves the main HTML shell
 		dashboardGroup.GET("/", func(c *gin.Context) {
 			renderTempl(c, http.StatusOK, dashboard.DashboardPage())
 		})
 
-		// Production-grade real-time streaming channel
 		dashboardGroup.GET("/stream", func(c *gin.Context) {
-			// Bound the execution time using context to prevent connection starvation
 			ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
 			defer cancel()
 
-			// Query the latest 10 inferences processed by the system
 			query := `
 				SELECT transaction_id, user_id, amount, risk_score
 				FROM transactions
@@ -303,7 +291,6 @@ func main() {
 				log.Printf("ERROR: Database row streaming failure: %v", err)
 			}
 
-			// Graceful structural fallback for empty states
 			if len(transactions) == 0 {
 				c.String(http.StatusOK, "<tr><td colspan='4' class='px-6 py-12 text-center text-slate-400'>No recent transactions found in database.</td></tr>")
 				return

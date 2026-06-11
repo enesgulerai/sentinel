@@ -43,7 +43,6 @@ class DataIngestor:
 
         calculated_hash = sha256_hash.hexdigest()
 
-        # Ensure comparison is case-insensitive
         if calculated_hash != self.expected_hash.lower():
             logger.error(f"Hash mismatch! Expected: {self.expected_hash.lower()}, Got: {calculated_hash}")
             return False
@@ -97,7 +96,6 @@ class DataIngestor:
             logger.error("The downloaded file is not a valid zip archive.")
             raise
         finally:
-            # Clean up temporary files
             if self.zip_path.exists():
                 self.zip_path.unlink()
                 logger.info("Temporary zip file deleted.")

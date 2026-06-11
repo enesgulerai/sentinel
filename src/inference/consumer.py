@@ -23,7 +23,6 @@ warnings.filterwarnings("ignore", category=UserWarning, module="sklearn")
 
 logger = get_logger(__name__)
 
-# Dynamically route the path depending on the execution environment
 if Path("/app/models").exists():
     models_dir = Path("/app/models")
 else:

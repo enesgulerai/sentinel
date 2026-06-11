@@ -36,7 +36,6 @@ class FeatureEngineer:
         df = pd.read_csv(filepath)
         logger.info(f"Dataset Shape: {df.shape}")
 
-        # Ensure no existing nulls before processing
         assert df.isnull().sum().max() == 0, "Missing values detected in raw data!"
 
         fraud_count = df[self.target_col].sum()
@@ -57,7 +56,6 @@ class FeatureEngineer:
         X = df.drop(columns=[self.target_col])
         y = df[self.target_col]
 
-        # Stratified split to maintain the fraud ratio in both sets
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=self.test_size, random_state=self.random_state, stratify=y
         )
@@ -68,7 +66,6 @@ class FeatureEngineer:
         X_train_scaled = X_train.copy()
         X_test_scaled = X_test.copy()
 
-        # Fit strictly on TRAIN data, transform BOTH
         X_train_scaled[self.cols_to_scale] = scaler.fit_transform(X_train[self.cols_to_scale])
         X_test_scaled[self.cols_to_scale] = scaler.transform(X_test[self.cols_to_scale])
 

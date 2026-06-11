@@ -56,7 +56,6 @@ func setupTestEnvironment() (*gin.Engine, redismock.ClientMock, *MockKafkaWriter
 	return router, redisMock, kafkaMock
 }
 
-// Calculate the expected Redis key exactly as main.go does
 func getExpectedRedisKey(payload map[string]interface{}) string {
 	hashData := make(map[string]interface{})
 	for k, v := range payload {
@@ -70,7 +69,7 @@ func getExpectedRedisKey(payload map[string]interface{}) string {
 }
 
 // ==========================================
-// 1. TEST: VALID TRANSACTION (NEW)
+// 1. TEST: VALID TRANSACTION
 // ==========================================
 func TestValidTransactionIngestion(t *testing.T) {
 	router, redisMock, kafkaMock := setupTestEnvironment()
@@ -82,7 +81,6 @@ func TestValidTransactionIngestion(t *testing.T) {
 	}
 	expectedKey := getExpectedRedisKey(payload)
 
-	// Expect Redis SetNX to succeed (isNew = true)
 	redisMock.ExpectSetNX(expectedKey, "1", 10*time.Second).SetVal(true)
 
 	jsonValue, _ := json.Marshal(payload)
@@ -98,12 +96,12 @@ func TestValidTransactionIngestion(t *testing.T) {
 	json.Unmarshal(w.Body.Bytes(), &response)
 
 	assert.Equal(t, "success", response["status"])
-	assert.Equal(t, 1, kafkaMock.MessagesWritten) // Verify Kafka was called
+	assert.Equal(t, 1, kafkaMock.MessagesWritten)
 	assert.NoError(t, redisMock.ExpectationsWereMet())
 }
 
 // ==========================================
-// 2. TEST: DUPLICATE TRANSACTION (BLOCKED)
+// 2. TEST: DUPLICATE TRANSACTION
 // ==========================================
 func TestDuplicateTransactionRejected(t *testing.T) {
 	router, redisMock, kafkaMock := setupTestEnvironment()
@@ -115,7 +113,6 @@ func TestDuplicateTransactionRejected(t *testing.T) {
 	}
 	expectedKey := getExpectedRedisKey(payload)
 
-	// Expect Redis SetNX to fail (isNew = false) indicating duplicate
 	redisMock.ExpectSetNX(expectedKey, "1", 10*time.Second).SetVal(false)
 
 	jsonValue, _ := json.Marshal(payload)
@@ -132,17 +129,16 @@ func TestDuplicateTransactionRejected(t *testing.T) {
 
 	assert.Equal(t, "ignored", response["status"])
 	assert.Equal(t, "Duplicate transaction detected", response["message"])
-	assert.Equal(t, 0, kafkaMock.MessagesWritten) // Verify Kafka was NEVER called
+	assert.Equal(t, 0, kafkaMock.MessagesWritten)
 	assert.NoError(t, redisMock.ExpectationsWereMet())
 }
 
 // ==========================================
-// 3. TEST: INVALID PAYLOAD (BAD REQUEST)
+// 3. TEST: INVALID PAYLOAD
 // ==========================================
 func TestInvalidPayloadRejected(t *testing.T) {
 	router, _, _ := setupTestEnvironment()
 
-	// Sending malformed JSON string
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/api/v1/transactions", bytes.NewBufferString("{invalid-json}"))
 	req.Header.Set("Content-Type", "application/json")

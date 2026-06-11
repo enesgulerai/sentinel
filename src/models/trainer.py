@@ -68,7 +68,6 @@ class ModelTrainer:
 
         model.fit(X_train.values, y_train.values)
 
-        # Evaluation (also using .values)
         y_pred = model.predict(X_test.values)
         y_prob = model.predict_proba(X_test.values)[:, 1]
 
@@ -90,10 +89,9 @@ class ModelTrainer:
         logger.info("Converting model to ONNX format...")
         self.model_dir.mkdir(parents=True, exist_ok=True)
 
-        # Versioning paths
         timestamp = datetime.now().strftime("%Y%m%d")
         versioned_path = self.model_dir / f"fraud_xgboost_{timestamp}.onnx"
-        latest_path = self.model_dir / "fraud_xgboost.onnx"  # Expected by API and tests
+        latest_path = self.model_dir / "fraud_xgboost.onnx"
 
         initial_type = [("float_input", FloatTensorType([None, input_feature_count]))]
 

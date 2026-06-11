@@ -10,7 +10,6 @@ from src.inference.consumer import start_inference_engine
 
 @pytest.fixture
 def mock_env_paths(monkeypatch):
-    # Bypass actual file system checks for MODEL_PATH and SCALER_PATH
     monkeypatch.setattr("src.inference.consumer.Path.exists", lambda self: True)
 
 
@@ -60,8 +59,6 @@ async def test_inference_engine_batch_processing(
     msg2.value = json.dumps({"transaction_id": "TX101", "Amount": 20.0, "Time": 15.0}).encode("utf-8")
     msg2.headers = []
 
-    # The genius part: yield the batch on the first call,
-    # then instantly throw CancelledError to break the `while True` loop gracefully.
     mock_consumer_instance.getmany.side_effect = [{MagicMock(): [msg1, msg2]}, asyncio.CancelledError()]
     mock_kafka_consumer.return_value = mock_consumer_instance
 
