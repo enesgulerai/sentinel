@@ -33,10 +33,10 @@ api:
       value: "http://jaeger:4318/v1/traces"
   resources:
     requests:
-      cpu: "100m"
+      cpu: "200m"
       memory: "64Mi"
     limits:
-      cpu: "800m"
+      cpu: "1200m"
       memory: "256Mi"
   autoscaling:
     enabled: true
@@ -96,9 +96,43 @@ consumer:
 # ==========================================
 postgres:
   enabled: true
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+    limits:
+      cpu: "1000m"
+      memory: "512Mi"
+
 redis:
   enabled: true
+  image:
+    repository: docker.dragonflydb.io/dragonflydb/dragonfly
+    tag: "latest"
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "1000m"
+      memory: "512Mi"
+
 redpanda:
   enabled: true
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "512Mi"
+    limits:
+      cpu: "1500m"
+      memory: "1024Mi"
+
 console:
   enabled: true
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "128Mi"
