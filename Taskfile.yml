@@ -85,21 +85,27 @@ tasks:
 
   # ON
   qa:on:
-    desc: QA - Run local workflow (Fix lint issues, format, and check types)
+    desc: "QA - Run local workflow (Fix lint issues, format, and check types)"
     cmds:
       - task: qa:lint-fix
       - task: qa:format
+      - task: qa:type-check
 
-  # LINT - FORMAT TASKS
+  # LINT - FORMAT - TYPE TASKS
   qa:lint-fix:
-    desc: QA - Run Ruff linter and automatically fix fixable issues
+    desc: "QA - Run Ruff linter and automatically fix fixable issues"
     cmds:
       - uv run ruff check --fix .
 
   qa:format:
-    desc: QA - Run Ruff formatter to auto-format Python code
+    desc: "QA - Run Ruff formatter to auto-format Python code"
     cmds:
       - uv run ruff format .
+
+  qa:type-check:
+    desc: "QA - Run static type checker while ignoring third-party missing stubs"
+    cmds:
+      - uv run mypy src --explicit-package-bases --ignore-missing-imports
 
   # ==========================================
   # ENVIRONMENT
