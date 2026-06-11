@@ -53,9 +53,12 @@ tasks:
   # HELM
   # ==========================================
   helm:on:
-    desc: Helm - Build the local ML image and deploy the Sentinel infrastructure autonomously
+    desc: "Helm - Build the local ML image and deploy the Sentinel infrastructure autonomously"
     cmds:
-      - helm upgrade --install sentinel-prod ./infrastructure/helm/sentinel -n sentinel-namespace --create-namespace
+    - kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/cloud/deploy.yaml
+    - echo "Waiting for Ingress Controller to become ready..."
+    - kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=120s
+    - helm upgrade --install sentinel-prod ./infrastructure/helm/sentinel -n sentinel-namespace --create-namespace
 
   helm:status:
     desc: Helm - Watch the real-time status of the Sentinel Helm deployment
@@ -63,11 +66,11 @@ tasks:
       - kubectl get pods -n sentinel-namespace -w
 
   helm:forward:
-    desc: "Helm - Bind K8s isolated network to localhost (API: 8000, Console: 8080)"
+    desc: "Helm - Bind K8s isolated network to localhost via Ingress (API: 8000, Console: 8080)"
     cmds:
       - |
-        echo "Starting port-forwarding... Press Ctrl+C to stop all connections."
-        kubectl port-forward svc/sentinel-api-service 8000:8000 -n sentinel-namespace &
+        echo "Starting Ingress port-forwarding... Press Ctrl+C to stop all connections."
+        kubectl port-forward svc/ingress-nginx-controller 8000:80 -n ingress-nginx &
         kubectl port-forward svc/console 8080:8080 -n sentinel-namespace &
         wait
 
