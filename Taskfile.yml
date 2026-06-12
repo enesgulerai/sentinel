@@ -55,10 +55,14 @@ tasks:
   helm:on:
     desc: "Helm - Build the local ML image and deploy the Sentinel infrastructure autonomously"
     cmds:
-    - kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/cloud/deploy.yaml
-    - echo "Waiting for Ingress Controller to become ready..."
-    - kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=120s
-    - helm upgrade --install sentinel-prod ./infrastructure/helm/sentinel -n sentinel-namespace --create-namespace
+      - kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/cloud/deploy.yaml
+      - echo "Waiting for Ingress Controller to become ready..."
+      - sleep 5
+      - kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=120s
+      - echo "Pre-pulling Dragonfly image to prevent network timeouts and ImagePullBackOff..."
+      - docker pull docker.dragonflydb.io/dragonflydb/dragonfly:latest
+      - echo "Deploying Sentinel infrastructure via Helm..."
+      - helm upgrade --install sentinel-prod ./infrastructure/helm/sentinel -n sentinel-namespace --create-namespace
 
   helm:status:
     desc: Helm - Watch the real-time status of the Sentinel Helm deployment
