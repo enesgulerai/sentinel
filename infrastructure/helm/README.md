@@ -57,16 +57,13 @@ kubectl port-forward svc/observability-grafana 3000:80 -n monitoring
 Visit http://localhost:3000 and use admin along with the decrypted password to access the Kubernetes compute resource dashboards.
 
 ## End-to-End Verification
-### Option A: The Sanity Check (Manual)
-Send a single payload to the API and verify it traverses the entire pipeline (API -> Redis -> Redpanda -> Rust -> Python -> Postgres).
 
-**1. Inject Event:**
+**1. The K6 Stress Test**
+Blast the API with high-concurrency traffic to watch the HPA auto-scaler in action.
 ```bash
-curl -X POST http://localhost:8000/api/v1/transactions \
-  -H "Content-Type: application/json" \
-  -d '{"transaction_id": "TEST-1001", "user_id": "usr_777", "Amount": 999.99, "Time": 10.0, "V1": 0.0, "V2": 0.0, "V3": 0.0}'
+k6 run tests/fixtures/loadtest.js
 ```
-*(Ensure all features up to V28 are provided to bypass the Rust Validator).*
+*Monitor the autoscaler scaling the API from 1 to 5 replicas dynamically: `kubectl get hpa -n sentinel-namespace -w`*
 
 **2. Verify AI Persistence:**
 Directly query the database to confirm the AI assigned a risk score:
@@ -74,13 +71,6 @@ Directly query the database to confirm the AI assigned a risk score:
 ```bash
 kubectl exec -it -n sentinel-namespace $(kubectl get pods -n sentinel-namespace -l app=postgres -o jsonpath='{.items[0].metadata.name}') -- psql -U sentinel -d sentinel_db -c "SELECT transaction_id, risk_score, created_at FROM transactions ORDER BY created_at DESC LIMIT 5;"
 ```
-
-### Option B: The K6 Stress Test (Elasticity Check)
-Blast the API with high-concurrency traffic to watch the HPA auto-scaler in action.
-```bash
-k6 run tests/fixtures/loadtest.js
-```
-*Monitor the autoscaler scaling the API from 1 to 5 replicas dynamically: `kubectl get hpa -n sentinel-namespace -w`*
 
 ## Teardown
 Once finished, completely remove the Helm release and clean up all associated resources:

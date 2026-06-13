@@ -200,21 +200,6 @@ tasks:
     cmds:
       - cargo test
 
-  test:load-health:
-    desc: "TEST - Run OHA load test for 1 minute with 250 concurrent workers on health endpoint"
-    cmds:
-      - oha -c 250 -z 1m http://localhost:8000/
-
-  test:traffic:
-    desc: "TEST - Generate random live transaction traffic for Dashboard telemetry simulation"
-    cmds:
-      - cmd: echo "Installing required dependencies..."
-        silent: true
-      - pip install -q requests
-      - cmd: echo "Starting live traffic generator... Press Ctrl+C to stop."
-        silent: true
-      - python tests/performance/generate_traffic.py
-
   # ==========================================
   # SECURITY
   # ==========================================
