@@ -177,6 +177,8 @@ tasks:
 
   test:consumer:
     desc: "TEST - Run Python ML Consumer unit tests with Pytest"
+    env:
+      OTEL_SDK_DISABLED: "true"
     cmds:
       - pytest tests/unit/test_consumer.py -v
 
