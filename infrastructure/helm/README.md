@@ -32,8 +32,32 @@ Before testing, you must bind the isolated K8s network to your local machine. Ru
 task helm:forward
 ```
 
+### 4. Observability & Monitoring (Optional)
+To visualize the real-time health, CPU/RAM usage, and ultra-low resource footprint of the microservices (e.g., the ~15MB Go API and ~3MB Rust Validator), you can deploy the official `kube-prometheus-stack`.
+
+Run the following task to deploy Prometheus and Grafana into an isolated `monitoring` namespace:
+```bash
+task helm:monitor
+```
+
+Once deployed, retrieve the auto-generated Grafana admin password:
+```bash
+# For Linux / macOS:
+kubectl get secret --namespace monitoring observability-grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+
+# For Windows (PowerShell):
+$secret = kubectl --namespace monitoring get secret observability-grafana -o jsonpath="{.data.admin-password}"; [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($secret))
+```
+
+Finally, expose the Grafana dashboard to your local machine:
+```bash
+kubectl port-forward svc/observability-grafana 3000:80 -n monitoring
+```
+
+Visit http://localhost:3000 and use admin along with the decrypted password to access the Kubernetes compute resource dashboards.
+
 ## End-to-End Verification
-Option A: The Sanity Check (Manual)
+### Option A: The Sanity Check (Manual)
 Send a single payload to the API and verify it traverses the entire pipeline (API -> Redis -> Redpanda -> Rust -> Python -> Postgres).
 
 **1. Inject Event:**
