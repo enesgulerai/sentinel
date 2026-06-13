@@ -57,7 +57,10 @@ tasks:
     cmds:
       - kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/cloud/deploy.yaml
       - echo "Waiting for Ingress Controller to become ready..."
-      - sleep 5
+      - cmd: powershell -Command "Start-Sleep -Seconds 5"
+        platforms: [windows]
+      - cmd: sleep 5
+        platforms: [linux, darwin]
       - kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=120s
       - echo "Pre-pulling Dragonfly image to prevent network timeouts and ImagePullBackOff..."
       - docker pull docker.dragonflydb.io/dragonflydb/dragonfly:latest
@@ -68,6 +71,15 @@ tasks:
     desc: Helm - Watch the real-time status of the Sentinel Helm deployment
     cmds:
       - kubectl get pods -n sentinel-namespace -w
+
+  helm:monitor:
+    desc: "Helm - Deploy the official Prometheus & Grafana stack for observability"
+    cmds:
+      - echo "Adding Prometheus Community Helm repository..."
+      - helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+      - helm repo update
+      - echo "Installing Kube-Prometheus-Stack..."
+      - helm upgrade --install observability prometheus-community/kube-prometheus-stack -n monitoring --create-namespace --wait
 
   helm:forward:
     desc: "Helm - Bind K8s isolated network to localhost via Ingress (API: 8000, Console: 8080)"
