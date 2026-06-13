@@ -36,6 +36,11 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+
+	// --- PROMETHEUS IMPORTS ---
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type KafkaProducer interface {
@@ -53,6 +58,30 @@ var (
 	recentLogs    []map[string]string
 	logMutex      sync.Mutex
 	logChannel    = make(chan map[string]string, 10000)
+
+	// --- PROMETHEUS METRICS ---
+	httpRequestsTotal = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "sentinel_api_requests_total",
+			Help: "Total number of HTTP requests",
+		},
+		[]string{"method", "path", "status"},
+	)
+	httpRequestDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "sentinel_api_request_duration_seconds",
+			Help:    "Histogram of response latency (seconds)",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"method", "path"},
+	)
+	transactionsProcessed = promauto.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "sentinel_transactions_total",
+			Help: "Total number of processed transactions by status",
+		},
+		[]string{"status"},
+	)
 )
 
 func getEnv(key, fallback string) string {
@@ -160,9 +189,14 @@ func metricsMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
 		c.Next()
-		duration := time.Since(start).Microseconds()
+		duration := time.Since(start).Seconds()
+		status := strconv.Itoa(c.Writer.Status())
+
+		httpRequestsTotal.WithLabelValues(c.Request.Method, c.FullPath(), status).Inc()
+		httpRequestDuration.WithLabelValues(c.Request.Method, c.FullPath()).Observe(duration)
+
 		atomic.AddUint64(&totalRequests, 1)
-		atomic.AddUint64(&totalLatency, uint64(duration))
+		atomic.AddUint64(&totalLatency, uint64(duration*1000000))
 	}
 }
 
@@ -231,26 +265,8 @@ func main() {
 		})
 	})
 
-	router.GET("/metrics", func(c *gin.Context) {
-		reqs := atomic.SwapUint64(&totalRequests, 0)
-		lat := atomic.SwapUint64(&totalLatency, 0)
-
-		avgLat := 0.0
-		if reqs > 0 {
-			avgLat = float64(lat) / float64(reqs) / 1000.0
-		}
-
-		logMutex.Lock()
-		logsCopy := make([]map[string]string, len(recentLogs))
-		copy(logsCopy, recentLogs)
-		logMutex.Unlock()
-
-		c.JSON(http.StatusOK, gin.H{
-			"rps":         reqs,
-			"avg_latency": avgLat,
-			"logs":        logsCopy,
-		})
-	})
+	// --- PROMETHEUS ROUTE ---
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	// --- UI ROUTES START ---
 	dashboardGroup := router.Group("/api/v1/dashboard")
@@ -264,10 +280,10 @@ func main() {
 			defer cancel()
 
 			query := `
-				SELECT transaction_id, user_id, amount, risk_score
-				FROM transactions
-				ORDER BY created_at DESC
-				LIMIT 10`
+                SELECT transaction_id, user_id, amount, risk_score
+                FROM transactions
+                ORDER BY created_at DESC
+                LIMIT 10`
 
 			rows, err := db.QueryContext(ctx, query)
 			if err != nil {
@@ -342,13 +358,6 @@ func main() {
 		log.Printf("Error closing kafka writer: %v\n", err)
 	}
 
-	if err := redisClient.Close(); err != nil {
-		log.Printf("Error closing redis client: %v\n", err)
-	}
-
-	if err := kafkaWriter.Close(); err != nil {
-		log.Printf("Error closing kafka writer: %v\n", err)
-	}
 	log.Println("Shutdown complete.")
 }
 
@@ -420,6 +429,7 @@ func ingestTransaction(c *gin.Context) {
 
 	if !isNew {
 		addLogAsync(txID, amount, "BLOCKED")
+		transactionsProcessed.WithLabelValues("BLOCKED").Inc()
 		c.JSON(http.StatusAccepted, gin.H{
 			"status":  "ignored",
 			"message": "Duplicate transaction detected",
@@ -459,6 +469,7 @@ func ingestTransaction(c *gin.Context) {
 	}
 
 	addLogAsync(txID, amount, "PASSED")
+	transactionsProcessed.WithLabelValues("PASSED").Inc()
 	c.JSON(http.StatusAccepted, gin.H{
 		"status":         "success",
 		"transaction_id": txID,
