@@ -11,7 +11,6 @@ use opentelemetry::trace::{Tracer, Span, Status};
 use opentelemetry::propagation::Extractor;
 use opentelemetry_sdk::trace as sdktrace;
 use opentelemetry_sdk::Resource;
-use opentelemetry_sdk::trace::TracerProvider;
 use opentelemetry_otlp::WithExportConfig;
 
 #[derive(Debug, Deserialize)]
