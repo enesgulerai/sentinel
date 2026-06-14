@@ -2,7 +2,7 @@
 
 This directory contains the production-grade Terraform manifests used to run a comprehensive FinOps (Financial Operations) simulation for the Sentinel architecture on AWS.
 
-The goal of this analysis was to determine the exact commercial footprint required to sustain a continuous load of **2,234 Requests Per Second (RPS) with a ~89ms average latency and 0.00% error rate**, and to actively optimize that infrastructure to prevent cost bloat.
+The goal of this analysis was to determine the exact commercial footprint required to sustain a continuous load of **7,422 Requests Per Second (RPS) with a ~89ms average latency and 0.00% error rate**, and to actively optimize that infrastructure to prevent cost bloat.
 
 ## Executive Summary
 

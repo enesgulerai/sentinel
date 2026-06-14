@@ -65,7 +65,6 @@ Once the Docker containers are up and running, you can access the core services 
 
 | Service | Local URL |
 | :--- | :--- |
-| **Dashboard:** | http://localhost:8000/api/v1/dashboard |
 | **API Gateway** | http://localhost:8000 |
 | **Redpanda** | http://localhost:8080 |
 

@@ -12,8 +12,6 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
-	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -22,11 +20,6 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
 	"github.com/segmentio/kafka-go"
-
-	// --- UI IMPORTS ---
-	"sentinel-api/ui/dashboard"
-
-	"github.com/a-h/templ"
 
 	// --- OTEL IMPORTS ---
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
@@ -52,12 +45,6 @@ var (
 	redisClient *redis.Client
 	kafkaWriter KafkaProducer
 	db          *sql.DB
-
-	totalRequests uint64
-	totalLatency  uint64
-	recentLogs    []map[string]string
-	logMutex      sync.Mutex
-	logChannel    = make(chan map[string]string, 10000)
 
 	// --- PROMETHEUS METRICS ---
 	httpRequestsTotal = promauto.NewCounterVec(
@@ -194,32 +181,6 @@ func metricsMiddleware() gin.HandlerFunc {
 
 		httpRequestsTotal.WithLabelValues(c.Request.Method, c.FullPath(), status).Inc()
 		httpRequestDuration.WithLabelValues(c.Request.Method, c.FullPath()).Observe(duration)
-
-		atomic.AddUint64(&totalRequests, 1)
-		atomic.AddUint64(&totalLatency, uint64(duration*1000000))
-	}
-}
-
-func addLogAsync(txID string, amount float64, status string) {
-	if txID == "" {
-		txID = "UNKNOWN"
-	}
-	select {
-	case logChannel <- map[string]string{
-		"id":     txID,
-		"amount": fmt.Sprintf("%.2f", amount),
-		"status": status,
-	}:
-	default:
-	}
-}
-
-func renderTempl(c *gin.Context, status int, template templ.Component) {
-	c.Status(status)
-	c.Header("Content-Type", "text/html")
-	err := template.Render(c.Request.Context(), c.Writer)
-	if err != nil {
-		c.String(http.StatusInternalServerError, "Template rendering error")
 	}
 }
 
@@ -234,17 +195,6 @@ func main() {
 		}
 	}()
 	// --- OTEL END ---
-
-	go func() {
-		for newLog := range logChannel {
-			logMutex.Lock()
-			recentLogs = append([]map[string]string{newLog}, recentLogs...)
-			if len(recentLogs) > 5 {
-				recentLogs = recentLogs[:5]
-			}
-			logMutex.Unlock()
-		}
-	}()
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
@@ -267,55 +217,6 @@ func main() {
 
 	// --- PROMETHEUS ROUTE ---
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
-
-	// --- UI ROUTES START ---
-	dashboardGroup := router.Group("/api/v1/dashboard")
-	{
-		dashboardGroup.GET("/", func(c *gin.Context) {
-			renderTempl(c, http.StatusOK, dashboard.DashboardPage())
-		})
-
-		dashboardGroup.GET("/stream", func(c *gin.Context) {
-			ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
-			defer cancel()
-
-			query := `
-                SELECT transaction_id, user_id, amount, risk_score
-                FROM transactions
-                ORDER BY created_at DESC
-                LIMIT 10`
-
-			rows, err := db.QueryContext(ctx, query)
-			if err != nil {
-				log.Printf("ERROR: Failed to fetch transaction stream: %v", err)
-				c.String(http.StatusInternalServerError, "<tr><td colspan='4' class='px-6 py-4 text-center text-red-500'>Telemetry pipeline error</td></tr>")
-				return
-			}
-			defer rows.Close()
-
-			var transactions []dashboard.Transaction
-			for rows.Next() {
-				var tx dashboard.Transaction
-				if err := rows.Scan(&tx.TransactionID, &tx.UserID, &tx.Amount, &tx.RiskScore); err != nil {
-					log.Printf("WARN: Error parsing transaction row: %v", err)
-					continue
-				}
-				transactions = append(transactions, tx)
-			}
-
-			if err := rows.Err(); err != nil {
-				log.Printf("ERROR: Database row streaming failure: %v", err)
-			}
-
-			if len(transactions) == 0 {
-				c.String(http.StatusOK, "<tr><td colspan='4' class='px-6 py-12 text-center text-slate-400'>No recent transactions found in database.</td></tr>")
-				return
-			}
-
-			renderTempl(c, http.StatusOK, dashboard.TransactionRows(transactions))
-		})
-	}
-	// --- UI ROUTES END ---
 
 	router.POST("/api/v1/transactions", ingestTransaction)
 
@@ -428,7 +329,6 @@ func ingestTransaction(c *gin.Context) {
 	}
 
 	if !isNew {
-		addLogAsync(txID, amount, "BLOCKED")
 		transactionsProcessed.WithLabelValues("BLOCKED").Inc()
 		c.JSON(http.StatusAccepted, gin.H{
 			"status":  "ignored",
@@ -468,7 +368,6 @@ func ingestTransaction(c *gin.Context) {
 		return
 	}
 
-	addLogAsync(txID, amount, "PASSED")
 	transactionsProcessed.WithLabelValues("PASSED").Inc()
 	c.JSON(http.StatusAccepted, gin.H{
 		"status":         "success",
