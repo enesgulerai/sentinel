@@ -65,6 +65,24 @@ k6 run tests/fixtures/loadtest.js
 ```
 *Monitor the autoscaler scaling the API from 1 to 5 replicas dynamically: `kubectl get hpa -n sentinel-namespace -w`*
 
+**Testing with HPA Enabled**
+
+When testing in a local environment (such as Kind), the `metrics-server` certificate validation must be bypassed so that Kubernetes can read the CPU/RAM metrics and successfully trigger the HPA (Horizontal Pod Autoscaler).
+
+You can apply this patch by running the following PowerShell commands sequentially:
+```powershell
+# 1. Create a patch file for the metrics-server to bypass TLS in local environments
+Set-Content -Path patch.json -Value '[{ "op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls" }]'
+
+# 2. Apply the patch to the metrics-server deployment
+kubectl patch -n kube-system deployment metrics-server --type=json --patch-file patch.json
+
+# 3. Clean up the temporary patch file
+Remove-Item patch.json
+```
+Approximately 30-60 seconds after applying this patch, the metrics-server will start collecting data, and the HPA will automatically scale the API pods based on the real-time demand generated during the k6 load test.
+
+
 **2. Verify AI Persistence:**
 Directly query the database to confirm the AI assigned a risk score:
 
