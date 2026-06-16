@@ -4,11 +4,13 @@ import { check } from 'k6';
 export const options = {
   vus: 200,
   duration: '3m',
+  discardResponseBodies: true,
 };
 
 const params = {
   headers: {
     'Content-Type': 'application/json',
+    'Connection': 'keep-alive',
   },
 };
 
