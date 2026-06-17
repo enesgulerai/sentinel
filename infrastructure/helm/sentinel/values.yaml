@@ -33,17 +33,17 @@ api:
       value: "http://jaeger:4318/v1/traces"
   resources:
     requests:
-      cpu: "200m"
-      memory: "64Mi"
+      cpu: "600m"
+      memory: "128Mi"
     limits:
-      cpu: "1200m"
-      memory: "256Mi"
+      cpu: "600m"
+      memory: "128Mi"
   autoscaling:
     enabled: true
     minReplicas: 1
     maxReplicas: 5
     targetCPUUtilizationPercentage: 60
-    targetMemoryAverageValue: "80Mi"
+    targetMemoryAverageValue: "100Mi"
 
 # ==========================================
 # 2. RUST VALIDATOR
@@ -62,11 +62,11 @@ validator:
       value: "http://jaeger:4318/v1/traces"
   resources:
     requests:
-      cpu: "100m"
-      memory: "64Mi"
+      cpu: "50m"
+      memory: "16Mi"
     limits:
-      cpu: "500m"
-      memory: "256Mi"
+      cpu: "50m"
+      memory: "16Mi"
 
 # ==========================================
 # 3. PYTHON ML CONSUMER
@@ -85,10 +85,10 @@ consumer:
       value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/$(POSTGRES_DB)"
   resources:
     requests:
-      cpu: "200m"
-      memory: "128Mi"
+      cpu: "1000m"
+      memory: "256Mi"
     limits:
-      cpu: "1"
+      cpu: "1000m"
       memory: "256Mi"
 
 # ==========================================
@@ -98,11 +98,11 @@ postgres:
   enabled: true
   resources:
     requests:
-      cpu: "200m"
-      memory: "256Mi"
+      cpu: "100m"
+      memory: "128Mi"
     limits:
-      cpu: "1000m"
-      memory: "512Mi"
+      cpu: "100m"
+      memory: "128Mi"
 
 redis:
   enabled: true
@@ -111,11 +111,11 @@ redis:
     tag: "latest"
   resources:
     requests:
-      cpu: "100m"
-      memory: "256Mi"
+      cpu: "250m"
+      memory: "64Mi"
     limits:
-      cpu: "1000m"
-      memory: "512Mi"
+      cpu: "250m"
+      memory: "64Mi"
 
 redpanda:
   enabled: true
@@ -124,15 +124,15 @@ redpanda:
       cpu: "500m"
       memory: "512Mi"
     limits:
-      cpu: "1500m"
-      memory: "1024Mi"
+      cpu: "500m"
+      memory: "512Mi"
 
 console:
   enabled: true
   resources:
     requests:
-      cpu: "50m"
-      memory: "64Mi"
+      cpu: "100m"
+      memory: "128Mi"
     limits:
-      cpu: "200m"
+      cpu: "100m"
       memory: "128Mi"

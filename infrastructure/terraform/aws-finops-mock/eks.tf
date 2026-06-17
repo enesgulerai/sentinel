@@ -14,8 +14,8 @@ resource "aws_eks_node_group" "sentinel_nodes" {
   subnet_ids      = [aws_subnet.public_1.id]
 
   ami_type       = "AL2_ARM_64"
-  instance_types = ["m6g.large"]
-  capacity_type  = "SPOT" # Faturayı asıl ezecek olan satır
+  instance_types = ["t4g.medium"]
+  capacity_type  = "SPOT"
 
   scaling_config {
     desired_size = 3
