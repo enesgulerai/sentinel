@@ -12,6 +12,7 @@ use opentelemetry::propagation::Extractor;
 use opentelemetry_sdk::trace as sdktrace;
 use opentelemetry_sdk::Resource;
 use opentelemetry_otlp::WithExportConfig;
+use opentelemetry::trace::TraceContextExt;
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
@@ -39,9 +40,17 @@ impl<'a> Extractor for KafkaHeaderExtractor<'a> {
     }
 }
 
+struct KafkaHeaderInjector<'a>(&'a mut BTreeMap<String, Vec<u8>>);
+
+impl<'a> opentelemetry::propagation::Injector for KafkaHeaderInjector<'a> {
+    fn set(&mut self, key: &str, value: String) {
+        self.0.insert(key.to_string(), value.into_bytes());
+    }
+}
+
 fn init_tracer() {
     let endpoint = env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
-        .unwrap_or_else(|_| "http://jaeger:4318/v1/traces".to_string());
+        .unwrap_or_else(|_| "http://localhost:4318/v1/traces".to_string());
 
     let exporter = opentelemetry_otlp::new_exporter()
         .http()
@@ -89,7 +98,7 @@ async fn main() {
         match raw_partition_client.fetch_records(current_offset, 1..1_000_000, 1_000_000).await {
             Ok((records, _high_watermark)) => {
                 if records.is_empty() {
-                    tokio::time::sleep(Duration::from_millis(100)).await;
+                    tokio::time::sleep(Duration::from_millis(5)).await;
                     continue;
                 }
 
@@ -107,10 +116,17 @@ async fn main() {
                     if let Some(value) = &record_and_offset.record.value {
                         match serde_json::from_slice::<FraudEvent>(value) {
                             Ok(_) => {
+                                let mut new_headers = record_and_offset.record.headers.clone();
+                                let cx = parent_context.with_remote_span_context(span.span_context().clone());
+
+                                global::get_text_map_propagator(|prop| {
+                                    prop.inject_context(&cx, &mut KafkaHeaderInjector(&mut new_headers))
+                                });
+
                                 let clean_record = Record {
                                     key: record_and_offset.record.key.clone(),
                                     value: Some(value.clone()),
-                                    headers: record_and_offset.record.headers.clone(),
+                                    headers: new_headers,
                                     timestamp: record_and_offset.record.timestamp,
                                 };
                                 valid_batch.push(clean_record);

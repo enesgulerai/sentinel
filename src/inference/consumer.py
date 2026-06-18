@@ -85,7 +85,7 @@ async def start_inference_engine():
         group_id="fraud-detector-v2",
         auto_offset_reset="earliest",
         max_partition_fetch_bytes=1048576,
-        fetch_max_wait_ms=100,
+        fetch_max_wait_ms=5,
     )
 
     await consumer.start()
@@ -127,69 +127,70 @@ async def start_inference_engine():
                         logger.warning(f"Deserialization failed despite validation: {e}")
                         continue
 
+            # --- OTEL SUB-SPAN STRUCTURE ---
             if not batch_data:
                 continue
 
-            spans = []
-            for ctx in batch_contexts:
-                span = tracer.start_span("Consumer-Process-Batch", context=ctx)
-                spans.append(span)
+            main_ctx = batch_contexts[0] if batch_contexts else None
 
-            try:
-                X_batch = np.array(batch_data, dtype=np.float32)
-                time_amount_cols = X_batch[:, [0, 29]]
-                scaled_time_amount = scaler.transform(time_amount_cols)
+            with tracer.start_as_current_span("Consumer-Process-Batch", context=main_ctx) as main_span:
+                try:
+                    # 1. DATA PREP AND SCALING
+                    with tracer.start_as_current_span("ML-Data-Prep"):
+                        X_batch = np.array(batch_data, dtype=np.float32)
+                        time_amount_cols = X_batch[:, [0, 29]]
+                        scaled_time_amount = scaler.transform(time_amount_cols)
 
-                X_batch[:, 0] = scaled_time_amount[:, 0]
-                X_batch[:, 29] = scaled_time_amount[:, 1]
+                        X_batch[:, 0] = scaled_time_amount[:, 0]
+                        X_batch[:, 29] = scaled_time_amount[:, 1]
 
-                outputs = session.run(None, {input_name: X_batch})
-                fraud_probs = outputs[1]
+                    # 2. AI INFERENCE (ONNX)
+                    with tracer.start_as_current_span("ML-Inference-ONNX"):
+                        outputs = session.run(None, {input_name: X_batch})
+                        fraud_probs = outputs[1]
 
-                db_records = []
-                frauds_in_batch = 0
+                    # 3. DATA TRANSFORMATION AND POST-PROCESSING
+                    with tracer.start_as_current_span("Post-Processing"):
+                        db_records = []
+                        frauds_in_batch = 0
 
-                for i, prob_dict in enumerate(fraud_probs):
-                    fraud_prob = prob_dict.get(1, 0.0) if isinstance(prob_dict, dict) else prob_dict[1]
-                    amt = valid_msgs[i].get("Amount", 0.0)
-                    tx_id = valid_msgs[i].get("transaction_id", "Unknown")
-                    user_id = valid_msgs[i].get("user_id", "anonymous")
+                        for i, prob_dict in enumerate(fraud_probs):
+                            fraud_prob = prob_dict.get(1, 0.0) if isinstance(prob_dict, dict) else prob_dict[1]
+                            amt = valid_msgs[i].get("Amount", 0.0)
+                            tx_id = valid_msgs[i].get("transaction_id", "Unknown")
+                            user_id = valid_msgs[i].get("user_id", "anonymous")
 
-                    if fraud_prob > 0.50:
-                        frauds_in_batch += 1
-                        logger.warning(
-                            f"FRAUD DETECTED! Prob: {fraud_prob * 100:.2f}% | Amount: ${amt:.2f} | TX: {tx_id[:8]}"
+                            if fraud_prob > 0.50:
+                                frauds_in_batch += 1
+                                logger.warning(
+                                    f"FRAUD DETECTED! Prob: {fraud_prob * 100:.2f}% | Amount: ${amt:.2f} | TX: {tx_id[:8]}"
+                                )
+
+                            db_records.append((tx_id, user_id, amt, float(fraud_prob)))
+
+                    # 4. DATABASE WRITE (Async Postgres)
+                    if db_records:
+                        with tracer.start_as_current_span("DB-Write-Postgres"):
+                            insert_query = """
+                                INSERT INTO transactions (transaction_id, user_id, amount, risk_score)
+                                VALUES (%s, %s, %s, %s)
+                                ON CONFLICT (transaction_id) DO NOTHING;
+                            """
+                            await db_cursor.executemany(insert_query, db_records)
+                            await db_conn.commit()
+
+                    main_span.set_status(trace.Status(trace.StatusCode.OK))
+
+                    if len(valid_msgs) > 0:
+                        logger.info(
+                            f"Processed batch of {len(valid_msgs)} txs. Frauds found: {frauds_in_batch}. Saved to DB."
                         )
 
-                    db_records.append((tx_id, user_id, amt, float(fraud_prob)))
-
-                if db_records:
-                    insert_query = """
-                        INSERT INTO transactions (transaction_id, user_id, amount, risk_score)
-                        VALUES (%s, %s, %s, %s)
-                        ON CONFLICT (transaction_id) DO NOTHING;
-                    """
-                    await db_cursor.executemany(insert_query, db_records)
-                    await db_conn.commit()
-
-                for span in spans:
-                    span.set_status(trace.Status(trace.StatusCode.OK))
-
-                if len(valid_msgs) > 0:
-                    logger.info(
-                        f"Processed batch of {len(valid_msgs)} txs. Frauds found: {frauds_in_batch}. Saved to DB."
-                    )
-
-            except Exception as process_err:
-                logger.error(f"Batch Processing Error: {process_err}")
-                await db_conn.rollback()
-                for span in spans:
-                    span.set_status(trace.Status(trace.StatusCode.ERROR, str(process_err)))
-                    span.record_exception(process_err)
-
-            finally:
-                for span in spans:
-                    span.end()
+                except Exception as process_err:
+                    logger.error(f"Batch Processing Error: {process_err}")
+                    await db_conn.rollback()
+                    main_span.set_status(trace.Status(trace.StatusCode.ERROR, str(process_err)))
+                    main_span.record_exception(process_err)
 
     except asyncio.CancelledError:
         logger.info("\nGracefully shutting down the AI engine (Cancelled)...")
