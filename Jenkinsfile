@@ -17,24 +17,29 @@ pipeline {
             }
         }
 
-        stage('Build Images') {
+        stage('Build & Push Images') {
             steps {
-                echo 'Building Sentinel API, Validator, and Consumer images...'
-                sh 'docker build -t ${REGISTRY}/sentinel-api:${IMAGE_TAG} -f docker/api/Dockerfile .'
-                sh 'docker build -t ${REGISTRY}/sentinel-validator:${IMAGE_TAG} -f docker/validator/Dockerfile .'
-                sh 'docker build -t ${REGISTRY}/sentinel-consumer:${IMAGE_TAG} -f docker/consumer/Dockerfile .'
-            }
-        }
-
-        stage('Push to GHCR') {
-            steps {
-                echo 'Authenticating and pushing images to GitHub Container Registry...'
+                echo 'Authenticating and building/pushing images in parallel...'
                 withCredentials([usernamePassword(credentialsId: env.GHCR_CREDENTIALS_ID, usernameVariable: 'GHCR_USER', passwordVariable: 'GHCR_PAT')]) {
+
+                    // Docker login once before parallel execution
                     sh 'echo $GHCR_PAT | docker login ghcr.io -u $GHCR_USER --password-stdin'
 
-                    sh 'docker push ${REGISTRY}/sentinel-api:${IMAGE_TAG}'
-                    sh 'docker push ${REGISTRY}/sentinel-validator:${IMAGE_TAG}'
-                    sh 'docker push ${REGISTRY}/sentinel-consumer:${IMAGE_TAG}'
+                    // Execute independent builds concurrently
+                    parallel(
+                        "API": {
+                            sh "docker build -t ${REGISTRY}/sentinel-api:${IMAGE_TAG} -f docker/api/Dockerfile ."
+                            sh "docker push ${REGISTRY}/sentinel-api:${IMAGE_TAG}"
+                        },
+                        "Validator": {
+                            sh "docker build -t ${REGISTRY}/sentinel-validator:${IMAGE_TAG} -f docker/validator/Dockerfile ."
+                            sh "docker push ${REGISTRY}/sentinel-validator:${IMAGE_TAG}"
+                        },
+                        "Consumer": {
+                            sh "docker build -t ${REGISTRY}/sentinel-consumer:${IMAGE_TAG} -f docker/consumer/Dockerfile ."
+                            sh "docker push ${REGISTRY}/sentinel-consumer:${IMAGE_TAG}"
+                        }
+                    )
                 }
             }
         }
@@ -58,6 +63,14 @@ pipeline {
                     }
                 }
             }
+        }
+    }
+
+    // Post-execution cleanup to maintain Jenkins node health
+    post {
+        always {
+            echo 'Cleaning up workspace...'
+            cleanWs()
         }
     }
 }
