@@ -2,7 +2,7 @@
 
 This directory contains the production-grade Terraform manifests used to run a comprehensive FinOps (Financial Operations) analysis for the Sentinel architecture on AWS.
 
-The ultimate goal of this overhaul was to determine the exact commercial footprint required to sustain a continuous stress-test load of **~7,500 Requests Per Second (RPS) with sub-25ms latency**, and to actively engineer that infrastructure to obliterate cloud cost bloat.
+The ultimate goal of this overhaul was to determine the exact commercial footprint required to sustain a continuous stress-test load of **~14,500 Requests Per Second (RPS) with sub-13ms latency**, and to actively engineer that infrastructure to obliterate cloud cost bloat.
 
 ## Executive Summary
 
@@ -10,7 +10,7 @@ Through aggressive architectural consolidation and strict Kubernetes resource tu
 
 * **Initial Baseline Cost:** ~$452.00 / month
 * **Optimized Cost:** **$121.00 / month**
-* **Performance Impact:** 0% degradation (Sustained 7,500 RPS ceiling at <25ms latency)
+* **Performance Impact:** 0% degradation (Sustained 14,500 RPS ceiling at <13ms latency)
 
 ## Cost Evolution: Before vs. After
 
