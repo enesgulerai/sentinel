@@ -4,7 +4,7 @@ This directory contains the Infrastructure as Code (IaC) configuration designed 
 
 ## Advanced Architecture: Solving the "Noisy Neighbor" Problem
 To achieve sub-millisecond tail latencies and strict resource isolation, we utilize advanced Kubernetes scheduling:
-* **Storage Isolation (Node Affinity):** I/O-heavy datastores (Postgres, Redis, Redpanda) are forced onto dedicated storage nodes.
+* **Storage Isolation (Node Affinity):** I/O-heavy datastores (Postgres, Redis (Dragonfly), Redpanda) are forced onto dedicated storage nodes.
 * **AI Inference Quarantine (Taints & Tolerations):** The CPU-hungry XGBoost AI inference engine operates in absolute quarantine. It can consume 100% of its dedicated node's CPU without causing latency degradation to the Go API.
 * **Zero-Waste Auto-Scaling (HPA):** The stateless Go API Gateway is governed by a Horizontal Pod Autoscaler (HPA), dynamically cloning itself to absorb traffic spikes while maintaining strict, optimized memory limits (256Mi).
 
@@ -71,14 +71,20 @@ When testing in a local environment (such as Kind), the `metrics-server` certifi
 
 You can apply this patch by running the following PowerShell commands sequentially:
 ```powershell
-# 1. Create a patch file for the metrics-server to bypass TLS in local environments
+# 1. Install the metrics-server components from the official repository
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+# 2. Create the JSON patch file for local TLS configuration
 Set-Content -Path patch.json -Value '[{ "op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls" }]'
 
-# 2. Apply the patch to the metrics-server deployment
+# 3. Apply the patch to the metrics-server deployment in the kube-system namespace
 kubectl patch -n kube-system deployment metrics-server --type=json --patch-file patch.json
 
-# 3. Clean up the temporary patch file
-Remove-Item patch.json
+# 4. Clean up the temporary patch file to keep the directory clean
+Remove-Item -Path patch.json -Force
+
+# 5. Verify the deployment status
+kubectl get deployment metrics-server -n kube-system
 ```
 Approximately 30-60 seconds after applying this patch, the metrics-server will start collecting data, and the HPA will automatically scale the API pods based on the real-time demand generated during the k6 load test.
 
