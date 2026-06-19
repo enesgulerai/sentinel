@@ -25,21 +25,23 @@ pipeline {
                     // Docker login once before parallel execution
                     sh 'echo $GHCR_PAT | docker login ghcr.io -u $GHCR_USER --password-stdin'
 
-                    // Execute independent builds concurrently
-                    parallel(
-                        "API": {
-                            sh "docker build -t ${REGISTRY}/sentinel-api:${IMAGE_TAG} -f docker/api/Dockerfile ."
-                            sh "docker push ${REGISTRY}/sentinel-api:${IMAGE_TAG}"
-                        },
-                        "Validator": {
-                            sh "docker build -t ${REGISTRY}/sentinel-validator:${IMAGE_TAG} -f docker/validator/Dockerfile ."
-                            sh "docker push ${REGISTRY}/sentinel-validator:${IMAGE_TAG}"
-                        },
-                        "Consumer": {
-                            sh "docker build -t ${REGISTRY}/sentinel-consumer:${IMAGE_TAG} -f docker/consumer/Dockerfile ."
-                            sh "docker push ${REGISTRY}/sentinel-consumer:${IMAGE_TAG}"
-                        }
-                    )
+                    // Use script block to execute parallel steps inside declarative pipeline
+                    script {
+                        parallel(
+                            "API": {
+                                sh "docker build -t ${REGISTRY}/sentinel-api:${IMAGE_TAG} -f docker/api/Dockerfile ."
+                                sh "docker push ${REGISTRY}/sentinel-api:${IMAGE_TAG}"
+                            },
+                            "Validator": {
+                                sh "docker build -t ${REGISTRY}/sentinel-validator:${IMAGE_TAG} -f docker/validator/Dockerfile ."
+                                sh "docker push ${REGISTRY}/sentinel-validator:${IMAGE_TAG}"
+                            },
+                            "Consumer": {
+                                sh "docker build -t ${REGISTRY}/sentinel-consumer:${IMAGE_TAG} -f docker/consumer/Dockerfile ."
+                                sh "docker push ${REGISTRY}/sentinel-consumer:${IMAGE_TAG}"
+                            }
+                        )
+                    }
                 }
             }
         }
