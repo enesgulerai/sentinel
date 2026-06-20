@@ -1,6 +1,10 @@
 # --- Core Consumer Dependencies ---
 aiokafka==0.14.0
 
+# --- Async & Performance Optimizations ---
+uvloop
+orjson
+
 # --- ML & Data Inference ---
 numpy
 onnxruntime
