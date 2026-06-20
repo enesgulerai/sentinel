@@ -1,87 +1,96 @@
-# Environments
+# ========================================
+# 1. ENVIRONMENTS & SECRETS
+# ========================================
 .venv/
 env/
 venv/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
 
-# Python Cache & Tooling
+# ========================================
+# 2. PYTHON CACHE & TOOLING
+# ========================================
 __pycache__/
 *.py[cod]
 *$py.class
 .ruff_cache/
 .mypy_cache/
 
-# Security & Configurations
-.env
-.env.*
-!.env.example
+# ========================================
+# 3. GO (API) CACHE & BUILD ARTIFACTS
+# ========================================
+vendor/
+bin/
+*.exe
+*.test
+*.out
 
-# IDEs & OS
-.vscode/
-.idea/
-.DS_Store
-Thumbs.db
+# ========================================
+# 4. RUST (VALIDATOR)
+# ========================================
+/src/validator/target/
+**/*.rs.bk
 
-# Taskfile Cache
-.task/
-
-# Data (Raw and Processed)
+# ========================================
+# 5. DATA & ML ARTIFACTS
+# ========================================
 data/raw/*
 data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 
-# Machine Learning Artifacts
 models/*
 !models/*.onnx
 !models/*.joblib
 !models/.gitkeep
 
-# Jupyter/Notebooks
-.ipynb_checkpoints/
+# ========================================
+# 6. INFRASTRUCTURE (TF, HELM, INFRACOST)
+# ========================================
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+*.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
 
-# Logs
+# Helm
+**/charts/
+*.tgz
+
+# Infracost
+.infracost/
+
+# ========================================
+# 7. LOGS, TESTING & JUPYTER
+# ========================================
 logs/*.log
 !logs/.gitkeep
 *.log
-
-# Testing & Coverage
 .coverage
 .pytest_cache/
 htmlcov/
 nosetests.xml
 coverage.xml
 *,cover
+.ipynb_checkpoints/
 
-# Local .terraform directories
-**/.terraform/*
-
-# .tfstate files
-*.tfstate
-*.tfstate.*
-
-# Crash log files
-crash.log
-
-# Ignore any .tfvars files that are generated automatically
-*.tfvars
-*.tfvars.json
-
-# Ignore override files
-override.tf
-override.tf.json
-*_override.tf
-*_override.tf.json
-
-# Ignore CLI configuration files
-.terraformrc
-terraform.rc
-
-# Rust
-/src/validator/target/
-**/*.rs.bk
-
-# Docker
+# ========================================
+# 8. IDEs, OS & TASKFILE
+# ========================================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+.task/
 .docker/
-
-# Infracost cache
-.infracost/

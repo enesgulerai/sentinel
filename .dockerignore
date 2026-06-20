@@ -22,25 +22,31 @@ env/
 # Environment Variables
 .env
 .env.*
+*.pem
+*.key
 
-# IDEs
+# IDEs & OS
 .vscode/
 .idea/
+.DS_Store
+Thumbs.db
 
 # Local Data & Logs
 data/
 *.log
 
-# Project Documentation & Configs
+# Project Documentation, Configs & IaC
 docs/
 README.md
 Taskfile.yml
 docker-compose.yml
+docker-compose.*.yml
 infrastructure/
 
-# Package Managers
-pyproject.toml
-uv.lock
+docker/
+!docker/**/requirements.txt
+Dockerfile*
+.dockerignore
 
 # Testing & Jupyter
 tests/
@@ -48,9 +54,10 @@ notebooks/
 *.ipynb
 .ipynb_checkpoints/
 
-# OS
-.DS_Store
-Thumbs.db
+# Go (API) Caches & Binaries
+vendor/
+bin/
+*.exe
 
 # Rust (Validator)
 src/validator/target/
