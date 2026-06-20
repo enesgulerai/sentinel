@@ -1,6 +1,5 @@
 import asyncio
 import contextlib
-import json
 import os
 import warnings
 from pathlib import Path
@@ -8,7 +7,9 @@ from pathlib import Path
 import joblib
 import numpy as np
 import onnxruntime as ort
+import orjson
 import psycopg
+import uvloop
 from aiokafka import AIOKafkaConsumer
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
@@ -113,7 +114,7 @@ async def start_inference_engine():
                     ctx = extract(carrier)
 
                     try:
-                        transaction = json.loads(msg.value.decode("utf-8"))
+                        transaction = orjson.loads(msg.value)
 
                         row = [transaction.get("Time", 0.0)]
                         for i in range(1, 29):
@@ -203,4 +204,12 @@ async def start_inference_engine():
 
 if __name__ == "__main__":
     with contextlib.suppress(KeyboardInterrupt):
+        try:
+            import uvloop
+
+            uvloop.install()
+            logger.info("uvloop engine activated for high-performance I/O.")
+        except ImportError:
+            logger.info("uvloop not available (likely Windows dev environment). Using standard asyncio.")
+
         asyncio.run(start_inference_engine())
