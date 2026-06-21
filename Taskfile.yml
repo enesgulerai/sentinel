@@ -2,18 +2,16 @@ version: '3'
 
 tasks:
   default:
-    desc: Displays this help menu listing all available commands
+    desc: "[System] Display this help menu listing all available commands"
     silent: true
     cmds:
       - task --list
 
   # ==========================================
-  # DOCKER
+  # DOCKER OPERATIONS
   # ==========================================
-
-  # ON - OFF
   docker:on:
-    desc: "Docker - Start all services using the current Git SHA image tags"
+    desc: "[Docker] Start all services using the current Git SHA image tags"
     vars:
       GIT_SHA:
         sh: git rev-parse --short HEAD
@@ -23,37 +21,34 @@ tasks:
       - echo "Starting all services with IMAGE_TAG={{.GIT_SHA}}"
       - docker compose up -d
 
-
   docker:off:
-    desc: "Docker - Sequentially stops containers and clears all unused images"
+    desc: "[Docker] Sequentially stop containers and clear all unused images"
     cmds:
       - task: docker:down
       - task: docker:clear
       - cmd: echo "Docker environment has been completely shut down and cleaned."
         silent: true
 
-  # OFF TASKS
   docker:down:
-    desc: "Docker - Stops and removes Docker containers, networks, and volumes"
+    desc: "[Docker] Stop and remove Docker containers, networks, and volumes"
     cmds:
       - docker compose down
 
   docker:clear:
-    desc: Docker - Forcefully removes all unused and dangling images to free up space
+    desc: "[Docker] Forcefully remove all unused and dangling images to free up space"
     cmds:
       - docker image prune -a -f
 
-  # STATUS TASKS
   docker:ps:
-    desc: Docker - Shows the current status of running containers
+    desc: "[Docker] Show the current status of running containers"
     cmds:
       - docker compose ps
 
   # ==========================================
-  # HELM
+  # HELM & KUBERNETES
   # ==========================================
   helm:on:
-    desc: "Helm - Build the local ML image and deploy the Sentinel infrastructure autonomously"
+    desc: "[Helm] Build the local ML image and deploy the Sentinel infrastructure autonomously"
     cmds:
       - kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/cloud/deploy.yaml
       - echo "Waiting for Ingress Controller to become ready..."
@@ -68,12 +63,12 @@ tasks:
       - helm upgrade --install sentinel-prod ./infrastructure/helm/sentinel -n sentinel-namespace --create-namespace
 
   helm:status:
-    desc: Helm - Watch the real-time status of the Sentinel Helm deployment
+    desc: "[Helm] Watch the real-time status of the Sentinel Helm deployment"
     cmds:
       - kubectl get pods -n sentinel-namespace -w
 
   helm:monitor:
-    desc: "Helm - Deploy the official Prometheus & Grafana stack for observability"
+    desc: "[Helm] Deploy the official Prometheus & Grafana stack for observability"
     cmds:
       - echo "Adding Prometheus Community Helm repository..."
       - helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
@@ -82,7 +77,7 @@ tasks:
       - helm upgrade --install observability prometheus-community/kube-prometheus-stack -n monitoring --create-namespace --wait
 
   helm:forward:
-    desc: "Helm - Bind K8s isolated network to localhost via Ingress (API: 8000, Console: 8080)"
+    desc: "[Helm] Bind K8s isolated network to localhost via Ingress (API: 8000, Console: 8080)"
     cmds:
       - |
         echo "Starting Ingress port-forwarding... Press Ctrl+C to stop all connections."
@@ -91,35 +86,32 @@ tasks:
         wait
 
   helm:off:
-    desc: Helm - Uninstall the Sentinel Helm release and clean up resources
+    desc: "[Helm] Uninstall the Sentinel Helm release and clean up resources"
     cmds:
       - helm uninstall sentinel-prod -n sentinel-namespace
 
   # ==========================================
   # CODE QUALITY & LINTING
   # ==========================================
-
-  # ON
   qa:on:
-    desc: "QA - Run local workflow (Fix lint issues, format, and check types)"
+    desc: "[QA] Run local workflow (Fix lint issues, format, and check types)"
     cmds:
       - task: qa:lint-fix
       - task: qa:format
       - task: qa:type-check
 
-  # LINT - FORMAT - TYPE TASKS
   qa:lint-fix:
-    desc: "QA - Run Ruff linter and automatically fix fixable issues"
+    desc: "[QA] Run Ruff linter and automatically fix fixable issues"
     cmds:
       - uv run ruff check --fix .
 
   qa:format:
-    desc: "QA - Run Ruff formatter to auto-format Python code"
+    desc: "[QA] Run Ruff formatter to auto-format Python code"
     cmds:
       - uv run ruff format .
 
   qa:type-check:
-    desc: "QA - Run static type checker while ignoring third-party missing stubs"
+    desc: "[QA] Run static type checker while ignoring third-party missing stubs"
     cmds:
       - uv run mypy src --explicit-package-bases --ignore-missing-imports
 
@@ -127,7 +119,7 @@ tasks:
   # ENVIRONMENT
   # ==========================================
   env:install:
-    desc: ENV - Installs project dependencies and sets up the development environment
+    desc: "[Env] Install project dependencies and set up the development environment"
     cmds:
       - uv sync
       - uv run pre-commit install
@@ -135,33 +127,32 @@ tasks:
   # ==========================================
   # MLOPS & DATA PIPELINE
   # ==========================================
-
   ml:pipeline:
-    desc: ML - Runs the complete end-to-end machine learning pipeline
+    desc: "[ML] Run the complete end-to-end machine learning pipeline"
     deps: [ml:train]
     silent: true
     cmds:
       - 'echo "SUCCESS: Full Machine Learning Pipeline Completed!"'
 
   ml:fetch:
-    desc: ML - Downloads raw data and verifies integrity using SHA-256
+    desc: "[ML] Download raw data and verify integrity using SHA-256"
     cmds:
       - uv run python -m src.data.ingestion
 
   ml:preprocess:
-    desc: ML - Splits train/test sets and applies preprocessing without data leakage
+    desc: "[ML] Split train/test sets and apply preprocessing without data leakage"
     deps: [ml:fetch]
     cmds:
       - uv run python -m src.features.preprocessing
 
   ml:train:
-    desc: ML - Trains the champion model (XGBoost) and exports it to ONNX format
+    desc: "[ML] Train the champion model (XGBoost) and export it to ONNX format"
     deps: [ml:preprocess]
     cmds:
       - uv run python -m src.models.trainer
 
   ml:clean:
-    desc: ML - Wipes all generated datasets, scaled files, and trained models
+    desc: "[ML] Wipe all generated datasets, scaled files, and trained models"
     silent: true
     ignore_error: true
     cmds:
@@ -172,30 +163,30 @@ tasks:
       - echo "All generated data and models have been wiped clean."
 
   # ==========================================
-  # TESTS
+  # TESTING
   # ==========================================
   test:all:
-    desc: "TEST - Run all test suites sequentially (API, Validator, Consumer)"
+    desc: "[Test] Run all test suites sequentially (API, Validator, Consumer)"
     cmds:
       - task: test:api
       - task: test:validator
       - task: test:consumer
 
   test:api:
-    desc: "TEST - Run Go API unit and integration tests"
+    desc: "[Test] Run Go API unit and integration tests"
     dir: src/api
     cmds:
       - go test -v .
 
   test:consumer:
-    desc: "TEST - Run Python ML Consumer unit tests with Pytest"
+    desc: "[Test] Run Python ML Consumer unit tests with Pytest"
     env:
       OTEL_SDK_DISABLED: "true"
     cmds:
       - pytest tests/unit/test_consumer.py -v
 
   test:validator:
-    desc: "TEST - Run Rust Validator unit tests via Cargo"
+    desc: "[Test] Run Rust Validator unit tests via Cargo"
     dir: src/validator/src
     cmds:
       - cargo test
@@ -203,27 +194,24 @@ tasks:
   # ==========================================
   # SECURITY
   # ==========================================
-
-  # ON
   security:on:
-    desc: "SEC - Run all security checks (SAST, Infrastructure, and Rust)"
+    desc: "[Security] Run all security checks (SAST, Infrastructure, and Rust)"
     deps: [security:sast, security:infra, security:rust]
 
-  # ON TASKS
   security:sast:
-    desc: "SEC - Run static application security testing (SAST) and vulnerability checks on Go code"
+    desc: "[Security] Run static application security testing (SAST) and vulnerability checks on Go code"
     dir: src/api
     cmds:
       - gosec ./...
       - govulncheck ./...
 
   security:infra:
-    desc: "SEC - Scan filesystem, IaC (Terraform), and dependencies for vulnerabilities using Trivy"
+    desc: "[Security] Scan filesystem, IaC (Terraform), and dependencies for vulnerabilities using Trivy"
     cmds:
       - trivy fs .
 
   security:rust:
-    desc: "SEC - Run DevSecOps linter (Clippy) on Rust code"
+    desc: "[Security] Run DevSecOps linter (Clippy) on Rust code"
     dir: src/validator
     cmds:
       - cargo clippy -- -D warnings
@@ -232,13 +220,13 @@ tasks:
   # CI/CD
   # ==========================================
   jenkins:on:
-    desc: "CI - Start Jenkins container in the background"
+    desc: "[CI/CD] Start Jenkins container in the background"
     dir: docker/jenkins
     cmds:
       - docker compose up -d
 
   jenkins:off:
-    desc: "CI - Stop and remove Jenkins container"
+    desc: "[CI/CD] Stop and remove Jenkins container"
     dir: docker/jenkins
     cmds:
       - docker compose down
