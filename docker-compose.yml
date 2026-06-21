@@ -75,10 +75,11 @@ services:
 
   # --- Service: API ---
   api:
-    image: sentinel-api:${IMAGE_TAG}
+    image: sentinel-api:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: docker/api/Dockerfile
+    pull_policy: missing
     container_name: sentinel-api
     ports:
       - "8000:8000"
@@ -117,6 +118,7 @@ services:
     build:
       context: .
       dockerfile: docker/consumer/Dockerfile
+    pull_policy: missing
     container_name: sentinel-consumer
     command: ["python", "-m", "src.inference.consumer"]
     environment:
@@ -175,9 +177,9 @@ services:
     image: jaegertracing/all-in-one:1.57
     container_name: sentinel-jaeger
     ports:
-      - "16686:16686" # Jaeger Web UI
-      - "4317:4317"   # OTLP gRPC port
-      - "4318:4318"   # OTLP HTTP port
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
     networks:
       - sentinel_net
 
@@ -187,6 +189,7 @@ services:
     build:
       context: .
       dockerfile: docker/validator/Dockerfile
+    pull_policy: missing
     container_name: sentinel-validator
     environment:
       - REDPANDA_BROKER=redpanda:9092

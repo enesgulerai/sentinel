@@ -1,4 +1,4 @@
-# Stage 1: Builder
+# Build Stage
 FROM python:3.11-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -10,7 +10,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends gcc python3-dev && \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
@@ -18,7 +18,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY docker/consumer/requirements.txt .
 RUN uv pip install --no-cache -r requirements.txt
 
-# Stage 2: Runtime
+# Runtime Stage
 FROM python:3.11-slim
 
 LABEL org.opencontainers.image.source="https://github.com/enesgulerdev/sentinel"
@@ -29,13 +29,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-RUN groupadd -r sentinel && useradd -r -g sentinel sentinel
-RUN mkdir -p /app/logs && chown -R sentinel:sentinel /app/logs
+RUN groupadd -r sentinel && \
+    useradd -r -g sentinel sentinel && \
+    mkdir -p /app/logs && \
+    chown -R sentinel:sentinel /app/logs
 
 COPY --from=builder /opt/venv /opt/venv
 
-COPY --chown=sentinel:sentinel src/ ./src/
 COPY --chown=sentinel:sentinel models/ ./models/
+COPY --chown=sentinel:sentinel src/ ./src/
 
 USER sentinel
 

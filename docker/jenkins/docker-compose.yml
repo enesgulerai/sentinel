@@ -1,9 +1,10 @@
 services:
   jenkins:
-    build: .
+    build:
+      context: .
     container_name: sentinel-jenkins
-    privileged: true
     user: root
+    restart: unless-stopped
     ports:
       - "9090:8080"
       - "50000:50000"
