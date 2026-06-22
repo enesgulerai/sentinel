@@ -1,0 +1,85 @@
+name: DevSecOps Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # ==========================================
+  # GO SAST & VULNERABILITY CHECK
+  # ==========================================
+  security-go:
+    name: Go Security Scan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/api
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Environment
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'src/api/go.mod'
+          cache: true
+          cache-dependency-path: 'src/api/go.sum'
+
+      - name: Install Security Tools
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Run Gosec (SAST)
+        run: gosec ./...
+
+      - name: Run Govulncheck (Dependency Audit)
+        run: govulncheck ./...
+
+  # ==========================================
+  # RUST LINTING & SECURITY
+  # ==========================================
+  security-rust:
+    name: Rust Clippy Audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/validator
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Rust Dependency Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "src/validator"
+
+      - name: Run Cargo Clippy (DevSecOps Mode)
+        run: cargo clippy -- -D warnings
+
+  # ==========================================
+  # INFRASTRUCTURE & FILESYSTEM SCAN
+  # ==========================================
+  security-infra:
+    name: Trivy Infrastructure Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy Scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: 'CRITICAL,HIGH'
