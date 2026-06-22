@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -20,6 +19,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
 	"github.com/segmentio/kafka-go"
+	"go.uber.org/zap"
 
 	// --- OTEL IMPORTS ---
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
@@ -41,7 +41,32 @@ type KafkaProducer interface {
 	Close() error
 }
 
+// --- STATIC RESPONSE STRUCTS (STACK ALLOCATED) ---
+type RootResponse struct {
+	Status  string `json:"status"`
+	Service string `json:"service"`
+	Version string `json:"version"`
+}
+
+type ErrorResponse struct {
+	Detail string `json:"detail"`
+}
+
+type IgnoredResponse struct {
+	Status  string `json:"status"`
+	Message string `json:"message"`
+	Source  string `json:"source"`
+}
+
+type SuccessResponse struct {
+	Status        string  `json:"status"`
+	TransactionID string  `json:"transaction_id"`
+	Amount        float64 `json:"amount"`
+	Source        string  `json:"source"`
+}
+
 var (
+	logger      *zap.Logger
 	redisClient *redis.Client
 	kafkaWriter KafkaProducer
 	db          *sql.DB
@@ -87,7 +112,7 @@ func initTracer() func(context.Context) error {
 		otlptracehttp.WithInsecure(),
 	)
 	if err != nil {
-		log.Fatalf("FATAL: Failed to create OTel exporter: %v", err)
+		logger.Fatal("FATAL: Failed to create OTel exporter", zap.Error(err))
 	}
 
 	tp := sdktrace.NewTracerProvider(
@@ -104,7 +129,7 @@ func initTracer() func(context.Context) error {
 }
 
 func initServices() {
-	log.Println("Starting Sentinel ML API Gateway (Go/Gin)...")
+	logger.Info("Starting Sentinel ML API Gateway (Go/Gin)...")
 
 	// --- REDIS CONFIG ---
 	redisHost := getEnv("REDIS_HOST", "localhost")
@@ -125,9 +150,9 @@ func initServices() {
 	defer cancel()
 
 	if err := redisClient.Ping(ctx).Err(); err != nil {
-		log.Fatalf("FATAL: Redis connection failed -> %v", err)
+		logger.Fatal("Redis connection failed", zap.Error(err))
 	}
-	log.Printf("SUCCESS: Connected to Redis at %s:%s", redisHost, redisPort)
+	logger.Info("Connected to Redis", zap.String("host", redisHost), zap.String("port", redisPort))
 
 	// --- POSTGRESQL CONFIG ---
 	pgHost := getEnv("POSTGRES_HOST", "localhost")
@@ -142,7 +167,7 @@ func initServices() {
 	var err error
 	db, err = sql.Open("postgres", dsn)
 	if err != nil {
-		log.Fatalf("FATAL: Failed to open PostgreSQL driver: %v", err)
+		logger.Fatal("Failed to open PostgreSQL driver", zap.Error(err))
 	}
 
 	db.SetMaxOpenConns(50)
@@ -150,9 +175,9 @@ func initServices() {
 	db.SetConnMaxLifetime(5 * time.Minute)
 
 	if err := db.PingContext(ctx); err != nil {
-		log.Fatalf("FATAL: PostgreSQL connection failed -> %v", err)
+		logger.Fatal("PostgreSQL connection failed", zap.Error(err))
 	}
-	log.Printf("SUCCESS: Connected to PostgreSQL Pool at %s:%s", pgHost, pgPort)
+	logger.Info("Connected to PostgreSQL Pool", zap.String("host", pgHost), zap.String("port", pgPort))
 
 	// --- KAFKA CONFIG ---
 	kafkaBroker := getEnv("REDPANDA_BROKER", "localhost:19092")
@@ -169,7 +194,7 @@ func initServices() {
 		ReadTimeout:  3 * time.Second,
 		WriteTimeout: 3 * time.Second,
 	}
-	log.Printf("SUCCESS: Connected to Redpanda at %s (Async Mode)", kafkaBroker)
+	logger.Info("Connected to Redpanda (Async Mode)", zap.String("broker", kafkaBroker))
 }
 
 func metricsMiddleware() gin.HandlerFunc {
@@ -185,13 +210,17 @@ func metricsMiddleware() gin.HandlerFunc {
 }
 
 func main() {
+	// Initialize highly optimized zero-allocation logger
+	logger, _ = zap.NewProduction()
+	defer logger.Sync()
+
 	initServices()
 
 	// --- OTEL START ---
 	shutdownTracer := initTracer()
 	defer func() {
 		if err := shutdownTracer(context.Background()); err != nil {
-			log.Printf("Error shutting down tracer: %v", err)
+			logger.Error("Error shutting down tracer", zap.Error(err))
 		}
 	}()
 	// --- OTEL END ---
@@ -202,16 +231,15 @@ func main() {
 
 	// --- OTEL GIN MIDDLEWARE ---
 	router.Use(otelgin.Middleware("sentinel-api"))
-
 	router.Use(metricsMiddleware())
-
 	pprof.Register(router)
 
 	router.GET("/", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"status":  "online",
-			"service": "Sentinel ML API (Go)",
-			"version": "1.0.0",
+		// Stack-allocated response
+		c.JSON(http.StatusOK, RootResponse{
+			Status:  "online",
+			Service: "Sentinel ML API (Go)",
+			Version: "1.14.0",
 		})
 	})
 
@@ -229,37 +257,37 @@ func main() {
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Listen error: %s\n", err)
+			logger.Fatal("Listen error", zap.Error(err))
 		}
 	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	log.Println("Shutting down API...")
+	logger.Info("Shutting down API...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatal("Server forced to shutdown:", err)
+		logger.Fatal("Server forced to shutdown", zap.Error(err))
 	}
 
 	if db != nil {
 		if err := db.Close(); err != nil {
-			log.Printf("Error closing database: %v\n", err)
+			logger.Error("Error closing database", zap.Error(err))
 		}
 	}
 
 	if err := redisClient.Close(); err != nil {
-		log.Printf("Error closing redis client: %v\n", err)
+		logger.Error("Error closing redis client", zap.Error(err))
 	}
 
 	if err := kafkaWriter.Close(); err != nil {
-		log.Printf("Error closing kafka writer: %v\n", err)
+		logger.Error("Error closing kafka writer", zap.Error(err))
 	}
 
-	log.Println("Shutdown complete.")
+	logger.Info("Shutdown complete.")
 }
 
 func executeWithRetry(attempts int, initialDelay time.Duration, operation func() error) error {
@@ -281,7 +309,7 @@ func ingestTransaction(c *gin.Context) {
 
 	var rawData map[string]any
 	if err := c.ShouldBindJSON(&rawData); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid JSON payload format"})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Detail: "Invalid JSON payload format"})
 		return
 	}
 
@@ -303,7 +331,7 @@ func ingestTransaction(c *gin.Context) {
 
 	hashBytes, err := json.Marshal(hashData)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to process transaction payload"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Detail: "Failed to process transaction payload"})
 		return
 	}
 
@@ -323,17 +351,17 @@ func ingestTransaction(c *gin.Context) {
 	redisSpan.End()
 
 	if err != nil {
-		log.Printf("Critical: Redis idempotency check failed after retries: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal Server Error"})
+		logger.Error("Redis idempotency check failed after retries", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Detail: "Internal Server Error"})
 		return
 	}
 
 	if !isNew {
 		transactionsProcessed.WithLabelValues("BLOCKED").Inc()
-		c.JSON(http.StatusAccepted, gin.H{
-			"status":  "ignored",
-			"message": "Duplicate transaction detected",
-			"source":  "Redis",
+		c.JSON(http.StatusAccepted, IgnoredResponse{
+			Status:  "ignored",
+			Message: "Duplicate transaction detected",
+			Source:  "Redis",
 		})
 		return
 	}
@@ -363,16 +391,16 @@ func ingestTransaction(c *gin.Context) {
 	kafkaSpan.End()
 
 	if err != nil {
-		log.Printf("Critical: Gateway failed to queue transaction to Kafka after retries: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to queue transaction"})
+		logger.Error("Gateway failed to queue transaction to Kafka after retries", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Detail: "Failed to queue transaction"})
 		return
 	}
 
 	transactionsProcessed.WithLabelValues("PASSED").Inc()
-	c.JSON(http.StatusAccepted, gin.H{
-		"status":         "success",
-		"transaction_id": txID,
-		"amount":         amount,
-		"source":         "Redpanda",
+	c.JSON(http.StatusAccepted, SuccessResponse{
+		Status:        "success",
+		TransactionID: txID,
+		Amount:        amount,
+		Source:        "Redpanda",
 	})
 }
