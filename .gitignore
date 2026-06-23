@@ -1,6 +1,4 @@
-# ========================================
-# 1. ENVIRONMENTS & SECRETS
-# ========================================
+# Environments & Secrets
 .venv/
 env/
 venv/
@@ -10,33 +8,25 @@ venv/
 *.pem
 *.key
 
-# ========================================
-# 2. PYTHON CACHE & TOOLING
-# ========================================
+# Python Cache & Tooling
 __pycache__/
 *.py[cod]
 *$py.class
 .ruff_cache/
 .mypy_cache/
 
-# ========================================
-# 3. GO (API) CACHE & BUILD ARTIFACTS
-# ========================================
+# 3. Go Cache & Build Artifacts
 vendor/
 bin/
 *.exe
 *.test
 *.out
 
-# ========================================
-# 4. RUST (VALIDATOR)
-# ========================================
+# 4. Rust Cache & Build Artifacts
 /src/validator/target/
 **/*.rs.bk
 
-# ========================================
-# 5. DATA & ML ARTIFACTS
-# ========================================
+# 5. Data & ML Artifacts
 data/raw/*
 data/processed/*
 !data/raw/.gitkeep
@@ -47,10 +37,7 @@ models/*
 !models/*.joblib
 !models/.gitkeep
 
-# ========================================
-# 6. INFRASTRUCTURE (TF, HELM, INFRACOST)
-# ========================================
-# Terraform
+# Infrastructure
 **/.terraform/*
 *.tfstate
 *.tfstate.*
@@ -64,16 +51,12 @@ override.tf.json
 .terraformrc
 terraform.rc
 
-# Helm
 **/charts/
 *.tgz
 
-# Infracost
 .infracost/
 
-# ========================================
-# 7. LOGS, TESTING & JUPYTER
-# ========================================
+# Logs, Tests & Jupyter
 logs/*.log
 !logs/.gitkeep
 *.log
@@ -85,9 +68,7 @@ coverage.xml
 *,cover
 .ipynb_checkpoints/
 
-# ========================================
-# 8. IDEs, OS & TASKFILE
-# ========================================
+# 8. IDEs, OS & Taskfile
 .vscode/
 .idea/
 .DS_Store

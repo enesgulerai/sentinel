@@ -7,11 +7,9 @@ on:
     branches: [ "main" ]
 
 jobs:
-  # ==========================================
-  # GO STRICT FORMATTING & LINTING
-  # ==========================================
+  # Go Format
   format-go:
-    name: Go Strict Format
+    name: Go Format
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -34,11 +32,9 @@ jobs:
           working-directory: src/api
           args: --timeout=5m
 
-  # ==========================================
-  # PYTHON RUFF FORMATTING
-  # ==========================================
+  # Python Format
   format-python:
-    name: Python Ruff Format
+    name: Python Format
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -53,11 +49,9 @@ jobs:
       - name: Run Ruff Formatter (Strict Check)
         run: uvx ruff format --check .
 
-  # ==========================================
-  # RUST STRICT FORMATTING
-  # ==========================================
+  # Rust Format
   format-rust:
-    name: Rust Strict Format
+    name: Rust Format
     runs-on: ubuntu-latest
     defaults:
       run:

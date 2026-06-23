@@ -1,5 +1,5 @@
 services:
-  # --- Service: Redpanda ---
+  # Redpanda
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:v23.3.11
     container_name: sentinel-redpanda
@@ -32,7 +32,7 @@ services:
           cpus: '1.0'
           memory: 1.5G
 
-  # --- Service: Console ---
+  # Console
   console:
     image: docker.redpanda.com/redpandadata/console:v2.4.5
     container_name: sentinel-console
@@ -53,7 +53,7 @@ services:
         limits:
           memory: 256M
 
-  # --- Service: Redis ---
+  # Redis
   redis:
     image: redis:7-alpine
     container_name: sentinel-redis
@@ -73,7 +73,7 @@ services:
         limits:
           memory: 64M
 
-  # --- Service: API ---
+  # API
   api:
     image: sentinel-api:${IMAGE_TAG:-latest}
     build:
@@ -112,7 +112,7 @@ services:
           cpus: '0.5'
           memory: 128M
 
-  # --- Service: Consumer ---
+  # Consumer
   consumer:
     image: sentinel-consumer:${IMAGE_TAG:-latest}
     build:
@@ -142,7 +142,7 @@ services:
           cpus: '1.0'
           memory: 1G
 
-  # --- Service: Postgres ---
+  # Postgres
   postgres:
     image: pgvector/pgvector:pg15
     container_name: sentinel-postgres
@@ -172,7 +172,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # --- Service: Jaeger ---
+  # Jaeger
   jaeger:
     image: jaegertracing/all-in-one:1.57
     container_name: sentinel-jaeger
@@ -183,7 +183,7 @@ services:
     networks:
       - sentinel_net
 
-  # --- Service: Validator ---
+  # Validator
   validator:
     image: sentinel-validator:${IMAGE_TAG:-latest}
     build:

@@ -22,10 +22,8 @@ pipeline {
                 echo 'Authenticating and building/pushing images in parallel...'
                 withCredentials([usernamePassword(credentialsId: env.GHCR_CREDENTIALS_ID, usernameVariable: 'GHCR_USER', passwordVariable: 'GHCR_PAT')]) {
 
-                    // Docker login once before parallel execution
                     sh 'echo $GHCR_PAT | docker login ghcr.io -u $GHCR_USER --password-stdin'
 
-                    // Use script block to execute parallel steps inside declarative pipeline
                     script {
                         parallel(
                             "API": {
@@ -68,7 +66,6 @@ pipeline {
         }
     }
 
-    // Post-execution cleanup to maintain Jenkins node health
     post {
         always {
             echo 'Cleaning up workspace...'

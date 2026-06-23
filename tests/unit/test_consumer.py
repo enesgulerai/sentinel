@@ -21,9 +21,7 @@ def mock_env_paths(monkeypatch):
 async def test_inference_engine_batch_processing(
     mock_joblib_load, mock_onnx_session, mock_db_connect, mock_kafka_consumer, mock_env_paths
 ):
-    # ==========================================
-    # 1. MOCK ML COMPONENTS (SCALER & ONNX)
-    # ==========================================
+    # 1. Mock ML Components (Scaler & ONNX)
     mock_scaler = MagicMock()
     mock_scaler.transform.return_value = np.array([[0.5, 100.0], [0.1, 20.0]])
     mock_joblib_load.return_value = mock_scaler
@@ -36,21 +34,16 @@ async def test_inference_engine_batch_processing(
     mock_session_instance.run.return_value = [None, [{0: 0.15, 1: 0.85}, {0: 0.95, 1: 0.05}]]
     mock_onnx_session.return_value = mock_session_instance
 
-    # ==========================================
-    # 2. MOCK POSTGRESQL (ASYNC)
-    # ==========================================
+    # 2. Mock Database Connection
     mock_db_conn = AsyncMock()
     mock_db_cursor = AsyncMock()
 
     mock_db_conn.cursor = MagicMock(return_value=mock_db_cursor)
     mock_db_connect.return_value = mock_db_conn
 
-    # ==========================================
-    # 3. MOCK KAFKA & INFINITE LOOP BREAKER
-    # ==========================================
+    # 3. Mock Kafka
     mock_consumer_instance = AsyncMock()
 
-    # Construct fake incoming Kafka messages
     msg1 = MagicMock()
     msg1.value = json.dumps({"transaction_id": "TX100", "Amount": 1500.0, "Time": 10.0}).encode("utf-8")
     msg1.headers = []
@@ -62,23 +55,16 @@ async def test_inference_engine_batch_processing(
     mock_consumer_instance.getmany.side_effect = [{MagicMock(): [msg1, msg2]}, asyncio.CancelledError()]
     mock_kafka_consumer.return_value = mock_consumer_instance
 
-    # ==========================================
-    # 4. EXECUTE THE ENGINE
-    # ==========================================
+    # 4. Execute the Inference Engine
     await start_inference_engine()
 
-    # ==========================================
-    # 5. VERIFY SYSTEM BEHAVIOR
-    # ==========================================
+    # 5. Verify System Interactions
 
-    # Verify ML transformations were applied
     assert mock_scaler.transform.called
     assert mock_session_instance.run.called
 
-    # Verify Database interactions (Only the Fraud transaction TX100 should be inserted)
     assert mock_db_cursor.executemany.called
 
-    # Inspect the exact query and data sent to PostgreSQL
     call_args = mock_db_cursor.executemany.call_args[0]
     inserted_records = call_args[1]
 

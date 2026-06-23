@@ -1,20 +1,20 @@
-# --- Core Consumer Dependencies ---
+# Core Consumer Dependencies
 aiokafka==0.14.0
 
-# --- Async & Performance Optimizations ---
+# Async & Performance Optimizations
 uvloop
 orjson
 
-# --- ML & Data Inference ---
+# ML & Data Inference
 numpy
 onnxruntime
 joblib
 scikit-learn
 
-# --- Database ---
+# Database
 psycopg[binary]==3.3.4
 
-# --- OpenTelemetry (Tracing) ---
+# OpenTelemetry
 opentelemetry-api==1.41.1
 opentelemetry-sdk==1.41.1
 opentelemetry-exporter-otlp==1.41.1

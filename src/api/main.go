@@ -21,7 +21,7 @@ import (
 	"github.com/segmentio/kafka-go"
 	"go.uber.org/zap"
 
-	// --- OTEL IMPORTS ---
+	// OTel Imports
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
@@ -30,7 +30,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 
-	// --- PROMETHEUS IMPORTS ---
+	// Prometheus Imports
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -41,7 +41,7 @@ type KafkaProducer interface {
 	Close() error
 }
 
-// --- STATIC RESPONSE STRUCTS (STACK ALLOCATED) ---
+// Static Response Structs
 type RootResponse struct {
 	Status  string `json:"status"`
 	Service string `json:"service"`
@@ -71,7 +71,7 @@ var (
 	kafkaWriter KafkaProducer
 	db          *sql.DB
 
-	// --- PROMETHEUS METRICS ---
+	// Prometheus Metrics
 	httpRequestsTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "sentinel_api_requests_total",
@@ -103,7 +103,7 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-// --- OTEL INITIALIZATION ---
+// OTel Initialization
 func initTracer() func(context.Context) error {
 	jaegerEndpoint := getEnv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4318")
 
@@ -131,7 +131,7 @@ func initTracer() func(context.Context) error {
 func initServices() {
 	logger.Info("Starting Sentinel ML API Gateway (Go/Gin)...")
 
-	// --- REDIS CONFIG ---
+	// Redis Configuration
 	redisHost := getEnv("REDIS_HOST", "localhost")
 	redisPort := getEnv("REDIS_PORT", "6379")
 
@@ -154,7 +154,7 @@ func initServices() {
 	}
 	logger.Info("Connected to Redis", zap.String("host", redisHost), zap.String("port", redisPort))
 
-	// --- POSTGRESQL CONFIG ---
+	// PostgreSQL Configuration
 	pgHost := getEnv("POSTGRES_HOST", "localhost")
 	pgPort := getEnv("POSTGRES_PORT", "5432")
 	pgUser := getEnv("POSTGRES_USER", "postgres")
@@ -179,7 +179,7 @@ func initServices() {
 	}
 	logger.Info("Connected to PostgreSQL Pool", zap.String("host", pgHost), zap.String("port", pgPort))
 
-	// --- KAFKA CONFIG ---
+	// Kafka Configuration
 	kafkaBroker := getEnv("REDPANDA_BROKER", "localhost:19092")
 	topicName := getEnv("KAFKA_TOPIC", "raw-events")
 
@@ -210,32 +210,30 @@ func metricsMiddleware() gin.HandlerFunc {
 }
 
 func main() {
-	// Initialize highly optimized zero-allocation logger
 	logger, _ = zap.NewProduction()
 	defer func() { _ = logger.Sync() }()
 
 	initServices()
 
-	// --- OTEL START ---
+	// OTel Start
 	shutdownTracer := initTracer()
 	defer func() {
 		if err := shutdownTracer(context.Background()); err != nil {
 			logger.Error("Error shutting down tracer", zap.Error(err))
 		}
 	}()
-	// --- OTEL END ---
+	// OTel End
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
 	router.Use(gin.Recovery())
 
-	// --- OTEL GIN MIDDLEWARE ---
+	// OTel Middleware
 	router.Use(otelgin.Middleware("sentinel-api"))
 	router.Use(metricsMiddleware())
 	pprof.Register(router)
 
 	router.GET("/", func(c *gin.Context) {
-		// Stack-allocated response
 		c.JSON(http.StatusOK, RootResponse{
 			Status:  "online",
 			Service: "Sentinel ML API (Go)",
@@ -243,7 +241,7 @@ func main() {
 		})
 	})
 
-	// --- PROMETHEUS ROUTE ---
+	// Prometheus Route
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	router.POST("/api/v1/transactions", ingestTransaction)
@@ -302,7 +300,7 @@ func executeWithRetry(attempts int, initialDelay time.Duration, operation func()
 }
 
 func ingestTransaction(c *gin.Context) {
-	// --- OTEL SPAN START ---
+	// OTel Span Start
 	tracer := otel.Tracer("sentinel-api")
 	ctx, span := tracer.Start(c.Request.Context(), "ingestTransaction")
 	defer span.End()
@@ -342,7 +340,7 @@ func ingestTransaction(c *gin.Context) {
 	var isNew bool
 	var redisErr error
 
-	// --- OTEL REDIS SPAN ---
+	// OTel Redis Span
 	_, redisSpan := tracer.Start(ctx, "Redis-SetNX")
 	err = executeWithRetry(3, 10*time.Millisecond, func() error {
 		isNew, redisErr = redisClient.SetNX(ctx, redisKey, "1", 10*time.Second).Result()
@@ -368,7 +366,7 @@ func ingestTransaction(c *gin.Context) {
 
 	fullPayload, _ := json.Marshal(rawData)
 
-	// --- OTEL KAFKA SPAN ---
+	// OTel Kafka Span
 	_, kafkaSpan := tracer.Start(ctx, "Kafka-Write")
 
 	carrier := propagation.MapCarrier{}

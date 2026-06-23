@@ -11,7 +11,7 @@ repos:
       - id: check-added-large-files
         args: ['--maxkb=5120']
 
-  # Python (Consumer)
+  # Python
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.4.8
     hooks:
@@ -26,14 +26,14 @@ repos:
         args: ["-c", "pyproject.toml"]
         additional_dependencies: ["bandit[toml]"]
 
-  # Go (API Gateway)
+  # Go
   - repo: https://github.com/dnephin/pre-commit-golang
     rev: v0.5.1
     hooks:
       - id: go-fmt
       - id: go-vet
 
-  # Rust (Validator)
+  # Rust
   - repo: https://github.com/doublify/pre-commit-rust
     rev: v1.0
     hooks:

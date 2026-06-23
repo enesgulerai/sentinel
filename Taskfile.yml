@@ -7,9 +7,7 @@ tasks:
     cmds:
       - task --list
 
-  # ==========================================
-  # DOCKER OPERATIONS
-  # ==========================================
+  # Docker
   docker:on:
     desc: "[Docker] Start all services using the current Git SHA image tags"
     vars:
@@ -44,9 +42,7 @@ tasks:
     cmds:
       - docker compose ps
 
-  # ==========================================
-  # HELM & KUBERNETES
-  # ==========================================
+  # Helm & Kubernetes
   helm:on:
     desc: "[Helm] Build the local ML image and deploy the Sentinel infrastructure autonomously"
     cmds:
@@ -90,9 +86,7 @@ tasks:
     cmds:
       - helm uninstall sentinel-prod -n sentinel-namespace
 
-  # ==========================================
-  # CODE QUALITY & LINTING
-  # ==========================================
+  # Code Quality Assurance
   qa:on:
     desc: "[QA] Run local workflow (Fix lint issues, format, and check types)"
     cmds:
@@ -115,18 +109,14 @@ tasks:
     cmds:
       - uv run mypy src --explicit-package-bases --ignore-missing-imports
 
-  # ==========================================
-  # ENVIRONMENT
-  # ==========================================
+  # Environment Setup
   env:install:
     desc: "[Env] Install project dependencies and set up the development environment"
     cmds:
       - uv sync
       - uv run pre-commit install
 
-  # ==========================================
-  # MLOPS & DATA PIPELINE
-  # ==========================================
+  # MLOps & Data Pipeline
   ml:pipeline:
     desc: "[ML] Run the complete end-to-end machine learning pipeline"
     deps: [ml:train]
@@ -162,9 +152,7 @@ tasks:
       - rm -f models/*.onnx
       - echo "All generated data and models have been wiped clean."
 
-  # ==========================================
-  # TESTING
-  # ==========================================
+  # Tests
   test:all:
     desc: "[Test] Run all test suites sequentially (API, Validator, Consumer)"
     cmds:
@@ -191,9 +179,7 @@ tasks:
     cmds:
       - cargo test
 
-  # ==========================================
-  # SECURITY
-  # ==========================================
+  # Security
   security:on:
     desc: "[Security] Run all security checks (SAST, Infrastructure, and Rust)"
     deps: [security:sast, security:infra, security:rust]
@@ -216,9 +202,7 @@ tasks:
     cmds:
       - cargo clippy -- -D warnings
 
-  # ==========================================
   # CI/CD
-  # ==========================================
   jenkins:on:
     desc: "[CI/CD] Start Jenkins container in the background"
     dir: docker/jenkins

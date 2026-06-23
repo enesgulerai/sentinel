@@ -128,7 +128,7 @@ async def start_inference_engine():
                         logger.warning(f"Deserialization failed despite validation: {e}")
                         continue
 
-            # --- OTEL SUB-SPAN STRUCTURE ---
+            # OTel Sub-Span Structure
             if not batch_data:
                 continue
 
@@ -136,7 +136,7 @@ async def start_inference_engine():
 
             with tracer.start_as_current_span("Consumer-Process-Batch", context=main_ctx) as main_span:
                 try:
-                    # 1. DATA PREP AND SCALING
+                    # 1. Data Preprocessing and Scaling
                     with tracer.start_as_current_span("ML-Data-Prep"):
                         X_batch = np.array(batch_data, dtype=np.float32)
                         time_amount_cols = X_batch[:, [0, 29]]
@@ -145,12 +145,12 @@ async def start_inference_engine():
                         X_batch[:, 0] = scaled_time_amount[:, 0]
                         X_batch[:, 29] = scaled_time_amount[:, 1]
 
-                    # 2. AI INFERENCE (ONNX)
+                    # 2. AI Inference
                     with tracer.start_as_current_span("ML-Inference-ONNX"):
                         outputs = session.run(None, {input_name: X_batch})
                         fraud_probs = outputs[1]
 
-                    # 3. DATA TRANSFORMATION AND POST-PROCESSING
+                    # 3. Data Transformation and Post-Processing
                     with tracer.start_as_current_span("Post-Processing"):
                         db_records = []
                         frauds_in_batch = 0
@@ -169,7 +169,7 @@ async def start_inference_engine():
 
                             db_records.append((tx_id, user_id, amt, float(fraud_prob)))
 
-                    # 4. DATABASE WRITE (Async Postgres)
+                    # 4. Database Write
                     if db_records:
                         with tracer.start_as_current_span("DB-Write-Postgres"):
                             insert_query = """

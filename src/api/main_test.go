@@ -17,9 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==========================================
-// MOCK KAFKA PRODUCER
-// ==========================================
+// Mock Kafka Writer
 type MockKafkaWriter struct {
 	MessagesWritten int
 	ShouldFail      bool
@@ -37,9 +35,7 @@ func (m *MockKafkaWriter) Close() error {
 	return nil
 }
 
-// ==========================================
-// TEST ENVIRONMENT SETUP
-// ==========================================
+// Test Environment Setup
 func setupTestEnvironment() (*gin.Engine, redismock.ClientMock, *MockKafkaWriter) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
@@ -68,9 +64,7 @@ func getExpectedRedisKey(payload map[string]interface{}) string {
 	return "tx:" + hex.EncodeToString(hash[:])
 }
 
-// ==========================================
-// 1. TEST: VALID TRANSACTION
-// ==========================================
+// Test: Valid Transaction
 func TestValidTransactionIngestion(t *testing.T) {
 	router, redisMock, kafkaMock := setupTestEnvironment()
 
@@ -100,9 +94,7 @@ func TestValidTransactionIngestion(t *testing.T) {
 	assert.NoError(t, redisMock.ExpectationsWereMet())
 }
 
-// ==========================================
-// 2. TEST: DUPLICATE TRANSACTION
-// ==========================================
+// Test: Duplicate Transaction
 func TestDuplicateTransactionRejected(t *testing.T) {
 	router, redisMock, kafkaMock := setupTestEnvironment()
 
@@ -133,9 +125,7 @@ func TestDuplicateTransactionRejected(t *testing.T) {
 	assert.NoError(t, redisMock.ExpectationsWereMet())
 }
 
-// ==========================================
-// 3. TEST: INVALID PAYLOAD
-// ==========================================
+// Test: Invalid Payload
 func TestInvalidPayloadRejected(t *testing.T) {
 	router, _, _ := setupTestEnvironment()
 

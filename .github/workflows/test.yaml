@@ -7,11 +7,9 @@ on:
     branches: [ "main" ]
 
 jobs:
-  # ==========================================
-  # GO API TESTS
-  # ==========================================
+  # Go Tests
   test-api:
-    name: Go API Tests
+    name: Go Tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -29,11 +27,9 @@ jobs:
       - name: Run Go Tests
         run: go test -v ./...
 
-  # ==========================================
-  # RUST VALIDATOR TESTS
-  # ==========================================
+  # Rust Tests
   test-validator:
-    name: Rust Validator Tests
+    name: Rust Tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -48,11 +44,9 @@ jobs:
       - name: Run Cargo Tests
         run: cargo test
 
-  # ==========================================
-  # PYTHON CONSUMER TESTS
-  # ==========================================
+  # Python Tests
   test-consumer:
-    name: Python Consumer Tests
+    name: Python Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code

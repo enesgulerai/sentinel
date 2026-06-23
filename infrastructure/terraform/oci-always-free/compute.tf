@@ -36,7 +36,6 @@ resource "oci_core_instance" "sentinel_server" {
     ssh_authorized_keys = file(var.ssh_public_key_path)
     user_data = base64encode(<<-EOF
       #!/bin/bash
-      # Sistem güncellemesi
       apt-get update -y
       apt-get upgrade -y
 

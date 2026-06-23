@@ -1,13 +1,9 @@
-# ==========================================
-# SENTINEL GLOBAL CONFIGURATION
-# ==========================================
+# Sentinel Global Helm Chart Values
 global:
   environment: production
   imagePullPolicy: IfNotPresent
 
-# ==========================================
-# 1. GO API GATEWAY
-# ==========================================
+# Go Gateway
 api:
   enabled: true
   replicaCount: 1
@@ -45,9 +41,7 @@ api:
     targetCPUUtilizationPercentage: 60
     targetMemoryAverageValue: "100Mi"
 
-# ==========================================
-# 2. RUST VALIDATOR
-# ==========================================
+# Rust Validator
 validator:
   enabled: true
   replicaCount: 2
@@ -68,9 +62,7 @@ validator:
       cpu: "50m"
       memory: "16Mi"
 
-# ==========================================
-# 3. PYTHON ML CONSUMER
-# ==========================================
+# Python Consumer
 consumer:
   enabled: true
   replicaCount: 1
@@ -91,9 +83,7 @@ consumer:
       cpu: "1000m"
       memory: "256Mi"
 
-# ==========================================
-# CUSTOM INFRASTRUCTURE COMPONENTS
-# ==========================================
+# Infrastructure
 postgres:
   enabled: true
   resources:

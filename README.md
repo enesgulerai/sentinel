@@ -4,83 +4,69 @@
 
 *Enterprise-grade, event-driven anomaly detection pipeline with sub-millisecond ONNX inference.*
 
-[![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat-square)](https://go.dev)
+[![Go Version](https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat-square)](https://go.dev)
 [![Python Version](https://img.shields.io/badge/Python-3.11.9-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org)
 [![Rust Version](https://img.shields.io/badge/Rust-1.95.0-000000?style=flat-square&logo=rust&logoColor=white)](https://www.rust-lang.org)
 [![Latest Release](https://img.shields.io/github/v/release/enesgulerdev/sentinel?style=flat-square&color=brgihgreen)](https://github.com/enesgulerdev/sentinel/releases)
 [![License](https://img.shields.io/github/license/enesgulerdev/sentinel?style=flat-square)](LICENSE)
 
+![k6 Load Test](docs/images/root/k6-load-test.gif)
+
 </div>
 
 ---
+
 **Sentinel** is an enterprise-grade, real-time fraud detection system. It simulates high-throughput financial transactions via streaming (Redpanda/Kafka) and evaluates them in milliseconds using an optimized ONNX inference engine.
 
 ## Quick Start
 
-### 1. Clone the Repository
-Clone the project to your local machine and navigate into the root directory:
+### Prerequisites
+- [Task](https://taskfile.dev/installation/) (`brew install go-task` / `choco install go-task`)
+- Docker & Docker Compose
+- [uv](https://github.com/astral-sh/uv)
+
+### Setup & Run
 
 ```bash
-    git clone https://github.com/enesgulerdev/sentinel.git
-    cd sentinel
+# 1. Clone repository
+git clone https://github.com/enesgulerdev/sentinel.git
+cd sentinel
+
+# 2. Configure environment (Requires Google Drive File ID for gdown)
+cp .env.example .env
+
+# 3. Install dependencies via uv
+task env:install
+
+# 4. Execute ML Pipeline (Fetch dataset, preprocess, train baseline)
+task ml:pipeline
+
+# 5. Start microservices (API Gateway, Redpanda, etc.)
+task docker:on
 ```
 
-### 2. Configure Environment Variables
-The data ingestion process requires a Google Drive File ID to fetch the raw dataset via gdown. Copy the example environment file to create your local configuration:
-
+### Container Management
 ```bash
-    cp .env.example .env
+task docker:on    # Start all services
+task docker:down  # Stop gracefully (keeps images intact)
+task docker:off   # Full wipe (removes containers, networks, volumes, images)
 ```
 
-### 3. Install Dependencies
-Install all required Python packages and set up the local development environment. This command utilizes `uv` to create a virtual environment and strictly syncs the dependencies locked in `uv.lock`.
-
-```bash
-    task env:install
-```
-
-### 4. Execute the ML Pipeline
-Run the complete machine learning pipeline. This automated task will fetch the raw dataset using your provided `.env` variable, apply preprocessing transformations, and train the baseline model.
-
-```bash
-    task ml:pipeline
-```
-
-### 5. Launch and Manage Application
-The Sentinel project utilizes a microservices architecture. Start the Docker containers to spin up the API gateway, and all other core services in detached mode:
-
-```bash
-    # Start all services
-    task docker:on
-
-    # Stop services gracefully but keep images intact (Use this if you are heading to the Kubernetes documentation!)
-    task docker:down
-
-    # Stop and remove all containers, networks, volumes, and images (Full Wipe)
-    task docker:off
-```
-
-## Local Services & Ports
-Once the Docker containers are up and running, you can access the core services via the following local addresses:
+## Local Services
 
 | Service | Local URL |
 | :--- | :--- |
-| **API Gateway** | http://localhost:8000 |
-| **Redpanda** | http://localhost:8080 |
+| **API Gateway** | `http://localhost:8000` |
+| **Redpanda** | `http://localhost:8080` |
 
-## Troubleshooting
 
-### `task: command not found`
-Sentinel leverages the Taskfile runner for all automation. If the command is not recognized, install it:
-* **macOS (Homebrew):** `brew install go-task`
-* **Windows (Chocolatey/Scoop):** `choco install go-task` or `scoop install task`
-* **Linux:** `sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d`
+## Architecture & Deep Dives
 
-## Repository Structure & Deep Dives
+Explore the sub-modules for advanced deployment, scaling, and observability patterns:
 
-Sentinel is built with a strictly modular architecture. While this guide covers local Docker deployment, you can explore the advanced components in their respective directories:
-
-* **[Testing Suite](tests/README.md)**: Comprehensive unit tests, integration tests, and mock fixtures ensuring system reliability.
-* **[Helm Deployment](infrastructure/helm/README.md)**: Unified and autonomous Helm charts for seamless local provisioning, encapsulating all stateful dependencies and isolated ML workloads.
-* **[GitOps & Continuous Deployment](infrastructure/argocd/README.md)**: Fully autonomous GitOps architecture utilizing ArgoCD and Jenkins for zero-touch deployments, deterministic state synchronization, and self-healing ML workloads.
-* **[AWS Enterprise FinOps Estimate](infrastructure/terraform/aws-finops-mock/README.md):** A detailed financial simulation and cost-optimization model using Infracost, proving how the architecture scales to **14,500+ RPS** while achieving a **73% cost reduction** under enterprise conditions.
+| Module / Component | Description |
+| :--- | :--- |
+| **[Testing Suite](tests/README.md)** | Unit, integration, and mock fixtures. |
+| **[Helm Workloads](infrastructure/helm/README.md)** | Autonomous local provisioning for stateful dependencies and isolated ML workloads. |
+| **[GitOps & CD](infrastructure/argocd/README.md)** | Zero-touch deployment architecture using ArgoCD and Jenkins for deterministic state synchronization. |
+| **[AWS FinOps Simulation](infrastructure/terraform/aws-finops-mock/README.md)** | Infracost model demonstrating system scale to **14,500+ RPS** with a **73% cost reduction** under enterprise conditions. |

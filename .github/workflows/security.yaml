@@ -7,9 +7,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  # ==========================================
-  # GO SAST & VULNERABILITY CHECK
-  # ==========================================
+  # Go Sast & Vulnerability Check
   security-go:
     name: Go Security Scan
     runs-on: ubuntu-latest
@@ -38,9 +36,7 @@ jobs:
       - name: Run Govulncheck (Dependency Audit)
         run: govulncheck ./...
 
-  # ==========================================
-  # RUST LINTING & SECURITY
-  # ==========================================
+  # Rust Linting & Security Check
   security-rust:
     name: Rust Clippy Audit
     runs-on: ubuntu-latest
@@ -64,9 +60,7 @@ jobs:
       - name: Run Cargo Clippy (DevSecOps Mode)
         run: cargo clippy -- -D warnings
 
-  # ==========================================
-  # INFRASTRUCTURE & FILESYSTEM SCAN
-  # ==========================================
+  # Infrastructure & Filesystem Scan
   security-infra:
     name: Trivy Infrastructure Scan
     runs-on: ubuntu-latest
