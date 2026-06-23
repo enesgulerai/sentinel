@@ -1,0 +1,67 @@
+name: Test Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # ==========================================
+  # GO API TESTS
+  # ==========================================
+  test-api:
+    name: Go API Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/api
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Environment
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'src/api/go.mod'
+          cache: true
+
+      - name: Run Go Tests
+        run: go test -v ./...
+
+  # ==========================================
+  # RUST VALIDATOR TESTS
+  # ==========================================
+  test-validator:
+    name: Rust Validator Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/validator
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run Cargo Tests
+        run: cargo test
+
+  # ==========================================
+  # PYTHON CONSUMER TESTS
+  # ==========================================
+  test-consumer:
+    name: Python Consumer Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@v5
+
+      - name: Run Pytest
+        env:
+          OTEL_SDK_DISABLED: "true"
+        run: uv run pytest tests/unit/test_consumer.py -v
