@@ -11,6 +11,13 @@ repos:
       - id: check-added-large-files
         args: ['--maxkb=5120']
 
+  # Conventional Commits Linter
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+
   # Python
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.4.8
