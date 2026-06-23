@@ -1,0 +1,22 @@
+{{- if .Values.redpanda.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: redpanda
+spec:
+  selector:
+    app: redpanda
+  ports:
+  - name: internal
+    protocol: TCP
+    port: 9092
+    targetPort: 9092
+  - name: external
+    protocol: TCP
+    port: 19092
+    targetPort: 19092
+  - name: admin
+    protocol: TCP
+    port: 9644
+    targetPort: 9644
+{{- end }}
