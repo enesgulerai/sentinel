@@ -1,0 +1,73 @@
+name: Code Quality Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # ==========================================
+  # GO STRICT FORMATTING & LINTING
+  # ==========================================
+  format-go:
+    name: Go Strict Format
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/api
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Go Environment
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'src/api/go.mod'
+          cache: true
+
+      - name: Run GolangCI-Lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          working-directory: src/api
+          args: --timeout=5m
+
+  # ==========================================
+  # PYTHON RUFF FORMATTING
+  # ==========================================
+  format-python:
+    name: Python Ruff Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install uv and Ruff
+        uses: astral-sh/setup-uv@v5
+
+      - name: Run Ruff Linter
+        run: uvx ruff check .
+
+      - name: Run Ruff Formatter (Strict Check)
+        run: uvx ruff format --check .
+
+  # ==========================================
+  # RUST STRICT FORMATTING
+  # ==========================================
+  format-rust:
+    name: Rust Strict Format
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/validator
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Check Rust Formatting
+        run: cargo fmt -- --check
