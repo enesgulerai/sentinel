@@ -29,6 +29,7 @@ jobs:
       - name: Run GolangCI-Lint
         uses: golangci/golangci-lint-action@v6
         with:
+          version: latest
           working-directory: src/api
           args: --timeout=5m
 

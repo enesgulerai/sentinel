@@ -1,18 +1,18 @@
 use rskafka::client::ClientBuilder;
-use rskafka::client::partition::{OffsetAt, UnknownTopicHandling, Compression};
+use rskafka::client::partition::{Compression, OffsetAt, UnknownTopicHandling};
 use rskafka::record::Record;
 use serde::Deserialize;
-use std::time::Duration;
-use std::env;
 use std::collections::BTreeMap;
+use std::env;
+use std::time::Duration;
 
-use opentelemetry::{global, KeyValue};
-use opentelemetry::trace::{Tracer, Span, Status};
 use opentelemetry::propagation::Extractor;
-use opentelemetry_sdk::trace as sdktrace;
-use opentelemetry_sdk::Resource;
-use opentelemetry_otlp::WithExportConfig;
 use opentelemetry::trace::TraceContextExt;
+use opentelemetry::trace::{Span, Status, Tracer};
+use opentelemetry::{KeyValue, global};
+use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_sdk::Resource;
+use opentelemetry_sdk::trace as sdktrace;
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
@@ -21,10 +21,34 @@ struct FraudEvent {
     transaction_id: String,
     user_id: Option<String>,
     Time: f64,
-    V1: f64, V2: f64, V3: f64, V4: f64, V5: f64, V6: f64, V7: f64,
-    V8: f64, V9: f64, V10: f64, V11: f64, V12: f64, V13: f64, V14: f64,
-    V15: f64, V16: f64, V17: f64, V18: f64, V19: f64, V20: f64, V21: f64,
-    V22: f64, V23: f64, V24: f64, V25: f64, V26: f64, V27: f64, V28: f64,
+    V1: f64,
+    V2: f64,
+    V3: f64,
+    V4: f64,
+    V5: f64,
+    V6: f64,
+    V7: f64,
+    V8: f64,
+    V9: f64,
+    V10: f64,
+    V11: f64,
+    V12: f64,
+    V13: f64,
+    V14: f64,
+    V15: f64,
+    V16: f64,
+    V17: f64,
+    V18: f64,
+    V19: f64,
+    V20: f64,
+    V21: f64,
+    V22: f64,
+    V23: f64,
+    V24: f64,
+    V25: f64,
+    V26: f64,
+    V27: f64,
+    V28: f64,
     Amount: f64,
 }
 
@@ -56,17 +80,15 @@ fn init_tracer() {
         .http()
         .with_endpoint(endpoint);
 
-    let _ = opentelemetry_otlp::new_pipeline()
-        .tracing()
-        .with_exporter(exporter)
-        .with_trace_config(
-            sdktrace::config().with_resource(Resource::new(vec![KeyValue::new(
-                "service.name",
-                "sentinel-validator",
-            )])),
-        )
-        .install_batch(opentelemetry_sdk::runtime::Tokio)
-        .expect("Failed to initialize OTel pipeline");
+    let _ =
+        opentelemetry_otlp::new_pipeline()
+            .tracing()
+            .with_exporter(exporter)
+            .with_trace_config(sdktrace::config().with_resource(Resource::new(vec![
+                KeyValue::new("service.name", "sentinel-validator"),
+            ])))
+            .install_batch(opentelemetry_sdk::runtime::Tokio)
+            .expect("Failed to initialize OTel pipeline");
 
     global::set_text_map_propagator(opentelemetry_sdk::propagation::TraceContextPropagator::new());
 }
@@ -76,26 +98,42 @@ async fn main() {
     init_tracer();
     let tracer = global::tracer("sentinel-validator");
 
-    let connection_string = env::var("REDPANDA_BROKER").unwrap_or_else(|_| "localhost:19092".to_string());
-    let client = match ClientBuilder::new(vec![connection_string.to_owned()]).build().await {
+    let connection_string =
+        env::var("REDPANDA_BROKER").unwrap_or_else(|_| "localhost:19092".to_string());
+    let client = match ClientBuilder::new(vec![connection_string.to_owned()])
+        .build()
+        .await
+    {
         Ok(c) => c,
         Err(_) => return,
     };
 
-    let raw_partition_client = match client.partition_client("raw-events", 0, UnknownTopicHandling::Retry).await {
+    let raw_partition_client = match client
+        .partition_client("raw-events", 0, UnknownTopicHandling::Retry)
+        .await
+    {
         Ok(pc) => pc,
         Err(_) => return,
     };
 
-    let clean_partition_client = match client.partition_client("clean-events", 0, UnknownTopicHandling::Retry).await {
+    let clean_partition_client = match client
+        .partition_client("clean-events", 0, UnknownTopicHandling::Retry)
+        .await
+    {
         Ok(pc) => pc,
         Err(_) => return,
     };
 
-    let mut current_offset = raw_partition_client.get_offset(OffsetAt::Earliest).await.unwrap_or(0);
+    let mut current_offset = raw_partition_client
+        .get_offset(OffsetAt::Earliest)
+        .await
+        .unwrap_or(0);
 
     loop {
-        match raw_partition_client.fetch_records(current_offset, 1..1_000_000, 1_000_000).await {
+        match raw_partition_client
+            .fetch_records(current_offset, 1..1_000_000, 1_000_000)
+            .await
+        {
             Ok((records, _high_watermark)) => {
                 if records.is_empty() {
                     tokio::time::sleep(Duration::from_millis(5)).await;
@@ -111,16 +149,21 @@ async fn main() {
                         prop.extract(&KafkaHeaderExtractor(&record_and_offset.record.headers))
                     });
 
-                    let mut span = tracer.start_with_context("Rust-Validate-Event", &parent_context);
+                    let mut span =
+                        tracer.start_with_context("Rust-Validate-Event", &parent_context);
 
                     if let Some(value) = &record_and_offset.record.value {
                         match serde_json::from_slice::<FraudEvent>(value) {
                             Ok(_) => {
                                 let mut new_headers = record_and_offset.record.headers.clone();
-                                let cx = parent_context.with_remote_span_context(span.span_context().clone());
+                                let cx = parent_context
+                                    .with_remote_span_context(span.span_context().clone());
 
                                 global::get_text_map_propagator(|prop| {
-                                    prop.inject_context(&cx, &mut KafkaHeaderInjector(&mut new_headers))
+                                    prop.inject_context(
+                                        &cx,
+                                        &mut KafkaHeaderInjector(&mut new_headers),
+                                    )
                                 });
 
                                 let clean_record = Record {
@@ -131,11 +174,13 @@ async fn main() {
                                 };
                                 valid_batch.push(clean_record);
                                 span.set_status(Status::Ok);
-                            },
+                            }
                             Err(e) => {
                                 let payload_str = String::from_utf8_lossy(value);
                                 println!("INVALID: {} - {}", e, payload_str);
-                                span.set_status(Status::Error { description: format!("{}", e).into() });
+                                span.set_status(Status::Error {
+                                    description: format!("{}", e).into(),
+                                });
                             }
                         }
                     }
@@ -143,9 +188,11 @@ async fn main() {
                 }
 
                 if !valid_batch.is_empty() {
-                    let _ = clean_partition_client.produce(valid_batch, Compression::NoCompression).await;
+                    let _ = clean_partition_client
+                        .produce(valid_batch, Compression::NoCompression)
+                        .await;
                 }
-            },
+            }
             Err(_) => {
                 tokio::time::sleep(Duration::from_millis(1000)).await;
             }
@@ -168,7 +215,8 @@ mod tests {
             "V20": 0.1, "V21": 0.5, "V22": -0.03, "V23": -0.4, "V24": 0.3,
             "V25": 0.04, "V26": 0.1, "V27": 0.2, "V28": -0.1,
             "Amount": 1505.0
-        }"#.to_string()
+        }"#
+        .to_string()
     }
 
     #[test]
