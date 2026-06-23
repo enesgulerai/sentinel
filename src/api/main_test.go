@@ -93,7 +93,7 @@ func TestValidTransactionIngestion(t *testing.T) {
 	assert.Equal(t, http.StatusAccepted, w.Code)
 
 	var response map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &response)
+	_ = json.Unmarshal(w.Body.Bytes(), &response)
 
 	assert.Equal(t, "success", response["status"])
 	assert.Equal(t, 1, kafkaMock.MessagesWritten)
@@ -125,7 +125,7 @@ func TestDuplicateTransactionRejected(t *testing.T) {
 	assert.Equal(t, http.StatusAccepted, w.Code)
 
 	var response map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &response)
+	_ = json.Unmarshal(w.Body.Bytes(), &response)
 
 	assert.Equal(t, "ignored", response["status"])
 	assert.Equal(t, "Duplicate transaction detected", response["message"])

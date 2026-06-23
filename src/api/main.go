@@ -212,7 +212,7 @@ func metricsMiddleware() gin.HandlerFunc {
 func main() {
 	// Initialize highly optimized zero-allocation logger
 	logger, _ = zap.NewProduction()
-	defer logger.Sync()
+	defer func() { _ = logger.Sync() }()
 
 	initServices()
 
