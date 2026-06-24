@@ -1,103 +1,69 @@
-# Sentinel Local Infrastructure
+# Sentinel: Local Infrastructure & Helm Workloads
 
-This directory contains the Infrastructure as Code (IaC) configuration designed to autonomously deploy all independent components of the Sentinel project (Postgres, Redis, Redpanda, Go API Gateway, Rust Validator, and Asynchronous Python ML Consumer) as a single, unified system.
+*Infrastructure as Code (IaC) configurations for deploying Sentinel's isolated microservices (Go API, Rust Validator, Python ML Consumer) and stateful datastores.*
 
-## Advanced Architecture: Solving the "Noisy Neighbor" Problem
-To achieve sub-millisecond tail latencies and strict resource isolation, we utilize advanced Kubernetes scheduling:
-* **Storage Isolation (Node Affinity):** I/O-heavy datastores (Postgres, Redis (Dragonfly), Redpanda) are forced onto dedicated storage nodes.
-* **AI Inference Quarantine (Taints & Tolerations):** The CPU-hungry XGBoost AI inference engine operates in absolute quarantine. It can consume 100% of its dedicated node's CPU without causing latency degradation to the Go API.
-* **Zero-Waste Auto-Scaling (HPA):** The stateless Go API Gateway is governed by a Horizontal Pod Autoscaler (HPA), dynamically cloning itself to absorb traffic spikes while maintaining strict, optimized memory limits (256Mi).
+## Resource Isolation & Scheduling Strategy
 
----
+To achieve sub-millisecond tail latencies and prevent "noisy neighbor" degradation under 14,500+ RPS, the cluster enforces strict scheduling policies:
 
-## Quick Start (Helm)
+| Strategy | Implementation | Operational Impact |
+| :--- | :--- | :--- |
+| **Storage Isolation** | Node Affinity | Forces I/O-heavy stores (Postgres, Dragonfly Redis, Redpanda) onto dedicated storage nodes. |
+| **AI Quarantine** | Taints & Tolerations | Isolates the CPU-intensive XGBoost inference engine. Guarantees 100% core utilization without degrading the Go API latency. |
+| **Zero-Waste Scaling** | HPA (Horizontal Pod Autoscaler) | Dynamically clones the stateless Go API (capped at 256Mi memory limit) to absorb high-throughput traffic spikes. |
 
-Follow these steps to bootstrap the entire system in your local Kubernetes environment.
+## Deployment Lifecycle
 
-### 1. Provision & Deploy
-Run the following task to deploy the unified Helm chart into an isolated namespace. This replaces legacy raw K8s manifests with a Single Source of Truth.
 ```bash
-task helm:on
+task helm:on       # Provision unified Helm chart (Single Source of Truth)
+task helm:status   # Watch pod transitions (Wait for Postgres/Redpanda quorum)
+task helm:forward  # Bind K8s network to local machine (Leave terminal open)
+task helm:off      # Teardown release and purge cluster resources
 ```
 
-### 2. Verify System Status
-Watch all pods transition to the Running state. (Note: Redpanda and Postgres may take a minute to establish quorum and initialize).
-```bash
-task helm:status
-```
+## Observability Stack
+Deploy the `kube-prometheus-stack` to monitor real-time health, HPA metrics, and the ultra low footrpint of the core services (~15MB Go API, ~3MB Rust Validator).
 
-### 3. Establish Connections (Crucial)
-Before testing, you must bind the isolated K8s network to your local machine. Run this and leave the terminal open:
 ```bash
-task helm:forward
-```
-
-### 4. Observability & Monitoring (Optional)
-To visualize the real-time health, CPU/RAM usage, and ultra-low resource footprint of the microservices (e.g., the ~15MB Go API and ~3MB Rust Validator), you can deploy the official `kube-prometheus-stack`.
-
-Run the following task to deploy Prometheus and Grafana into an isolated `monitoring` namespace:
-```bash
+# 1. Deploy Prometheus & Grafana
 task helm:monitor
-```
 
-Once deployed, retrieve the auto-generated Grafana admin password:
-```bash
-# For Linux / macOS:
-kubectl get secret --namespace monitoring observability-grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+# 2. Retrieve Grafana Admin Password
+# Linux/macOS:
+kubectl get secret -n monitoring observability-grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
+# Windows (PowerShell):
+$secret = kubectl -n monitoring get secret observability-grafana -o jsonpath="{.data.admin-password}"; [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($secret))
 
-# For Windows (PowerShell):
-$secret = kubectl --namespace monitoring get secret observability-grafana -o jsonpath="{.data.admin-password}"; [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($secret))
-```
-
-Finally, expose the Grafana dashboard to your local machine:
-```bash
+# 3. Access Dashboard (http://localhost:3000)
 kubectl port-forward svc/observability-grafana 3000:80 -n monitoring
 ```
 
-Visit http://localhost:3000 and use admin along with the decrypted password to access the Kubernetes compute resource dashboards.
+## End-to-End Load Testing & HPA Verification
 
-## End-to-End Verification
+### 1. Enable Local HPA (Metrics Server Patch)
+For local environments (e.g., Kind) bypass TLS validation to allow Kubernetes to scrape CPU/RAM metrics and trigger the HPA. Run via Powershell:
 
-**1. The K6 Stress Test**
-Blast the API with high-concurrency traffic to watch the HPA auto-scaler in action.
-```bash
-k6 run tests/fixtures/loadtest.js
-```
-*Monitor the autoscaler scaling the API from 1 to 5 replicas dynamically: `kubectl get hpa -n sentinel-namespace -w`*
-
-**Testing with HPA Enabled**
-
-When testing in a local environment (such as Kind), the `metrics-server` certificate validation must be bypassed so that Kubernetes can read the CPU/RAM metrics and successfully trigger the HPA (Horizontal Pod Autoscaler).
-
-You can apply this patch by running the following PowerShell commands sequentially:
 ```powershell
-# 1. Install the metrics-server components from the official repository
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
-
-# 2. Create the JSON patch file for local TLS configuration
 Set-Content -Path patch.json -Value '[{ "op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls" }]'
-
-# 3. Apply the patch to the metrics-server deployment in the kube-system namespace
 kubectl patch -n kube-system deployment metrics-server --type=json --patch-file patch.json
-
-# 4. Clean up the temporary patch file to keep the directory clean
 Remove-Item -Path patch.json -Force
-
-# 5. Verify the deployment status
-kubectl get deployment metrics-server -n kube-system
 ```
-Approximately 30-60 seconds after applying this patch, the metrics-server will start collecting data, and the HPA will automatically scale the API pods based on the real-time demand generated during the k6 load test.
 
+### 2. Execute Stress Test
+Once metrics-server is active (wait ~60s), blast the API and monitor dynamic scaling.
 
-**2. Verify AI Persistence:**
-Directly query the database to confirm the AI assigned a risk score:
+```bash
+# Terminal 1: Run the K6 Load Test
+k6 run tests/fixtures/loadtest.js
+
+# Terminal 2: Watch HPA scale the API (1 to 5 replicas dynamically)
+kubectl get hpa -n sentinel-namespace -w
+```
+
+### 3. Verify AI Persistence
+Confirm the pipeline processed the traffic and assigned risk scores correctly:
 
 ```bash
 kubectl exec -it -n sentinel-namespace $(kubectl get pods -n sentinel-namespace -l app=postgres -o jsonpath='{.items[0].metadata.name}') -- psql -U sentinel -d sentinel_db -c "SELECT transaction_id, risk_score, created_at FROM transactions ORDER BY created_at DESC LIMIT 5;"
-```
-
-## Teardown
-Once finished, completely remove the Helm release and clean up all associated resources:
-```bash
-task helm:off
 ```

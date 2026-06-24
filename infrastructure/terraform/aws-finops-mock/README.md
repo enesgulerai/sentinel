@@ -1,59 +1,40 @@
-# AWS Enterprise Cost Estimate & FinOps Optimization
+# Sentinel: AWS FinOps & Cost Optimization
 
-This directory contains the production-grade Terraform manifests used to run a comprehensive FinOps (Financial Operations) analysis for the Sentinel architecture on AWS.
+*Production-grade Terraform manifests and Infracost analysis demonstrating a 73% infrastructure cost reduction while sustaining 14,500+ RPS at sub-13ms latency.*
 
-The ultimate goal of this overhaul was to determine the exact commercial footprint required to sustain a continuous stress-test load of **~14,500 Requests Per Second (RPS) with sub-13ms latency**, and to actively engineer that infrastructure to obliterate cloud cost bloat.
+## FinOps Impact Summary
 
-## Executive Summary
+| Metric | Baseline (Managed) | Optimized (In-Cluster) | Delta |
+| :--- | :--- | :--- | :--- |
+| **Monthly Cost** | ~$452.00 | **$120.77** | **-73%** |
+| **Throughput** | 14,500+ RPS | 14,500+ RPS | 0% (No degradation) |
+| **Tail Latency** | < 13ms | < 13ms | 0% (No degradation) |
 
-Through aggressive architectural consolidation and strict Kubernetes resource tuning, the monthly infrastructure cost was reduced by **73%** without shifting target performance metrics or introducing structural instability.
+## Optimization Strategy
 
-* **Initial Baseline Cost:** ~$452.00 / month
-* **Optimized Cost:** **$121.00 / month**
-* **Performance Impact:** 0% degradation (Sustained 14,500 RPS ceiling at <13ms latency)
+The financial bottleneck was eliminated by pivoting from a "lift and shift" managed service model to an aggressively tuned, resource-capped Kubernetes architecture.
 
-## Cost Evolution: Before vs. After
+### 1. Eliminating the Managed Service Premium
+* **Legacy Setup:** Relied heavily on AWS RDS (PostgreSQL), ElastiCache (Redis), and 3 dedicated EC2 instances for Redpanda.
+* **Action:** Purged managed services from `datastores.tf`. Migrated all stateful workloads directly into the EKS cluster as isolated Helm pods, completely bypassing managed service margins.
+* **Baseline Infracost Report:**
+  ![Sentinel AWS Before Optimized Cost Estimate](../../../docs/images/infrastructure/aws-451.png)
 
-### 1. Initial Architecture Blueprint (The $452 Managed Service Trap)
+### 2. Guaranteed QoS & Resource Hard-Capping
+* **Action:** Mapped P99 CPU and Max RAM utilization via Prometheus/cAdvisor to define millimeter-perfect `requests` and `limits`, achieving the **Guaranteed QoS class** across the stack.
+* **Resource Footprint:**
+  * **Go API Gateway:** Hardcapped at `600m CPU / 128Mi RAM`.
+  * **Rust Validator:** Ultra-lightweight cap at `50m CPU / 16Mi RAM`.
+* **Impact:** Zero CPU throttling, zero OOMKilled events, and the absolute elimination of idle compute waste.
 
-The previous deployment relied heavily on external "Managed Services" (AWS RDS for PostgreSQL, ElastiCache for Redis, and 3 dedicated EC2 instances for a Redpanda cluster). While standard in many corporate environments, this "lift and shift" approach carried a massive managed service premium.
+### 3. Graviton ARM64 & Spot Instance Synergy
+* **Action:** Capitalized on the ultra-low resource footprint of the memory-safe microservices (Go/Rust) by transitioning the entire EKS node group to **Graviton ARM64 (`t4g.medium`) Spot Instances**.
+* **Impact:** Reduced compute baseline to just 2 nodes, drastically cutting hourly EC2 rates.
 
-**Baseline Infracost Breakdown:**
-* Managed PostgreSQL (RDS): ~$101/mo
-* 3-Node Redpanda (EC2 + EBS): ~$187/mo
-* EKS & Node Groups: ~$157/mo
-* *Total:* ~$452/mo
-![Sentinel AWS Before Optimized Cost Estimate](../../../docs/images/infrastructure/aws-451.png)
-
-### 2. FinOps Optimization Strategy & Realized Savings
-
-To shatter this financial bottleneck, a massive structural overhaul was executed directly within the Terraform and Helm manifests:
-
-#### A. Eliminating the Managed Service Premium (Consolidation)
-* **Action:** Completely purged AWS RDS, ElastiCache, and dedicated Redpanda EC2 nodes from the Terraform configuration (`datastores.tf`). These distributed data stores were migrated *inside* the EKS cluster as isolated pods via Helm, entirely bypassing AWS's managed service fees.
-
-#### B. Kubernetes "Guaranteed" QoS & Millimetric Tuning
-* **Action:** Analyzed real-time P99 CPU and Max RAM utilization via Prometheus and Grafana (cAdvisor) under extreme load testing. Based on the metrics, exact `requests` and `limits` were perfectly aligned to achieve the **Guaranteed QoS class** across the entire stack.
-  * **Go API Gateway:** Hardcapped at `600m CPU / 128Mi RAM`
-  * **Rust Validator:** Ultra-lightweight cap at `50m CPU / 16Mi RAM`
-  * **Dragonfly (Redis) & Redpanda:** Rightsized to prevent resource hoarding.
-* **Result:** Zero CPU throttling, zero OOMKilled events, and absolute elimination of wasted "buffer" capacity.
-
-#### C. Graviton ARM64 & Spot Instance Synergy
-* **Action:** Because the core microservices (Golang/Rust) and data stores were configured with such an incredibly low resource footprint, the entire EKS node group was drastically downscaled to just **2x `t4g.medium` Spot Instances**.
-
-### 3. Optimized Results (The $121 Reality)
-
-By prioritizing raw engineering and memory-safe languages over arbitrary hardware scaling, the identical extreme-throughput architecture now costs a fraction of the original baseline.
-
-**Final Infracost Report:**
+## Final Infracost Report ($121 Reality)
 
 ![Sentinel AWS Final Optimized Cost Estimate](../../../docs/images/infrastructure/aws-121.png)
 
-* EKS Cluster Base Fee: $73.00/mo *(Fixed AWS Control Plane Fee)*
-* 2x `t4g.medium` Spot Nodes + EBS: ~$48.00/mo
-* **OVERALL TOTAL: $120.77 / month**
-
-## Conclusion
-
-This optimization proves that highly concurrent, enterprise-grade data pipelines do not require massive IT budgets. By leveraging high-performance languages (Go/Rust) and strictly enforcing Kubernetes resource limits, the Sentinel cluster delivers premium performance at a startup-friendly cost.
+* **EKS Control Plane:** $73.00/mo *(Fixed AWS Fee)*
+* **2x `t4g.medium` Spot Nodes + EBS:** ~$47.77/mo
+* **Total:** **$120.77 / month**
