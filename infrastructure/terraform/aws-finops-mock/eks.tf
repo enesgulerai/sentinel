@@ -18,7 +18,7 @@ resource "aws_eks_node_group" "sentinel_nodes" {
   capacity_type  = "SPOT"
 
   scaling_config {
-    desired_size = 4
+    desired_size = 3
     max_size     = 5
     min_size     = 2
   }
