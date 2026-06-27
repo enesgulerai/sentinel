@@ -1,0 +1,30 @@
+name: Infracost FinOps CI
+on: [pull_request]
+
+jobs:
+  infracost_analysis:
+    name: Cost Estimation
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Infracost
+        uses: infracost/actions/setup@v3
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+
+      - name: Run Breakdown for AWS Mock
+        run: |
+          infracost breakdown --path=infrastructure/terraform/aws-finops-mock \
+                              --format=json \
+                              --out-file=/tmp/infracost.json
+
+      - name: Post Comment to PR
+        uses: infracost/actions/comment@v3
+        with:
+          path: /tmp/infracost.json
+          behavior: update
