@@ -1,4 +1,4 @@
-name: Infracost FinOps CI
+name: Infracost FinOps Pipeline
 on: [pull_request]
 
 jobs:
@@ -9,22 +9,35 @@ jobs:
       pull-requests: write
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout PR branch
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Infracost
         uses: infracost/actions/setup@v3
         with:
           api-key: ${{ secrets.INFRACOST_API_KEY }}
 
-      - name: Run Breakdown for AWS Mock
+      - name: Generate baseline from main branch
         run: |
+          git checkout ${{ github.event.pull_request.base.ref }}
           infracost breakdown --path=infrastructure/terraform/aws-finops-mock \
                               --format=json \
-                              --out-file=/tmp/infracost.json
+                              --out-file=/tmp/infracost-base.json
+
+      - name: Generate diff from PR branch
+        run: |
+          git checkout ${{ github.event.pull_request.head.ref }}
+          infracost diff --path=infrastructure/terraform/aws-finops-mock \
+                         --format=json \
+                         --compare-to=/tmp/infracost-base.json \
+                         --out-file=/tmp/infracost-diff.json
 
       - name: Post Comment to PR
-        uses: infracost/actions/comment@v3
-        with:
-          path: /tmp/infracost.json
-          behavior: update
+        run: |
+          infracost comment github --path=/tmp/infracost-diff.json \
+                                   --repo=${{ github.repository }} \
+                                   --pull-request=${{ github.event.pull_request.number }} \
+                                   --github-token=${{ secrets.GITHUB_TOKEN }} \
+                                   --behavior=update
