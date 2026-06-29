@@ -1,3 +1,34 @@
+## Release Notes - v1.18.0
+
+This release introduces significant enhancements to our automated release process, focusing on improved changelog generation and more robust API error handling.
+
+### Key Improvements:
+
+*   **Automated Changelog Integration:** The release pipeline now automatically appends generated release notes to the `CHANGELOG.md` file. This ensures that our project's change history is consistently updated and easily accessible.
+*   **Enhanced API Error Handling:** The release agent has been updated to provide more informative feedback when API interactions fail, particularly concerning the `GEMINI_API_KEY`. This includes increased retry attempts and longer delays for API calls, improving the resilience of the release process.
+*   **Streamlined GitHub Release Titles:** Release titles in GitHub are now directly set to the version tag, simplifying the release identification.
+
+#### Changed Files & Core Modifications
+- The release workflow (`.github/workflows/release-agent.yaml`) has been updated to include steps for automatically updating and committing `CHANGELOG.md`.
+- The release agent script (`agent/release/release_agent.py`) has been modified to:
+    - Improve error reporting for missing API keys.
+    - Increase retry mechanisms and delays for AI-driven note generation.
+    - Integrate the generated release notes into the `CHANGELOG.md` file.
+    - Adjust the GitHub release title format.
+
+#### Reason for Changes
+These changes are driven by the need to automate and standardize our release documentation process. By integrating changelog updates directly into the release pipeline and improving API error handling, we aim to increase efficiency, maintain a clear and up-to-date record of changes, and enhance the reliability of our automated release tooling.
+
+#### Advantages & Architectural Trade-offs
+*   **(+) Advantages:**
+    *   **Improved Documentation:** Consistent and automated updates to `CHANGELOG.md` provide a reliable history of project changes.
+    *   **Increased Automation:** Reduces manual effort required for release note management.
+    *   **Enhanced Reliability:** More robust error handling and retry logic for API interactions improve the stability of the release process.
+*   **(-) Disadvantages / Notes:**
+    *   Requires the `GEMINI_API_KEY` to be correctly configured for full AI-driven release note generation. Failure to provide this key will result in a critical error during the release process.
+
+---
+
 # Changelog
 
 All notable changes to this project will be documented in this file.
