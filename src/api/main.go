@@ -3,10 +3,9 @@ package main
 import (
 	"context"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,7 +15,7 @@ import (
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
-	_ "github.com/lib/pq"
+	"github.com/goccy/go-json"
 	"github.com/redis/go-redis/v9"
 	"github.com/segmentio/kafka-go"
 	"go.uber.org/zap"
@@ -41,7 +40,75 @@ type KafkaProducer interface {
 	Close() error
 }
 
-// Static Response Structs
+type TransactionPayload struct {
+	TransactionID string  `json:"transaction_id"`
+	UserID        string  `json:"user_id"`
+	Amount        float64 `json:"Amount"`
+	Time          float64 `json:"Time"`
+	V1            float64 `json:"V1"`
+	V2            float64 `json:"V2"`
+	V3            float64 `json:"V3"`
+	V4            float64 `json:"V4"`
+	V5            float64 `json:"V5"`
+	V6            float64 `json:"V6"`
+	V7            float64 `json:"V7"`
+	V8            float64 `json:"V8"`
+	V9            float64 `json:"V9"`
+	V10           float64 `json:"V10"`
+	V11           float64 `json:"V11"`
+	V12           float64 `json:"V12"`
+	V13           float64 `json:"V13"`
+	V14           float64 `json:"V14"`
+	V15           float64 `json:"V15"`
+	V16           float64 `json:"V16"`
+	V17           float64 `json:"V17"`
+	V18           float64 `json:"V18"`
+	V19           float64 `json:"V19"`
+	V20           float64 `json:"V20"`
+	V21           float64 `json:"V21"`
+	V22           float64 `json:"V22"`
+	V23           float64 `json:"V23"`
+	V24           float64 `json:"V24"`
+	V25           float64 `json:"V25"`
+	V26           float64 `json:"V26"`
+	V27           float64 `json:"V27"`
+	V28           float64 `json:"V28"`
+}
+
+type TransactionHashData struct {
+	UserID string  `json:"user_id"`
+	Amount float64 `json:"Amount"`
+	Time   float64 `json:"Time"`
+	V1     float64 `json:"V1"`
+	V2     float64 `json:"V2"`
+	V3     float64 `json:"V3"`
+	V4     float64 `json:"V4"`
+	V5     float64 `json:"V5"`
+	V6     float64 `json:"V6"`
+	V7     float64 `json:"V7"`
+	V8     float64 `json:"V8"`
+	V9     float64 `json:"V9"`
+	V10    float64 `json:"V10"`
+	V11    float64 `json:"V11"`
+	V12    float64 `json:"V12"`
+	V13    float64 `json:"V13"`
+	V14    float64 `json:"V14"`
+	V15    float64 `json:"V15"`
+	V16    float64 `json:"V16"`
+	V17    float64 `json:"V17"`
+	V18    float64 `json:"V18"`
+	V19    float64 `json:"V19"`
+	V20    float64 `json:"V20"`
+	V21    float64 `json:"V21"`
+	V22    float64 `json:"V22"`
+	V23    float64 `json:"V23"`
+	V24    float64 `json:"V24"`
+	V25    float64 `json:"V25"`
+	V26    float64 `json:"V26"`
+	V27    float64 `json:"V27"`
+	V28    float64 `json:"V28"`
+}
+
 type RootResponse struct {
 	Status  string `json:"status"`
 	Service string `json:"service"`
@@ -69,9 +136,7 @@ var (
 	logger      *zap.Logger
 	redisClient *redis.Client
 	kafkaWriter KafkaProducer
-	db          *sql.DB
 
-	// Prometheus Metrics
 	httpRequestsTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "sentinel_api_requests_total",
@@ -103,7 +168,6 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-// OTel Initialization
 func initTracer() func(context.Context) error {
 	jaegerEndpoint := getEnv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4318")
 
@@ -112,7 +176,7 @@ func initTracer() func(context.Context) error {
 		otlptracehttp.WithInsecure(),
 	)
 	if err != nil {
-		logger.Fatal("FATAL: Failed to create OTel exporter", zap.Error(err))
+		logger.Fatal("FATAL: Failed to initialize OTel exporter", zap.Error(err))
 	}
 
 	tp := sdktrace.NewTracerProvider(
@@ -129,9 +193,8 @@ func initTracer() func(context.Context) error {
 }
 
 func initServices() {
-	logger.Info("Starting Sentinel ML API Gateway (Go/Gin)...")
+	logger.Info("Starting Sentinel ML API Gateway (Go/Gin) - Max Performance Version...")
 
-	// Redis Configuration
 	redisHost := getEnv("REDIS_HOST", "localhost")
 	redisPort := getEnv("REDIS_PORT", "6379")
 
@@ -154,32 +217,6 @@ func initServices() {
 	}
 	logger.Info("Connected to Redis", zap.String("host", redisHost), zap.String("port", redisPort))
 
-	// PostgreSQL Configuration
-	pgHost := getEnv("POSTGRES_HOST", "localhost")
-	pgPort := getEnv("POSTGRES_PORT", "5432")
-	pgUser := getEnv("POSTGRES_USER", "postgres")
-	pgPass := getEnv("POSTGRES_PASSWORD", "password")
-	pgName := getEnv("POSTGRES_DB", "sentinel")
-
-	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		pgHost, pgPort, pgUser, pgPass, pgName)
-
-	var err error
-	db, err = sql.Open("postgres", dsn)
-	if err != nil {
-		logger.Fatal("Failed to open PostgreSQL driver", zap.Error(err))
-	}
-
-	db.SetMaxOpenConns(50)
-	db.SetMaxIdleConns(10)
-	db.SetConnMaxLifetime(5 * time.Minute)
-
-	if err := db.PingContext(ctx); err != nil {
-		logger.Fatal("PostgreSQL connection failed", zap.Error(err))
-	}
-	logger.Info("Connected to PostgreSQL Pool", zap.String("host", pgHost), zap.String("port", pgPort))
-
-	// Kafka Configuration
 	kafkaBroker := getEnv("REDPANDA_BROKER", "localhost:19092")
 	topicName := getEnv("KAFKA_TOPIC", "raw-events")
 
@@ -214,21 +251,12 @@ func main() {
 	defer func() { _ = logger.Sync() }()
 
 	initServices()
-
-	// OTel Start
 	shutdownTracer := initTracer()
-	defer func() {
-		if err := shutdownTracer(context.Background()); err != nil {
-			logger.Error("Error shutting down tracer", zap.Error(err))
-		}
-	}()
-	// OTel End
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
 	router.Use(gin.Recovery())
 
-	// OTel Middleware
 	router.Use(otelgin.Middleware("sentinel-api"))
 	router.Use(metricsMiddleware())
 	pprof.Register(router)
@@ -237,13 +265,11 @@ func main() {
 		c.JSON(http.StatusOK, RootResponse{
 			Status:  "online",
 			Service: "Sentinel ML API (Go)",
-			Version: "1.14.0",
+			Version: "1.16.1-max-performance",
 		})
 	})
 
-	// Prometheus Route
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
-
 	router.POST("/api/v1/transactions", ingestTransaction)
 
 	apiPort := getEnv("PORT", "8000")
@@ -264,17 +290,15 @@ func main() {
 	<-quit
 	logger.Info("Shutting down API...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	if err := srv.Shutdown(ctx); err != nil {
+	if err := srv.Shutdown(shutdownCtx); err != nil {
 		logger.Fatal("Server forced to shutdown", zap.Error(err))
 	}
 
-	if db != nil {
-		if err := db.Close(); err != nil {
-			logger.Error("Error closing database", zap.Error(err))
-		}
+	if err := shutdownTracer(shutdownCtx); err != nil {
+		logger.Error("Error shutting down tracer", zap.Error(err))
 	}
 
 	if err := redisClient.Close(); err != nil {
@@ -288,48 +312,83 @@ func main() {
 	logger.Info("Shutdown complete.")
 }
 
-func executeWithRetry(attempts int, initialDelay time.Duration, operation func() error) error {
+func executeWithRetry(ctx context.Context, attempts int, initialDelay time.Duration, operation func() error) error {
 	var err error
 	for i := 0; i < attempts; i++ {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
 		if err = operation(); err == nil {
 			return nil
 		}
-		time.Sleep(initialDelay * time.Duration(i+1))
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(initialDelay * time.Duration(i+1)):
+		}
 	}
 	return err
 }
 
 func ingestTransaction(c *gin.Context) {
-	// OTel Span Start
+	reqCtx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+	defer cancel()
+
 	tracer := otel.Tracer("sentinel-api")
-	ctx, span := tracer.Start(c.Request.Context(), "ingestTransaction")
+	ctx, span := tracer.Start(reqCtx, "ingestTransaction")
 	defer span.End()
 
-	var rawData map[string]any
-	if err := c.ShouldBindJSON(&rawData); err != nil {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Detail: "Invalid JSON payload format"})
+	bodyBytes, err := io.ReadAll(c.Request.Body)
+	if err != nil || len(bodyBytes) == 0 {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Detail: "Invalid payload"})
 		return
 	}
 
-	txID, _ := rawData["transaction_id"].(string)
-
-	var amount float64
-	if amt, ok := rawData["Amount"].(float64); ok {
-		amount = amt
-	} else if amtStr, ok := rawData["Amount"].(string); ok {
-		amount, _ = strconv.ParseFloat(amtStr, 64)
+	var payload TransactionPayload
+	if err := json.Unmarshal(bodyBytes, &payload); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Detail: "Invalid JSON format"})
+		return
 	}
 
-	hashData := make(map[string]any)
-	for k, v := range rawData {
-		if k != "transaction_id" {
-			hashData[k] = v
-		}
+	hashData := TransactionHashData{
+		UserID: payload.UserID,
+		Amount: payload.Amount,
+		Time:   payload.Time,
+		V1:     payload.V1,
+		V2:     payload.V2,
+		V3:     payload.V3,
+		V4:     payload.V4,
+		V5:     payload.V5,
+		V6:     payload.V6,
+		V7:     payload.V7,
+		V8:     payload.V8,
+		V9:     payload.V9,
+		V10:    payload.V10,
+		V11:    payload.V11,
+		V12:    payload.V12,
+		V13:    payload.V13,
+		V14:    payload.V14,
+		V15:    payload.V15,
+		V16:    payload.V16,
+		V17:    payload.V17,
+		V18:    payload.V18,
+		V19:    payload.V19,
+		V20:    payload.V20,
+		V21:    payload.V21,
+		V22:    payload.V22,
+		V23:    payload.V23,
+		V24:    payload.V24,
+		V25:    payload.V25,
+		V26:    payload.V26,
+		V27:    payload.V27,
+		V28:    payload.V28,
 	}
 
 	hashBytes, err := json.Marshal(hashData)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Detail: "Failed to process transaction payload"})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Detail: "Hash generation failed"})
 		return
 	}
 
@@ -340,16 +399,15 @@ func ingestTransaction(c *gin.Context) {
 	var isNew bool
 	var redisErr error
 
-	// OTel Redis Span
 	_, redisSpan := tracer.Start(ctx, "Redis-SetNX")
-	err = executeWithRetry(3, 10*time.Millisecond, func() error {
+	err = executeWithRetry(ctx, 3, 10*time.Millisecond, func() error {
 		isNew, redisErr = redisClient.SetNX(ctx, redisKey, "1", 10*time.Second).Result()
 		return redisErr
 	})
 	redisSpan.End()
 
 	if err != nil {
-		logger.Error("Redis idempotency check failed after retries", zap.Error(err))
+		logger.Error("Redis idempotency check failed", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Detail: "Internal Server Error"})
 		return
 	}
@@ -364,9 +422,6 @@ func ingestTransaction(c *gin.Context) {
 		return
 	}
 
-	fullPayload, _ := json.Marshal(rawData)
-
-	// OTel Kafka Span
 	_, kafkaSpan := tracer.Start(ctx, "Kafka-Write")
 
 	carrier := propagation.MapCarrier{}
@@ -380,16 +435,16 @@ func ingestTransaction(c *gin.Context) {
 		})
 	}
 
-	err = executeWithRetry(3, 15*time.Millisecond, func() error {
+	err = executeWithRetry(ctx, 3, 15*time.Millisecond, func() error {
 		return kafkaWriter.WriteMessages(ctx, kafka.Message{
 			Headers: kafkaHeaders,
-			Value:   fullPayload,
+			Value:   bodyBytes,
 		})
 	})
 	kafkaSpan.End()
 
 	if err != nil {
-		logger.Error("Gateway failed to queue transaction to Kafka after retries", zap.Error(err))
+		logger.Error("Kafka queue failed", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Detail: "Failed to queue transaction"})
 		return
 	}
@@ -397,8 +452,8 @@ func ingestTransaction(c *gin.Context) {
 	transactionsProcessed.WithLabelValues("PASSED").Inc()
 	c.JSON(http.StatusAccepted, SuccessResponse{
 		Status:        "success",
-		TransactionID: txID,
-		Amount:        amount,
+		TransactionID: payload.TransactionID,
+		Amount:        payload.Amount,
 		Source:        "Redpanda",
 	})
 }
