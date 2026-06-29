@@ -1,0 +1,49 @@
+name: AI Release Agent
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name:  Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install google-genai
+
+      - name: Run AI Release Agent
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python agent/release/release_agent.py
+
+      - name: Publish GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -f "release_notes.md" ]; then
+            echo "Publishing Release ${{ env.NEXT_TAG }}..."
+            gh release create ${{ env.NEXT_TAG }} \
+              --title "Release ${{ env.NEXT_TAG }}" \
+              --notes-file release_notes.md
+          else
+            echo "No release notes found. Skipping release creation."
+          fi
