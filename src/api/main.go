@@ -133,7 +133,7 @@ type SuccessResponse struct {
 }
 
 var (
-	logger      *zap.Logger
+	logger      = zap.NewNop()
 	redisClient *redis.Client
 	kafkaWriter KafkaProducer
 
