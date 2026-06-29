@@ -57,8 +57,8 @@ def bump_version(current_version, bump_type):
 def generate_release_notes(next_version, commit_messages, git_diff):
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        print("Warning: GEMINI_API_KEY environment variable not found. Skipping AI release notes.", file=sys.stderr)
-        return "AI Release Notes generation skipped: Missing API Key."
+        print("Warning: GEMINI_API_KEY environment variable not found.", file=sys.stderr)
+        return "Failed to generate: Missing API Key."
 
     client = genai.Client(api_key=api_key)
 
@@ -82,7 +82,7 @@ Generate release notes for version **{next_version}**.
 ### Target Markdown Template Structure:
 Please strictly fill out the following template structure based on the inputs. If a section has no data, omit it or group it intelligently. Do not hallucinate metrics.
 
-### Release Notes ({next_version})
+### {next_version}
 
 #### Changed Files & Core Modifications
 - Summarize what files changed and what was modified at a high engineering level.
@@ -95,8 +95,8 @@ Please strictly fill out the following template structure based on the inputs. I
 - **(-) Disadvantages / Notes:** Mention any cost implications, potential deprecations, or infrastructure requirements.
 """
 
-    max_retries = 3
-    retry_delay = 5
+    max_retries = 5
+    retry_delay = 10
 
     for attempt in range(max_retries):
         try:
@@ -141,12 +141,30 @@ if __name__ == "__main__":
     diff_data = get_git_diff(current_tag)
     release_notes = generate_release_notes(next_tag, commits, diff_data)
     
+    if release_notes.startswith("Failed to generate"):
+        print(f"CRITICAL ERROR: {release_notes}")
+        sys.exit(1)
+    
     print("\n=================== GENERATED RELEASE NOTES ===================")
     print(release_notes)
     print("===============================================================")
 
     with open("release_notes.md", "w", encoding="utf-8") as f:
         f.write(release_notes)
+        
+    changelog_path = "CHANGELOG.md"
+    existing_content = ""
+    
+    if os.path.exists(changelog_path):
+        with open(changelog_path, "r", encoding="utf-8") as f:
+            existing_content = f.read()
+    else:
+        existing_content = "# Changelog\n\nAll notable changes to this project will be documented in this file.\n"
+
+    new_changelog = f"{release_notes}\n\n---\n\n{existing_content}"
+
+    with open(changelog_path, "w", encoding="utf-8") as f:
+        f.write(new_changelog)
         
     if "GITHUB_ENV" in os.environ:
         with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
