@@ -1,3 +1,22 @@
+### v1.18.1
+
+#### Changed Files & Core Modifications
+- **`agent/release/release_agent.py`**: Refactored the release agent script to improve code quality and adherence to PEP 8 standards. This includes enhancements to error handling for API calls and more robust parsing of Git commands.
+- **`infrastructure/helm/sentinel/values.yaml`**: Updated image tags for the `sentinel-api`, `sentinel-validator`, and `sentinel-consumer` components within the Helm chart.
+
+#### Reason for Changes
+- The primary driver for this release is the automated update of component image tags in the GitOps configuration. This ensures that the deployed infrastructure aligns with the latest built artifacts.
+- Additionally, internal code quality improvements were made to the release agent script to resolve linter warnings and enforce PEP 8 standards, leading to a more maintainable codebase.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Improved Stability and Maintainability:** Adherence to PEP 8 and resolution of linter warnings in the release agent contribute to a cleaner and more robust release automation process.
+    - **Automated Deployment Alignment:** The automatic update of image tags in the Helm chart ensures that deployments consistently use the intended versions of the services.
+- **(-) Disadvantages / Notes:**
+    - No significant architectural trade-offs or disadvantages are introduced with these changes. The modifications focus on code quality and automated deployment practices.
+
+---
+
 ## Release Notes - v1.18.0
 
 This release introduces significant enhancements to our automated release process, focusing on improved changelog generation and more robust API error handling.
