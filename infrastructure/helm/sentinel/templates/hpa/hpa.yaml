@@ -13,7 +13,7 @@ spec:
     name: sentinel-api
   minReplicas: {{ .Values.api.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.api.autoscaling.maxReplicas }}
-  
+
   metrics:
   {{- if .Values.api.autoscaling.targetCPUUtilizationPercentage }}
   - type: Resource

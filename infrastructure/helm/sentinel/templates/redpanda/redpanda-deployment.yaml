@@ -1,0 +1,49 @@
+{{- if .Values.redpanda.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sentinel-redpanda
+  labels:
+    app: redpanda
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redpanda
+  template:
+    metadata:
+      labels:
+        app: redpanda
+    spec:
+      containers:
+      - name: redpanda
+        image: docker.redpanda.com/redpandadata/redpanda:v23.3.11
+        args:
+        - redpanda
+        - start
+        - --mode=dev-container
+        - --smp=1
+        - --memory=256M
+        - --reserve-memory=0M
+        - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
+        - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
+        ports:
+        - containerPort: 9092
+        - containerPort: 19092
+        - containerPort: 9644
+
+        {{- if .Values.redpanda.resources }}
+        resources:
+          {{- toYaml .Values.redpanda.resources | nindent 10 }}
+        {{- end }}
+
+        {{- if .Values.redpanda.livenessProbe }}
+        livenessProbe:
+          {{- toYaml .Values.redpanda.livenessProbe | nindent 10 }}
+        {{- end }}
+
+        {{- if .Values.redpanda.readinessProbe }}
+        readinessProbe:
+          {{- toYaml .Values.redpanda.readinessProbe | nindent 10 }}
+        {{- end }}
+{{- end }}
