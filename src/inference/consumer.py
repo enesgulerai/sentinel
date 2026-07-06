@@ -11,12 +11,6 @@ import orjson
 import psycopg
 import uvloop
 from aiokafka import AIOKafkaConsumer
-from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.propagate import extract
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
 
 from src.utils.logger import get_logger
 
@@ -46,22 +40,8 @@ BATCH_SIZE = 500
 POLL_TIMEOUT_MS = 1000
 
 
-def init_tracer():
-    resource = Resource.create({"service.name": "sentinel-inference-consumer"})
-    provider = TracerProvider(resource=resource)
-    jaeger_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
-    exporter = OTLPSpanExporter(endpoint=jaeger_endpoint, insecure=True)
-    processor = BatchSpanProcessor(exporter)
-    provider.add_span_processor(processor)
-    trace.set_tracer_provider(provider)
-    return trace.get_tracer(__name__)
-
-
-tracer = init_tracer()
-
-
 async def start_inference_engine():
-    logger.info("Starting Async AI Inference Engine...")
+    logger.info("Starting Async AI Inference Engine (OTel Disabled)...")
 
     if not MODEL_PATH.exists() or not SCALER_PATH.exists():
         logger.error(f"Model or Scaler not found at paths: {MODEL_PATH}, {SCALER_PATH}. Run pipeline first.")
@@ -102,17 +82,9 @@ async def start_inference_engine():
 
             batch_data = []
             valid_msgs = []
-            batch_contexts = []
 
             for _tp, messages in result.items():
                 for msg in messages:
-                    carrier = {}
-                    if msg.headers:
-                        for key, value in msg.headers:
-                            carrier[key] = value.decode("utf-8")
-
-                    ctx = extract(carrier)
-
                     try:
                         transaction = orjson.loads(msg.value)
 
@@ -123,75 +95,62 @@ async def start_inference_engine():
 
                         batch_data.append(row)
                         valid_msgs.append(transaction)
-                        batch_contexts.append(ctx)
                     except Exception as e:
                         logger.warning(f"Deserialization failed despite validation: {e}")
                         continue
 
-            # OTel Sub-Span Structure
             if not batch_data:
                 continue
 
-            main_ctx = batch_contexts[0] if batch_contexts else None
+            try:
+                # 1. Data Preprocessing and Scaling
+                X_batch = np.array(batch_data, dtype=np.float32)
+                time_amount_cols = X_batch[:, [0, 29]]
+                scaled_time_amount = scaler.transform(time_amount_cols)
 
-            with tracer.start_as_current_span("Consumer-Process-Batch", context=main_ctx) as main_span:
-                try:
-                    # 1. Data Preprocessing and Scaling
-                    with tracer.start_as_current_span("ML-Data-Prep"):
-                        X_batch = np.array(batch_data, dtype=np.float32)
-                        time_amount_cols = X_batch[:, [0, 29]]
-                        scaled_time_amount = scaler.transform(time_amount_cols)
+                X_batch[:, 0] = scaled_time_amount[:, 0]
+                X_batch[:, 29] = scaled_time_amount[:, 1]
 
-                        X_batch[:, 0] = scaled_time_amount[:, 0]
-                        X_batch[:, 29] = scaled_time_amount[:, 1]
+                # 2. AI Inference
+                outputs = session.run(None, {input_name: X_batch})
+                fraud_probs = outputs[1]
 
-                    # 2. AI Inference
-                    with tracer.start_as_current_span("ML-Inference-ONNX"):
-                        outputs = session.run(None, {input_name: X_batch})
-                        fraud_probs = outputs[1]
+                # 3. Data Transformation and Post-Processing
+                db_records = []
+                frauds_in_batch = 0
 
-                    # 3. Data Transformation and Post-Processing
-                    with tracer.start_as_current_span("Post-Processing"):
-                        db_records = []
-                        frauds_in_batch = 0
+                for i, prob_dict in enumerate(fraud_probs):
+                    fraud_prob = prob_dict.get(1, 0.0) if isinstance(prob_dict, dict) else prob_dict[1]
+                    amt = valid_msgs[i].get("Amount", 0.0)
+                    tx_id = valid_msgs[i].get("transaction_id", "Unknown")
+                    user_id = valid_msgs[i].get("user_id", "anonymous")
 
-                        for i, prob_dict in enumerate(fraud_probs):
-                            fraud_prob = prob_dict.get(1, 0.0) if isinstance(prob_dict, dict) else prob_dict[1]
-                            amt = valid_msgs[i].get("Amount", 0.0)
-                            tx_id = valid_msgs[i].get("transaction_id", "Unknown")
-                            user_id = valid_msgs[i].get("user_id", "anonymous")
-
-                            if fraud_prob > 0.50:
-                                frauds_in_batch += 1
-                                logger.warning(
-                                    f"FRAUD DETECTED! Prob: {fraud_prob * 100:.2f}% | Amount: ${amt:.2f} | TX: {tx_id[:8]}"
-                                )
-
-                            db_records.append((tx_id, user_id, amt, float(fraud_prob)))
-
-                    # 4. Database Write
-                    if db_records:
-                        with tracer.start_as_current_span("DB-Write-Postgres"):
-                            insert_query = """
-                                INSERT INTO transactions (transaction_id, user_id, amount, risk_score)
-                                VALUES (%s, %s, %s, %s)
-                                ON CONFLICT (transaction_id) DO NOTHING;
-                            """
-                            await db_cursor.executemany(insert_query, db_records)
-                            await db_conn.commit()
-
-                    main_span.set_status(trace.Status(trace.StatusCode.OK))
-
-                    if len(valid_msgs) > 0:
-                        logger.info(
-                            f"Processed batch of {len(valid_msgs)} txs. Frauds found: {frauds_in_batch}. Saved to DB."
+                    if fraud_prob > 0.50:
+                        frauds_in_batch += 1
+                        logger.warning(
+                            f"FRAUD DETECTED! Prob: {fraud_prob * 100:.2f}% | Amount: ${amt:.2f} | TX: {tx_id[:8]}"
                         )
 
-                except Exception as process_err:
-                    logger.error(f"Batch Processing Error: {process_err}")
-                    await db_conn.rollback()
-                    main_span.set_status(trace.Status(trace.StatusCode.ERROR, str(process_err)))
-                    main_span.record_exception(process_err)
+                    db_records.append((tx_id, user_id, amt, float(fraud_prob)))
+
+                # 4. Database Write
+                if db_records:
+                    insert_query = """
+                        INSERT INTO transactions (transaction_id, user_id, amount, risk_score)
+                        VALUES (%s, %s, %s, %s)
+                        ON CONFLICT (transaction_id) DO NOTHING;
+                    """
+                    await db_cursor.executemany(insert_query, db_records)
+                    await db_conn.commit()
+
+                if len(valid_msgs) > 0:
+                    logger.info(
+                        f"Processed batch of {len(valid_msgs)} txs. Frauds found: {frauds_in_batch}. Saved to DB."
+                    )
+
+            except Exception as process_err:
+                logger.error(f"Batch Processing Error: {process_err}")
+                await db_conn.rollback()
 
     except asyncio.CancelledError:
         logger.info("\nGracefully shutting down the AI engine (Cancelled)...")

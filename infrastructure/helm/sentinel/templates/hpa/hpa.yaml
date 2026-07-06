@@ -13,6 +13,7 @@ spec:
     name: sentinel-api
   minReplicas: {{ .Values.api.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.api.autoscaling.maxReplicas }}
+  
   metrics:
   {{- if .Values.api.autoscaling.targetCPUUtilizationPercentage }}
   - type: Resource
@@ -29,5 +30,10 @@ spec:
       target:
         type: AverageValue
         averageValue: {{ .Values.api.autoscaling.targetMemoryAverageValue }}
+  {{- end }}
+
+  {{- if .Values.api.autoscaling.behavior }}
+  behavior:
+    {{- toYaml .Values.api.autoscaling.behavior | nindent 4 }}
   {{- end }}
 {{- end }}

@@ -20,15 +20,6 @@ import (
 	"github.com/segmentio/kafka-go"
 	"go.uber.org/zap"
 
-	// OTel Imports
-	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
-	"go.opentelemetry.io/otel/propagation"
-	"go.opentelemetry.io/otel/sdk/resource"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
-
 	// Prometheus Imports
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -168,32 +159,8 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-func initTracer() func(context.Context) error {
-	jaegerEndpoint := getEnv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4318")
-
-	exporter, err := otlptracehttp.New(context.Background(),
-		otlptracehttp.WithEndpoint(jaegerEndpoint),
-		otlptracehttp.WithInsecure(),
-	)
-	if err != nil {
-		logger.Fatal("FATAL: Failed to initialize OTel exporter", zap.Error(err))
-	}
-
-	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(exporter),
-		sdktrace.WithResource(resource.NewWithAttributes(
-			semconv.SchemaURL,
-			semconv.ServiceNameKey.String("sentinel-api"),
-		)),
-	)
-
-	otel.SetTracerProvider(tp)
-	otel.SetTextMapPropagator(propagation.TraceContext{})
-	return tp.Shutdown
-}
-
 func initServices() {
-	logger.Info("Starting Sentinel ML API Gateway (Go/Gin) - Max Performance Version...")
+	logger.Info("Starting Sentinel ML API Gateway (Go/Gin) - Max Performance Version (OTel Disabled)...")
 
 	redisHost := getEnv("REDIS_HOST", "localhost")
 	redisPort := getEnv("REDIS_PORT", "6379")
@@ -251,13 +218,11 @@ func main() {
 	defer func() { _ = logger.Sync() }()
 
 	initServices()
-	shutdownTracer := initTracer()
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
 	router.Use(gin.Recovery())
 
-	router.Use(otelgin.Middleware("sentinel-api"))
 	router.Use(metricsMiddleware())
 	pprof.Register(router)
 
@@ -265,8 +230,16 @@ func main() {
 		c.JSON(http.StatusOK, RootResponse{
 			Status:  "online",
 			Service: "Sentinel ML API (Go)",
-			Version: "1.16.1-max-performance",
+			Version: "1.16.2-max-performance",
 		})
+	})
+
+	// Health and Readiness endpoints for Kubernetes
+	router.GET("/healthz", func(c *gin.Context) {
+		c.String(http.StatusOK, "OK")
+	})
+	router.GET("/readyz", func(c *gin.Context) {
+		c.String(http.StatusOK, "OK")
 	})
 
 	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
@@ -295,10 +268,6 @@ func main() {
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		logger.Fatal("Server forced to shutdown", zap.Error(err))
-	}
-
-	if err := shutdownTracer(shutdownCtx); err != nil {
-		logger.Error("Error shutting down tracer", zap.Error(err))
 	}
 
 	if err := redisClient.Close(); err != nil {
@@ -335,10 +304,6 @@ func executeWithRetry(ctx context.Context, attempts int, initialDelay time.Durat
 func ingestTransaction(c *gin.Context) {
 	reqCtx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
 	defer cancel()
-
-	tracer := otel.Tracer("sentinel-api")
-	ctx, span := tracer.Start(reqCtx, "ingestTransaction")
-	defer span.End()
 
 	bodyBytes, err := io.ReadAll(c.Request.Body)
 	if err != nil || len(bodyBytes) == 0 {
@@ -399,12 +364,10 @@ func ingestTransaction(c *gin.Context) {
 	var isNew bool
 	var redisErr error
 
-	_, redisSpan := tracer.Start(ctx, "Redis-SetNX")
-	err = executeWithRetry(ctx, 3, 10*time.Millisecond, func() error {
-		isNew, redisErr = redisClient.SetNX(ctx, redisKey, "1", 10*time.Second).Result()
+	err = executeWithRetry(reqCtx, 3, 10*time.Millisecond, func() error {
+		isNew, redisErr = redisClient.SetNX(reqCtx, redisKey, "1", 10*time.Second).Result()
 		return redisErr
 	})
-	redisSpan.End()
 
 	if err != nil {
 		logger.Error("Redis idempotency check failed", zap.Error(err))
@@ -422,26 +385,13 @@ func ingestTransaction(c *gin.Context) {
 		return
 	}
 
-	_, kafkaSpan := tracer.Start(ctx, "Kafka-Write")
-
-	carrier := propagation.MapCarrier{}
-	otel.GetTextMapPropagator().Inject(ctx, carrier)
-
-	var kafkaHeaders []kafka.Header
-	for k, v := range carrier {
-		kafkaHeaders = append(kafkaHeaders, kafka.Header{
-			Key:   k,
-			Value: []byte(v),
-		})
-	}
-
-	err = executeWithRetry(ctx, 3, 15*time.Millisecond, func() error {
-		return kafkaWriter.WriteMessages(ctx, kafka.Message{
-			Headers: kafkaHeaders,
-			Value:   bodyBytes,
+	// OTel kaldirildigi icin artik header'lara trace_id basmiyoruz.
+	// Sadece payload'u gonderiyoruz.
+	err = executeWithRetry(reqCtx, 3, 15*time.Millisecond, func() error {
+		return kafkaWriter.WriteMessages(reqCtx, kafka.Message{
+			Value: bodyBytes,
 		})
 	})
-	kafkaSpan.End()
 
 	if err != nil {
 		logger.Error("Kafka queue failed", zap.Error(err))

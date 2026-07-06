@@ -2,17 +2,8 @@ use rskafka::client::ClientBuilder;
 use rskafka::client::partition::{Compression, OffsetAt, UnknownTopicHandling};
 use rskafka::record::Record;
 use serde::Deserialize;
-use std::collections::BTreeMap;
 use std::env;
 use std::time::Duration;
-
-use opentelemetry::propagation::Extractor;
-use opentelemetry::trace::TraceContextExt;
-use opentelemetry::trace::{Span, Status, Tracer};
-use opentelemetry::{KeyValue, global};
-use opentelemetry_otlp::WithExportConfig;
-use opentelemetry_sdk::Resource;
-use opentelemetry_sdk::trace as sdktrace;
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
@@ -52,52 +43,8 @@ struct FraudEvent {
     Amount: f64,
 }
 
-struct KafkaHeaderExtractor<'a>(&'a BTreeMap<String, Vec<u8>>);
-
-impl<'a> Extractor for KafkaHeaderExtractor<'a> {
-    fn get(&self, key: &str) -> Option<&str> {
-        self.0.get(key).and_then(|v| std::str::from_utf8(v).ok())
-    }
-
-    fn keys(&self) -> Vec<&str> {
-        self.0.keys().map(|k| k.as_str()).collect()
-    }
-}
-
-struct KafkaHeaderInjector<'a>(&'a mut BTreeMap<String, Vec<u8>>);
-
-impl<'a> opentelemetry::propagation::Injector for KafkaHeaderInjector<'a> {
-    fn set(&mut self, key: &str, value: String) {
-        self.0.insert(key.to_string(), value.into_bytes());
-    }
-}
-
-fn init_tracer() {
-    let endpoint = env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
-        .unwrap_or_else(|_| "http://localhost:4318/v1/traces".to_string());
-
-    let exporter = opentelemetry_otlp::new_exporter()
-        .http()
-        .with_endpoint(endpoint);
-
-    let _ =
-        opentelemetry_otlp::new_pipeline()
-            .tracing()
-            .with_exporter(exporter)
-            .with_trace_config(sdktrace::config().with_resource(Resource::new(vec![
-                KeyValue::new("service.name", "sentinel-validator"),
-            ])))
-            .install_batch(opentelemetry_sdk::runtime::Tokio)
-            .expect("Failed to initialize OTel pipeline");
-
-    global::set_text_map_propagator(opentelemetry_sdk::propagation::TraceContextPropagator::new());
-}
-
 #[tokio::main]
 async fn main() {
-    init_tracer();
-    let tracer = global::tracer("sentinel-validator");
-
     let connection_string =
         env::var("REDPANDA_BROKER").unwrap_or_else(|_| "localhost:19092".to_string());
     let client = match ClientBuilder::new(vec![connection_string.to_owned()])
@@ -145,46 +92,23 @@ async fn main() {
                 for record_and_offset in records {
                     current_offset = record_and_offset.offset + 1;
 
-                    let parent_context = global::get_text_map_propagator(|prop| {
-                        prop.extract(&KafkaHeaderExtractor(&record_and_offset.record.headers))
-                    });
-
-                    let mut span =
-                        tracer.start_with_context("Rust-Validate-Event", &parent_context);
-
                     if let Some(value) = &record_and_offset.record.value {
                         match serde_json::from_slice::<FraudEvent>(value) {
                             Ok(_) => {
-                                let mut new_headers = record_and_offset.record.headers.clone();
-                                let cx = parent_context
-                                    .with_remote_span_context(span.span_context().clone());
-
-                                global::get_text_map_propagator(|prop| {
-                                    prop.inject_context(
-                                        &cx,
-                                        &mut KafkaHeaderInjector(&mut new_headers),
-                                    )
-                                });
-
                                 let clean_record = Record {
                                     key: record_and_offset.record.key.clone(),
                                     value: Some(value.clone()),
-                                    headers: new_headers,
+                                    headers: record_and_offset.record.headers.clone(),
                                     timestamp: record_and_offset.record.timestamp,
                                 };
                                 valid_batch.push(clean_record);
-                                span.set_status(Status::Ok);
                             }
                             Err(e) => {
                                 let payload_str = String::from_utf8_lossy(value);
                                 println!("INVALID: {} - {}", e, payload_str);
-                                span.set_status(Status::Error {
-                                    description: format!("{}", e).into(),
-                                });
                             }
                         }
                     }
-                    span.end();
                 }
 
                 if !valid_batch.is_empty() {
