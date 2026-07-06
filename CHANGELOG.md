@@ -1,3 +1,27 @@
+### v1.18.3
+
+#### Changed Files & Core Modifications
+- **Helm Chart Enhancements:** The Helm chart for Sentinel has been significantly refactored to dynamically generate Kubernetes manifests for various services including API, Console, Consumer, Validator, PostgreSQL, Redis, and Redpanda. This includes the creation of new deployment, service, and stateful set configurations where applicable.
+- **Service Dependencies:** Init containers have been added to deployments to ensure proper startup order and dependency resolution (e.g., waiting for PostgreSQL, Redis, and Redpanda before the main application containers start).
+- **PostgreSQL Configuration:** New configurations for PostgreSQL have been introduced, including a ConfigMap for initialization scripts (enabling the `vector` extension and defining a `transactions` table with vector indexing) and a Secret for database credentials.
+- **Resource Management:** Kubernetes resource definitions (requests and limits) and probe configurations (liveness and readiness) are now dynamically configurable for each service within the Helm chart.
+
+#### Reason for Changes
+This release introduces a comprehensive refactoring of the Sentinel Helm chart to enable dynamic and configurable deployment of all its constituent services. The goal is to improve the manageability, scalability, and reliability of the Sentinel deployment by leveraging Kubernetes' native capabilities and providing a more robust infrastructure setup.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Improved Deployability:** The Helm chart now supports the dynamic deployment of all core services, simplifying the setup and management of the Sentinel ecosystem.
+    - **Enhanced Reliability:** The introduction of init containers ensures that services start in the correct order, preventing startup failures due to missing dependencies.
+    - **Increased Configurability:** Resource allocation, autoscaling parameters, and readiness/liveness probes are now configurable per service, allowing for fine-tuned performance and stability.
+    - **Standardized Infrastructure:** The inclusion of managed PostgreSQL and Redpanda deployments within the Helm chart provides a more standardized and integrated infrastructure.
+    - **Vector Database Support:** The PostgreSQL initialization script now includes the necessary setup for the `pgvector` extension, enabling vector embeddings for transaction data.
+- **(-) Disadvantages / Notes:**
+    - **Increased Complexity:** While more configurable, the Helm chart itself has become more complex due to the dynamic generation of manifests.
+    - **Infrastructure Requirements:** This release assumes the availability of a Kubernetes cluster capable of running the defined resources. The PostgreSQL deployment requires persistent storage.
+
+---
+
 ### v1.18.2
 
 #### Changed Files & Core Modifications
