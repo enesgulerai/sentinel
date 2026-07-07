@@ -1,3 +1,20 @@
+### v1.18.5
+
+#### Changed Files & Core Modifications
+- **Jenkinsfile:** Modified the `sed` command within the Jenkins pipeline to correctly escape double quotes when updating the Helm `values.yaml` file. This ensures that numeric image tags are parsed as strings in the YAML.
+- **infrastructure/helm/sentinel/values.yaml:** Updated the image tags for `sentinel-api`, `sentinel-validator`, and `sentinel-consumer` to `6253106`.
+
+#### Reason for Changes
+This release addresses an issue where Helm's YAML parsing was incorrectly interpreting numeric image tags as integers, leading to potential deployment failures or unexpected behavior. The change in the Jenkinsfile ensures that image tags are consistently treated as strings, resolving this parsing error. The update to image tag `6253106` reflects a specific build or commit that has been validated.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - Resolves a critical issue in the CI/CD pipeline that could prevent successful deployments due to incorrect Helm YAML parsing.
+    - Ensures consistent and reliable deployment of the specified image version (`6253106`) across all Sentinel components.
+    - Improves the robustness of the automated deployment process.
+
+---
+
 ### v1.18.4
 
 #### Changed Files & Core Modifications
