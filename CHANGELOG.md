@@ -1,3 +1,22 @@
+### v1.18.6
+
+#### Changed Files & Core Modifications
+- **`src/validator/main.rs`**: Modified error handling within the validator to explicitly exit on critical failures (e.g., Kafka client connection issues) instead of silently returning.
+- **`infrastructure/helm/sentinel/values.yaml`**: Updated image tags for `sentinel-api`, `sentinel-validator`, and `sentinel-consumer` to `9170b0e`.
+
+#### Reason for Changes
+The validator component previously handled critical errors, such as failing to establish a connection to the Kafka broker or specific partitions, by silently returning. This masked underlying issues and prevented proper error reporting and system recovery. The change ensures that such critical failures are now explicitly reported and result in an immediate process exit, allowing for quicker detection and resolution of infrastructure or configuration problems.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Improved Observability:** Critical errors in the validator are now surfaced, making it easier to diagnose and resolve connectivity or configuration issues.
+    - **Enhanced Stability:** Prevents the validator from entering an unrecoverable state without clear indication.
+    - **Automated GitOps Updates:** The image tags have been automatically updated as part of the GitOps workflow, ensuring the latest stable build is deployed.
+- **(-) Disadvantages / Notes:**
+    - The explicit exit on error might lead to more frequent restarts of the validator pod if transient network issues occur. However, this is generally preferable to silent failures.
+
+---
+
 ### v1.18.5
 
 #### Changed Files & Core Modifications
