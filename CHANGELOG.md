@@ -1,3 +1,21 @@
+### v1.18.7
+
+#### Changed Files & Core Modifications
+- `src/validator/src/main.rs`: Modified the main application logic to correctly define and utilize the `connection_string` variable.
+
+#### Reason for Changes
+- The previous implementation was missing the definition of the `connection_string` variable, which is essential for establishing a connection to the message broker. This omission was causing the Continuous Integration (CI) pipeline, specifically the clippy checks, to fail.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - Resolved a critical issue preventing the validator service from connecting to the message broker.
+    - Restored the integrity of the CI pipeline, ensuring that code quality checks can proceed without interruption.
+    - Improved the robustness of the validator service by ensuring a default connection string is used when the environment variable is not explicitly set.
+- **(-) Disadvantages / Notes:**
+    - This is a bug fix and does not introduce new features or architectural changes. The default connection string `localhost:19092` is now used if `REDPANDA_BROKER` is not configured.
+
+---
+
 ### v1.18.6
 
 #### Changed Files & Core Modifications
