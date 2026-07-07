@@ -37,6 +37,11 @@ spec:
           {{- toYaml .Values.redpanda.resources | nindent 10 }}
         {{- end }}
 
+        {{- if .Values.redpanda.startupProbe }}
+        startupProbe:
+          {{- toYaml .Values.redpanda.startupProbe | nindent 10 }}
+        {{- end }}
+
         {{- if .Values.redpanda.livenessProbe }}
         livenessProbe:
           {{- toYaml .Values.redpanda.livenessProbe | nindent 10 }}

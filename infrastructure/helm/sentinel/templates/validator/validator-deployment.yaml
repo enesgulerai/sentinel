@@ -33,6 +33,11 @@ spec:
           resources:
             {{- toYaml .Values.validator.resources | nindent 12 }}
 
+          {{- if .Values.validator.startupProbe }}
+          startupProbe:
+            {{- toYaml .Values.validator.startupProbe | nindent 12 }}
+          {{- end }}
+
           {{- if .Values.validator.livenessProbe }}
           livenessProbe:
             {{- toYaml .Values.validator.livenessProbe | nindent 12 }}

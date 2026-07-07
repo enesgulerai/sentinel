@@ -34,6 +34,11 @@ spec:
           {{- toYaml .Values.console.resources | nindent 10 }}
         {{- end }}
 
+        {{- if .Values.console.startupProbe }}
+        startupProbe:
+          {{- toYaml .Values.console.startupProbe | nindent 10 }}
+        {{- end }}
+
         {{- if .Values.console.livenessProbe }}
         livenessProbe:
           {{- toYaml .Values.console.livenessProbe | nindent 10 }}
