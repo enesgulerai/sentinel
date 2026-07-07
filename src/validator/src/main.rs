@@ -45,14 +45,15 @@ struct FraudEvent {
 
 #[tokio::main]
 async fn main() {
-    let connection_string =
-        env::var("REDPANDA_BROKER").unwrap_or_else(|_| "localhost:19092".to_string());
     let client = match ClientBuilder::new(vec![connection_string.to_owned()])
         .build()
         .await
     {
         Ok(c) => c,
-        Err(_) => return,
+        Err(e) => {
+            eprintln!("CRITICAL: Failed to build Kafka client: {:?}", e);
+            std::process::exit(1);
+        }
     };
 
     let raw_partition_client = match client
@@ -60,7 +61,10 @@ async fn main() {
         .await
     {
         Ok(pc) => pc,
-        Err(_) => return,
+        Err(e) => {
+            eprintln!("CRITICAL: Failed to connect to raw-events partition: {:?}", e);
+            std::process::exit(1);
+        }
     };
 
     let clean_partition_client = match client
@@ -68,7 +72,10 @@ async fn main() {
         .await
     {
         Ok(pc) => pc,
-        Err(_) => return,
+        Err(e) => {
+            eprintln!("CRITICAL: Failed to connect to clean-events partition: {:?}", e);
+            std::process::exit(1);
+        }
     };
 
     let mut current_offset = raw_partition_client
