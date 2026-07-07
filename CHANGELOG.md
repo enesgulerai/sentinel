@@ -1,3 +1,28 @@
+### v1.18.4
+
+#### Changed Files & Core Modifications
+- **Helm Chart Updates:** Modified Kubernetes deployment configurations (`.yaml` files) across various services (API, Console, Consumer, PostgreSQL, Redis, Redpanda, Validator) to include `startupProbe` configurations.
+- **API Health Endpoints:** Updated the Go API (`main.go`) to expose new health endpoints: `/health/startup`, `/health/live`, and `/health/ready`.
+- **Dependency Management:** Updated `go.mod` and `go.sum` files for the API service, removing several OpenTelemetry-related dependencies.
+- **Image Tag Update:** The `values.yaml` file for the Helm chart was updated to reflect a new image tag (`ff99b8c`) for multiple services.
+
+#### Reason for Changes
+This release focuses on enhancing the reliability and observability of the application within a Kubernetes environment. The primary drivers are:
+- **Improved Kubernetes Integration:** By introducing `startupProbe` configurations for various services, the system can better manage pod lifecycles during startup, ensuring that applications are fully initialized before being considered ready for traffic. This is crucial for robust deployments.
+- **Standardized Health Checks:** The API now provides distinct health endpoints (`/health/startup`, `/health/live`, `/health/ready`) that align with standard Kubernetes probing practices, allowing for more granular health monitoring.
+- **Dependency Cleanup:** The removal of specific OpenTelemetry dependencies suggests a refactoring or simplification of the tracing and metrics collection mechanism, potentially leading to a smaller API footprint or a shift in how observability is managed.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Enhanced Kubernetes Orchestration:** The addition of `startupProbe` significantly improves the resilience of deployments by preventing traffic from being sent to pods that are still initializing.
+    - **Improved Observability:** Standardized health endpoints facilitate better integration with Kubernetes' health checking mechanisms and external monitoring tools.
+    - **Reduced API Complexity:** The removal of certain OpenTelemetry dependencies may lead to a more streamlined API service, potentially improving build times and reducing the attack surface.
+- **(-) Disadvantages / Notes:**
+    - **Infrastructure Configuration:** Users leveraging Kubernetes deployments will need to ensure their Helm chart configurations are updated to utilize these new probe settings.
+    - **Observability Strategy:** If the removed OpenTelemetry dependencies were actively used for tracing or metrics, a new strategy for observability may need to be implemented or confirmed.
+
+---
+
 ### v1.18.3
 
 #### Changed Files & Core Modifications
