@@ -3,7 +3,7 @@ global:
   environment: production
   imagePullPolicy: IfNotPresent
 
-# Go Gateway
+# Go Gateway Helm Chart Values
 api:
   enabled: true
   replicaCount: 1
@@ -25,8 +25,6 @@ api:
       value: "postgres"
     - name: POSTGRES_PORT
       value: "5432"
-    - name: OTEL_EXPORTER_OTLP_ENDPOINT
-      value: "http://jaeger:4318/v1/traces"
   resources:
     requests:
       cpu: "500m"
@@ -40,8 +38,32 @@ api:
     maxReplicas: 5
     targetCPUUtilizationPercentage: 60
     targetMemoryAverageValue: "100Mi"
+  ingress:
+    enabled: true
+    className: "nginx"
+    hosts:
+      - host: "api.sentinel.local"
+        paths:
+          - path: "/"
+            pathType: Prefix
+  startupProbe:
+    httpGet:
+      path: /health/startup
+      port: 8000
+    failureThreshold: 30
+    periodSeconds: 10
+  livenessProbe:
+    httpGet:
+      path: /health/live
+      port: 8000
+    periodSeconds: 20
+  readinessProbe:
+    httpGet:
+      path: /health/ready
+      port: 8000
+    periodSeconds: 10
 
-# Rust Validator
+# Rust Validator Helm Chart Values
 validator:
   enabled: true
   replicaCount: 2
@@ -52,17 +74,37 @@ validator:
   env:
     - name: REDPANDA_BROKER
       value: "redpanda:9092"
-    - name: OTEL_EXPORTER_OTLP_ENDPOINT
-      value: "http://jaeger:4318/v1/traces"
   resources:
     requests:
       cpu: "50m"
-      memory: "16Mi"
+      memory: "64Mi"
     limits:
-      cpu: "50m"
-      memory: "16Mi"
+      cpu: "100m"
+      memory: "128Mi"
+  startupProbe:
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - /app/validator --check-startup
+    failureThreshold: 6
+    periodSeconds: 5
+  livenessProbe:
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - /app/validator --check-live
+    periodSeconds: 20
+  readinessProbe:
+    exec:
+      command:
+        - /bin/sh
+        - -c
+        - /app/validator --check-ready
+    periodSeconds: 10
 
-# Python Consumer
+# Python Consumer Helm Chart Values
 consumer:
   enabled: true
   replicaCount: 1
@@ -82,10 +124,36 @@ consumer:
     limits:
       cpu: "1000m"
       memory: "256Mi"
+  startupProbe:
+    exec:
+      command:
+        - python
+        - -c
+        - "import sys; sys.exit(0)"
+    failureThreshold: 15
+    periodSeconds: 10
+  livenessProbe:
+    exec:
+      command:
+        - python
+        - -c
+        - "import sys; sys.exit(0)"
+    periodSeconds: 20
+  readinessProbe:
+    exec:
+      command:
+        - python
+        - -c
+        - "import sys; sys.exit(0)"
+    periodSeconds: 10
 
-# Infrastructure
+# PostgreSQL Helm Chart Values
 postgres:
   enabled: true
+  auth:
+    user: "sentinel_user"
+    password: "secure_password"
+    database: "sentinel_db"
   resources:
     requests:
       cpu: "100m"
@@ -94,19 +162,21 @@ postgres:
       cpu: "100m"
       memory: "128Mi"
 
+# Redis Helm Chart Values
 redis:
   enabled: true
   image:
     repository: docker.dragonflydb.io/dragonflydb/dragonfly
-    tag: "latest"
+    tag: "v1.17.1"
   resources:
-  requests:
-    memory: "512Mi"
-    cpu: "500m"
-  limits:
-    memory: "1Gi"
-    cpu: "1000m"
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
 
+# Redpanda Helm Chart Values
 redpanda:
   enabled: true
   resources:
@@ -126,3 +196,19 @@ console:
     limits:
       cpu: "100m"
       memory: "128Mi"
+  startupProbe:
+    httpGet:
+      path: /admin/health
+      port: 8080
+    failureThreshold: 20
+    periodSeconds: 10
+  livenessProbe:
+    httpGet:
+      path: /admin/health
+      port: 8080
+    periodSeconds: 20
+  readinessProbe:
+    httpGet:
+      path: /admin/health
+      port: 8080
+    periodSeconds: 10

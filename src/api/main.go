@@ -235,10 +235,13 @@ func main() {
 	})
 
 	// Health and Readiness endpoints for Kubernetes
-	router.GET("/healthz", func(c *gin.Context) {
+	router.GET("/health/startup", func(c *gin.Context) {
 		c.String(http.StatusOK, "OK")
 	})
-	router.GET("/readyz", func(c *gin.Context) {
+	router.GET("/health/live", func(c *gin.Context) {
+		c.String(http.StatusOK, "OK")
+	})
+	router.GET("/health/ready", func(c *gin.Context) {
 		c.String(http.StatusOK, "OK")
 	})
 

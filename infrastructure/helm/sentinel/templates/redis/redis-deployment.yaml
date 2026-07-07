@@ -23,6 +23,11 @@ spec:
         resources:
           {{- toYaml .Values.redis.resources | nindent 10 }}
 
+        {{- if .Values.redis.startupProbe }}
+        startupProbe:
+          {{- toYaml .Values.redis.startupProbe | nindent 10 }}
+        {{- end }}
+
         {{- if .Values.redis.livenessProbe }}
         livenessProbe:
           {{- toYaml .Values.redis.livenessProbe | nindent 10 }}

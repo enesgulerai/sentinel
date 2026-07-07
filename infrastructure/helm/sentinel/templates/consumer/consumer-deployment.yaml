@@ -51,6 +51,11 @@ spec:
           resources:
             {{- toYaml .Values.consumer.resources | nindent 12 }}
 
+          {{- if .Values.consumer.startupProbe }}
+          startupProbe:
+            {{- toYaml .Values.consumer.startupProbe | nindent 12 }}
+          {{- end }}
+
           {{- if .Values.consumer.livenessProbe }}
           livenessProbe:
             {{- toYaml .Values.consumer.livenessProbe | nindent 12 }}

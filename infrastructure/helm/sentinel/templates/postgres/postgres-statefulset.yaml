@@ -37,6 +37,11 @@ spec:
           {{- toYaml .Values.postgres.resources | nindent 10 }}
         {{- end }}
 
+        {{- if .Values.postgres.startupProbe }}
+        startupProbe:
+          {{- toYaml .Values.postgres.startupProbe | nindent 10 }}
+        {{- end }}
+
         {{- if .Values.postgres.livenessProbe }}
         livenessProbe:
           {{- toYaml .Values.postgres.livenessProbe | nindent 10 }}
