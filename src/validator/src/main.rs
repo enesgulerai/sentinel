@@ -65,7 +65,10 @@ async fn main() {
     {
         Ok(pc) => pc,
         Err(e) => {
-            eprintln!("CRITICAL: Failed to connect to raw-events partition: {:?}", e);
+            eprintln!(
+                "CRITICAL: Failed to connect to raw-events partition: {:?}",
+                e
+            );
             std::process::exit(1);
         }
     };
@@ -76,7 +79,10 @@ async fn main() {
     {
         Ok(pc) => pc,
         Err(e) => {
-            eprintln!("CRITICAL: Failed to connect to clean-events partition: {:?}", e);
+            eprintln!(
+                "CRITICAL: Failed to connect to clean-events partition: {:?}",
+                e
+            );
             std::process::exit(1);
         }
     };
