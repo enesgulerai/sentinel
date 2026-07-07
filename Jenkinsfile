@@ -48,8 +48,9 @@ pipeline {
             steps {
                 echo 'Updating Helm values.yaml with the new image tags...'
                 script {
+                    // Added escaped double quotes to enforce string type in YAML parsing
                     sh """
-                        sed -i '/repository: ghcr.io\\/enesgulerdev\\/sentinel-/!b;n;s/tag: .*/tag: ${env.IMAGE_TAG}/' infrastructure/helm/sentinel/values.yaml
+                        sed -i '/repository: ghcr.io\\/enesgulerdev\\/sentinel-/!b;n;s/tag: .*/tag: \\"${env.IMAGE_TAG}\\"/' infrastructure/helm/sentinel/values.yaml
                     """
 
                     sh "git config user.email 'jenkins@sentinel.local'"
