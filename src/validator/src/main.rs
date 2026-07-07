@@ -45,6 +45,9 @@ struct FraudEvent {
 
 #[tokio::main]
 async fn main() {
+    let connection_string =
+        env::var("REDPANDA_BROKER").unwrap_or_else(|_| "localhost:19092".to_string());
+
     let client = match ClientBuilder::new(vec![connection_string.to_owned()])
         .build()
         .await
