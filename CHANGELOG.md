@@ -1,3 +1,17 @@
+### v1.18.8
+
+#### Changed Files & Core Modifications
+- The `src/validator/src/main.rs` file was modified. The changes involve reformatting existing error handling code to adhere to line length guidelines.
+
+#### Reason for Changes
+- This change was made to address line length warnings identified during code formatting checks. The modifications ensure the codebase maintains a consistent and readable style.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:** Improved code readability and maintainability by adhering to established formatting standards. This contributes to a cleaner and more consistent codebase.
+- **(-) Disadvantages / Notes:** None. This is a routine code hygiene update.
+
+---
+
 ### v1.18.7
 
 #### Changed Files & Core Modifications
