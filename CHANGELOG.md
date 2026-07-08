@@ -1,3 +1,20 @@
+### v1.19.3
+
+#### Changed Files & Core Modifications
+- The `.github/workflows/security.yaml` file was updated to modify the security scanning workflow. Specifically, the `cargo-audit` and `cargo clippy` commands are now executed directly within the `src/validator` working directory.
+
+#### Reason for Changes
+- This change addresses a security vulnerability by ensuring that the `cargo-audit` tool is run directly within the `src/validator` directory. This guarantees that the audit is performed on the correct project dependencies, preventing potential security risks from being overlooked.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - Enhanced security by ensuring accurate dependency auditing.
+    - Improved reliability of the CI/CD pipeline's security checks.
+- **(-) Disadvantages / Notes:**
+    - This change introduces a new step to install `cargo-audit` within the workflow, which may slightly increase the execution time of the security job.
+
+---
+
 ### v1.19.2
 
 #### Changed Files & Core Modifications
