@@ -1,3 +1,17 @@
+### v1.19.1
+
+#### Changed Files & Core Modifications
+- The `.github/workflows/security.yaml` file was updated to correctly configure the `cargo-audit` tool. Specifically, the `create-paths` input was added to ensure the audit process targets the correct source code directory.
+
+#### Reason for Changes
+- This change addresses an issue where the automated security scanning tool (`cargo-audit`) was not correctly configured to scan the relevant Rust code paths. This could lead to potential vulnerabilities being missed.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:** Enhances the security posture of the project by ensuring comprehensive vulnerability scanning of the Rust codebase. This resolves a configuration debt and improves the reliability of our security checks.
+- **(-) Disadvantages / Notes:** No significant disadvantages or architectural trade-offs were introduced. This is a targeted fix to improve an existing process.
+
+---
+
 ### v1.19.0
 
 #### Changed Files & Core Modifications
