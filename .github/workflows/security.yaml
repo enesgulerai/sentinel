@@ -40,6 +40,9 @@ jobs:
   security-rust:
     name: Rust Security & Clippy Audit
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/validator
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -54,14 +57,13 @@ jobs:
         with:
           workspaces: "src/validator"
 
-      - name: Run Cargo Clippy (DevSecOps Mode)
-        run: cargo clippy --manifest-path src/validator/Cargo.toml -- -D warnings
+      - name: Run Cargo Clippy
+        run: cargo clippy -- -D warnings
 
       - name: Run Cargo Audit
-        uses: rustsec/audit-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          working-directory: src/validator
+        run: |
+          cargo install cargo-audit --locked
+          cargo audit
 
   # Infrastructure & Filesystem Scan
   security-infra:
