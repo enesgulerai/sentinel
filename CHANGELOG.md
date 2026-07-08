@@ -1,3 +1,16 @@
+### v1.19.2
+
+#### Changed Files & Core Modifications
+- The `security.yaml` GitHub Actions workflow file was updated. Specifically, the `cargo-audit` check configuration was modified to use the `working-directory` input instead of `create-paths`.
+
+#### Reason for Changes
+- This change addresses a security configuration issue within the CI/CD pipeline. The `cargo-audit` tool was not correctly scanning the intended directory for security vulnerabilities.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:** This modification ensures that security audits are performed on the correct codebase directory, improving the effectiveness of vulnerability detection and strengthening the overall security posture of the project.
+
+---
+
 ### v1.19.1
 
 #### Changed Files & Core Modifications
