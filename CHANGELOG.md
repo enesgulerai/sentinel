@@ -1,3 +1,25 @@
+### v1.19.0
+
+#### Changed Files & Core Modifications
+- **`.github/workflows/security.yaml`**: Enhanced the security scanning workflow by integrating `cargo-audit` for Rust dependency vulnerability checks and adjusting the `trivy` scanner's exit code behavior.
+- **`infrastructure/helm/sentinel/values.yaml`**: Updated image tags for `sentinel-api`, `sentinel-validator`, and `sentinel-consumer` to `d0edbb6`.
+
+#### Reason for Changes
+- **Enhanced Security Posture**: The integration of `cargo-audit` directly addresses the need to proactively identify and mitigate security vulnerabilities within Rust dependencies. This strengthens the overall security of the project by adding another layer of automated security scanning.
+- **Improved CI/CD Reliability**: Adjusting the `trivy` exit code from '1' to '0' for filesystem scans is a refinement to the CI/CD pipeline. This change likely aims to prevent unnecessary pipeline failures due to non-critical findings or to allow for more granular control over how scan results impact the build process.
+- **Automated Dependency Updates**: The update of image tags in the Helm values file (`d0edbb6`) signifies an automated process for keeping deployed components up-to-date with the latest builds, ensuring that security patches and improvements are deployed promptly.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Improved Security**: Proactive identification of vulnerabilities in Rust dependencies reduces the attack surface.
+    - **More Robust CI/CD**: Finer control over scan exit codes can lead to more stable and reliable build and deployment pipelines.
+    - **Up-to-date Deployments**: Automated image tag updates ensure that deployed services benefit from the latest fixes and features.
+- **(-) Disadvantages / Notes:**
+    - **Potential for Increased Scan Time**: Adding `cargo-audit` may slightly increase the execution time of the security workflow.
+    - **Configuration Management**: The change in `trivy` exit code requires careful consideration to ensure that critical vulnerabilities are still appropriately flagged and addressed.
+
+---
+
 ### v1.18.8
 
 #### Changed Files & Core Modifications
