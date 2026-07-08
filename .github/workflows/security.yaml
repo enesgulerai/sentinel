@@ -61,6 +61,7 @@ jobs:
         uses: rustsec/audit-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          create-paths: src/validator
 
   # Infrastructure & Filesystem Scan
   security-infra:
