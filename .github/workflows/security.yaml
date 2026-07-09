@@ -86,24 +86,22 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Setup uv Environment
+        uses: astral-sh/setup-uv@v5
         with:
-          components: clippy
+          version: "latest"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
 
-      - name: Rust Dependency Cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: "src/validator"
+      - name: Setup Python
+        run: uv python pin 3.11
 
-      - name: Run Cargo Clippy
-        run: cargo clippy -- -D warnings
 
-      - name: Install cargo-audit (Pre-compiled for speed)
-        uses: taiki-e/install-action@cargo-audit
+      - name: Run Bandit (SAST)
+        run: uvx bandit -r src/inference
 
-      - name: Run Cargo Audit
-        run: cargo audit
+      - name: Run Pip Audit (Dependency Vulnerability Scan)
+        run: uvx pip-audit --requirement pyproject.toml
 
   # Python SecOps
   scan-inference-python:
