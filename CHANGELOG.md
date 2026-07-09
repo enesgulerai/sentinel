@@ -1,3 +1,21 @@
+### v1.19.9
+
+#### Changed Files & Core Modifications
+- The `.github/workflows/security.yaml` file was updated to replace the Rust-based security tooling with Python-based tools managed by `uvx`. This includes changes to how the Rust toolchain and dependencies were handled, and the introduction of `uvx` for executing security scanners like Bandit and Pip Audit.
+
+#### Reason for Changes
+- This change was made to standardize and improve the execution of security scanning tools within the CI/CD pipeline. By leveraging `uvx`, we can ensure more consistent and efficient execution of Python-based security tools.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Improved Security Scanning:** Utilizes `uvx` for more robust and consistent execution of Static Application Security Testing (SAST) with Bandit and dependency vulnerability scanning with Pip Audit.
+    - **Streamlined Tooling:** Consolidates security scanning under a unified Python tooling approach, reducing reliance on separate Rust toolchain configurations for security checks.
+    - **Enhanced Cache Management:** `setup-uv` with `enable-cache: true` and `cache-dependency-glob: "uv.lock"` optimizes dependency caching for faster CI runs.
+- **(-) Disadvantages / Notes:**
+    - This change shifts the security scanning tooling from Rust-based checks (like `cargo clippy` and `cargo audit`) to Python-based tools. While this offers advantages in standardization, it means the specific Rust-related code quality checks are no longer performed in this workflow.
+
+---
+
 ### v1.19.8
 
 #### Changed Files & Core Modifications
