@@ -1,3 +1,22 @@
+### v1.19.13
+
+#### Changed Files & Core Modifications
+- **CI Configuration (`.github/workflows/format.yaml`):** The continuous integration workflow has been updated to enforce stricter code quality and formatting checks for Go and Python codebases. This includes adding explicit checks for Go formatting using `gofmt` and refining the Ruff linter and formatter execution for Python. The workflow now also includes concurrency controls to optimize execution.
+
+#### Reason for Changes
+- To improve code consistency and maintainability across the project, this update introduces more rigorous automated checks within the CI pipeline. This ensures that all code contributions adhere to established formatting standards and linting rules before being merged, reducing the likelihood of style-related issues and improving overall code quality.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - Enhanced code quality and consistency through automated enforcement of formatting and linting rules.
+    - Reduced technical debt by proactively identifying and correcting style deviations.
+    - Improved developer experience by providing immediate feedback on code style issues.
+    - More robust CI pipeline with optimized execution through concurrency controls.
+- **(-) Disadvantages / Notes:**
+    - Developers will need to ensure their local development environments are configured to match the CI's formatting and linting standards to avoid CI failures.
+
+---
+
 ### v1.19.12
 
 #### Changed Files & Core Modifications
