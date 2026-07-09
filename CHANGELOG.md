@@ -1,3 +1,22 @@
+### v1.19.12
+
+#### Changed Files & Core Modifications
+- Updated `pyproject.toml` and `uv.lock` to reflect dependency version changes.
+- Specifically, the `onnx` package has been upgraded from version `1.21.0` to `1.22.0`.
+- The `pydantic-settings` package has been updated from version `2.14.0` to `2.14.2`.
+
+#### Reason for Changes
+- The primary driver for this release is to address security vulnerabilities identified in the Python dependencies, specifically within the inference service. This update ensures the system is running with patched versions of critical libraries.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Enhanced Security:** Mitigates known security risks by updating to patched versions of `onnx` and `pydantic-settings`.
+    - **Dependency Updates:** Incorporates minor version updates for `onnx` and `pydantic-settings` which may include bug fixes and performance improvements.
+- **(-) Disadvantages / Notes:**
+    - No significant architectural trade-offs are introduced with these dependency updates. The changes are focused on maintaining security and stability.
+
+---
+
 ### v1.11.19
 
 #### Changed Files & Core Modifications
