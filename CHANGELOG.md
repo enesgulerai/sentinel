@@ -1,3 +1,26 @@
+### v1.19.10
+
+#### Changed Files & Core Modifications
+- The `security.yaml` GitHub Actions workflow has been significantly refactored.
+- The workflow now utilizes `uvx` for executing ephemeral Python security tools like Bandit and Pip Audit.
+- Rust-based security tools (Clippy and Cargo Audit) have been integrated into the workflow for Rust code analysis.
+- Dependency caching for Rust workspaces has been implemented using `Swatinem/rust-cache@v2`.
+- The setup for Rust toolchains and the installation of `cargo-audit` have been streamlined.
+
+#### Reason for Changes
+- This release addresses security scanning within the CI/CD pipeline. The primary goal was to enhance the efficiency and reliability of security checks by leveraging `uvx` for Python tools and integrating Rust-native security analysis.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - Improved security scanning coverage by incorporating Rust-specific tools.
+    - Streamlined execution of Python security tools through `uvx`, potentially leading to faster and more isolated execution.
+    - Enhanced CI performance with Rust dependency caching.
+    - Centralized and more robust security checks within the automated workflow.
+- **(-) Disadvantages / Notes:**
+    - This change introduces a dependency on Rust toolchains and associated actions within the CI environment.
+
+---
+
 ### v1.19.9
 
 #### Changed Files & Core Modifications
