@@ -1,3 +1,17 @@
+### v1.19.14
+
+#### Changed Files & Core Modifications
+- Updated `pyproject.toml` and `uv.lock` to include a new dependency, `soupsieve`, and to specify its version.
+
+#### Reason for Changes
+- This release addresses a transitive security vulnerability identified in the `soupsieve` dependency. The update ensures that the project is protected against known security risks by incorporating the latest patched version of this library.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:** Enhances the security posture of the application by mitigating a known vulnerability. This is a proactive measure to maintain system integrity and protect against potential exploits.
+- **(-) Disadvantages / Notes:** No significant architectural trade-offs or disadvantages are introduced by this security patch. The update is a direct dependency version bump to address a specific vulnerability.
+
+---
+
 ### v1.19.13
 
 #### Changed Files & Core Modifications
