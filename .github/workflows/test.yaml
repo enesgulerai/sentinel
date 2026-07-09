@@ -6,8 +6,12 @@ on:
   pull_request:
     branches: [ "main" ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Go
 jobs:
-  # Go Tests
   test-api:
     name: Go Tests
     runs-on: ubuntu-latest
@@ -24,10 +28,10 @@ jobs:
           go-version-file: 'src/api/go.mod'
           cache: true
 
-      - name: Run Go Tests
-        run: go test -v ./...
+      - name: Run Go Tests with Race Detector
+        run: go test -v -race ./...
 
-  # Rust Tests
+# Rust
   test-validator:
     name: Rust Tests
     runs-on: ubuntu-latest
@@ -41,11 +45,16 @@ jobs:
       - name: Setup Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "src/validator -> target"
+
       - name: Run Cargo Tests
         run: cargo test
 
-  # Python Tests
-  test-consumer:
+# Python
+  test-inference:
     name: Python Tests
     runs-on: ubuntu-latest
     steps:
@@ -58,4 +67,4 @@ jobs:
       - name: Run Pytest
         env:
           OTEL_SDK_DISABLED: "true"
-        run: uv run pytest tests/unit/test_consumer.py -v
+        run: uv run pytest tests/unit/ -v
