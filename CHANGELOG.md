@@ -1,3 +1,19 @@
+### v1.19.5
+
+#### Changed Files & Core Modifications
+- The `security.yaml` GitHub Actions workflow configuration has been updated.
+- The `working-directory` for a specific job within the workflow has been changed from `src/consumer` to `src/inference`.
+
+#### Reason for Changes
+- This release addresses security vulnerabilities within the API.
+- The pipeline configuration was adjusted to ensure security checks are applied to the correct code directory.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:** Enhanced API security by patching identified vulnerabilities. Improved CI/CD pipeline accuracy for security scanning.
+- **(-) Disadvantages / Notes:** None.
+
+---
+
 ### v1.19.4
 
 #### Changed Files & Core Modifications
