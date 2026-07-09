@@ -1,3 +1,31 @@
+### v1.19.4
+
+#### Changed Files & Core Modifications
+- The CI/CD pipeline configuration (`.github/workflows/security.yaml`) has been significantly restructured.
+- Introduced path filtering to conditionally execute security scans based on code changes within specific service directories (API, Validator, Consumer).
+- Consolidated and renamed security scanning jobs for clarity and better organization.
+- Enhanced the Go security scan to exclude test directories from SAST analysis.
+- Integrated `gitleaks-action` for global secret scanning.
+- Added `pip-audit` for Python dependency vulnerability scanning.
+- Modified Trivy scanner configuration to exit with a non-zero code on critical/high severity findings and to ignore unfixed vulnerabilities.
+
+#### Reason for Changes
+- To improve the efficiency and accuracy of the security scanning process within the CI/CD pipeline.
+- To enable faster feedback loops by only running relevant security checks based on the scope of code modifications.
+- To strengthen the security posture by implementing stricter vulnerability checks and expanding coverage to include secret scanning and Python dependency audits.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Improved CI/CD Performance:** Conditional execution of security scans significantly reduces pipeline execution time for changes that do not affect specific services.
+    - **Enhanced Security Coverage:** Introduction of global secret scanning and Python dependency vulnerability checks broadens the security audit scope.
+    - **Better Developer Experience:** Faster feedback on security issues allows for quicker remediation.
+    - **Increased Strictness:** Trivy scanner is now configured to fail builds on critical and high-severity vulnerabilities, enforcing higher security standards.
+- **(-) Disadvantages / Notes:**
+    - The new path filtering mechanism requires careful maintenance of the filter definitions to ensure all relevant services are covered.
+    - Increased strictness in Trivy scanning might lead to more build failures if critical/high vulnerabilities are present, requiring prompt attention.
+
+---
+
 ### v1.19.3
 
 #### Changed Files & Core Modifications
