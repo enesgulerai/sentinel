@@ -1,3 +1,17 @@
+### v1.19.7
+
+#### Changed Files & Core Modifications
+- The `.github/workflows/security.yaml` file was updated.
+- The `uses` directive for the `astral-sh/setup-uv-action@v5` action was corrected to `astral-sh/setup-uv@v5`.
+
+#### Reason for Changes
+- This change addresses an issue where the incorrect action name was being used in the security workflow for setting up the `uv` Python environment.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:** Ensures the security workflow correctly utilizes the `uv` Python environment setup action, preventing potential misconfigurations or failures in security-related CI/CD processes.
+
+---
+
 ### v1.19.6
 
 #### Changed Files & Core Modifications
