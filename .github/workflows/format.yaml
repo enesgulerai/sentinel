@@ -6,10 +6,13 @@ on:
   pull_request:
     branches: [ "main" ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  # Go Format
   format-go:
-    name: Go Format
+    name: Go Format & Lint
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -24,6 +27,15 @@ jobs:
           go-version-file: 'src/api/go.mod'
           cache: true
 
+      - name: Enforce Strict Go Formatting
+        run: |
+          if [ -n "$(gofmt -l .)" ]; then
+            echo "The following Go files are not formatted correctly:"
+            gofmt -l .
+            echo "Please run 'go fmt ./...' locally and commit the changes."
+            exit 1
+          fi
+
       - name: Run GolangCI-Lint
         uses: golangci/golangci-lint-action@v6
         with:
@@ -32,9 +44,8 @@ jobs:
           working-directory: src/api
           args: --timeout=5m
 
-  # Python Format
   format-python:
-    name: Python Format
+    name: Python Format & Lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -44,12 +55,11 @@ jobs:
         uses: astral-sh/setup-uv@v5
 
       - name: Run Ruff Linter
-        run: uvx ruff check .
+        run: uvx ruff check src/inference
 
-      - name: Run Ruff Formatter (Strict Check)
-        run: uvx ruff format --check .
+      - name: Run Ruff Formatter
+        run: uvx ruff format --check src/inference
 
-  # Rust Format
   format-rust:
     name: Rust Format
     runs-on: ubuntu-latest
