@@ -129,7 +129,9 @@ jobs:
         run: uvx bandit -r src/inference
 
       - name: Run Pip Audit (Dependency Vulnerability Scan)
-        run: uvx pip-audit --requirement pyproject.toml
+        run: |
+          uv export --format requirements-txt > requirements.txt
+          uvx pip-audit -r requirements.txt
 
   # Infrastructure Scan
   scan-infra:
