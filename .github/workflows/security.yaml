@@ -99,40 +99,40 @@ jobs:
       - name: Run Cargo Clippy
         run: cargo clippy -- -D warnings
 
+      - name: Install cargo-audit (Pre-compiled for speed)
+        uses: taiki-e/install-action@cargo-audit
+
       - name: Run Cargo Audit
-        uses: rustsec/audit-check@v1.4.1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+        run: cargo audit
 
   # Python SecOps
-  scan-consumer-python:
-    name: Consumer (Python) Security Audit
+  scan-inference-python:
+    name: Inference (Python) Security Audit
     needs: detect-changes
     if: ${{ needs.detect-changes.outputs.consumer == 'true' || github.event_name == 'push' }}
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: src/inference
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Setup uv Environment
+        uses: astral-sh/setup-uv-action@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          version: "latest"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
 
-      - name: Install Dependencies & Tools
-        run: |
-          pip install -r requirements.txt
-          pip install bandit pip-audit
+      - name: Setup Python
+        run: uv python pin 3.11
+
+      - name: Install Security Tools
+        run: uv pip install bandit pip-audit
 
       - name: Run Bandit (SAST)
-        run: bandit -r . -c bandit.yaml
+        run: bandit -r src/inference
 
-      - name: Run Pip-Audit (Dependencies)
-        run: pip-audit
+      - name: Run Pip Audit via uv (Dependency Vulnerability Scan)
+        run: pip-audit --requirement pyproject.toml
 
   # Infrastructure Scan
   scan-infra:
