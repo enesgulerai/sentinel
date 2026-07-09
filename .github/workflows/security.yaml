@@ -126,7 +126,7 @@ jobs:
         run: uv python pin 3.11
 
       - name: Install Security Tools
-        run: uv pip install bandit pip-audit
+        run: uv pip install --system bandit pip-audit
 
       - name: Run Bandit (SAST)
         run: bandit -r src/inference
