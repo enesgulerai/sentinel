@@ -112,7 +112,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: src/consumer
+        working-directory: src/inference
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
