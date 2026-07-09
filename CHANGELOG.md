@@ -1,3 +1,17 @@
+### v1.19.8
+
+#### Changed Files & Core Modifications
+- Modified `.github/workflows/security.yaml` to include the `--system` flag during the installation of security tools (`bandit`, `pip-audit`) within the Python environment.
+
+#### Reason for Changes
+- This change addresses a security hardening requirement. By using the `--system` flag, the security analysis tools are installed directly into the system's Python environment rather than a virtual environment. This ensures that the security scanning tools themselves are not subject to the same dependency resolution and isolation that might be applied to application code, providing a more robust and consistent security audit.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:** Enhances the reliability and consistency of security scanning by ensuring the analysis tools are installed in a predictable manner, improving the accuracy of Static Application Security Testing (SAST).
+- **(-) Disadvantages / Notes:** None.
+
+---
+
 ### v1.19.7
 
 #### Changed Files & Core Modifications
