@@ -37,7 +37,8 @@ dependencies = [
     "uvloop>=0.22.1 ; sys_platform != 'win32'",
     "cryptography>=48.0.1",
     "python-multipart>=0.0.30",
-    "pydantic-settings>=2.14.2"
+    "pydantic-settings>=2.14.2",
+    "soupsieve>=2.8.4"
 ]
 
 [tool.pytest.ini_options]
