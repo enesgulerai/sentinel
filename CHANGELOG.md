@@ -1,3 +1,17 @@
+### v1.11.19
+
+#### Changed Files & Core Modifications
+- The `.github/workflows/security.yaml` file was updated to modify the dependency vulnerability scanning process.
+
+#### Reason for Changes
+- This change addresses an issue where `pip-audit` was encountering errors when attempting to parse the `pyproject.toml` file directly.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:** Resolves a technical debt by ensuring the security scanning process runs reliably, preventing potential vulnerabilities from being missed due to parsing errors. This improves the robustness of our security checks.
+- **(-) Disadvantages / Notes:** None.
+
+---
+
 ### v1.19.10
 
 #### Changed Files & Core Modifications
