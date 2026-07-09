@@ -7,9 +7,46 @@ on:
     branches: [ "main" ]
 
 jobs:
-  # Go Sast & Vulnerability Check
-  security-go:
-    name: Go Security Scan
+  # Path Filtering: Detect which services changed to run jobs conditionally
+  detect-changes:
+    name: Detect Changed Services
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      validator: ${{ steps.filter.outputs.validator }}
+      consumer: ${{ steps.filter.outputs.consumer }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'src/api/**'
+            validator:
+              - 'src/validator/**'
+            consumer:
+              - 'src/consumer/**'
+
+  # Global Secret Scanning
+  scan-secrets:
+    name: Global Secret Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Go SecOps
+  scan-api-go:
+    name: API (Go) Security Audit
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.api == 'true' || github.event_name == 'push' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -31,14 +68,16 @@ jobs:
           go install golang.org/x/vuln/cmd/govulncheck@latest
 
       - name: Run Gosec (SAST)
-        run: gosec ./...
+        run: gosec -exclude-dir=tests ./...
 
-      - name: Run Govulncheck (Dependency Audit)
+      - name: Run Govulncheck (Dependencies)
         run: govulncheck ./...
 
-  # Rust Linting & Security Check
-  security-rust:
-    name: Rust Security & Clippy Audit
+  # Rust SecOps
+  scan-validator-rust:
+    name: Validator (Rust) Security Audit
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.validator == 'true' || github.event_name == 'push' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -61,24 +100,54 @@ jobs:
         run: cargo clippy -- -D warnings
 
       - name: Run Cargo Audit
-        run: |
-          cargo install cargo-audit --locked
-          cargo audit
+        uses: rustsec/audit-check@v1.4.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-  # Infrastructure & Filesystem Scan
-  security-infra:
-    name: Trivy Infrastructure Scan
+  # Python SecOps
+  scan-consumer-python:
+    name: Consumer (Python) Security Audit
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.consumer == 'true' || github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/consumer
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies & Tools
+        run: |
+          pip install -r requirements.txt
+          pip install bandit pip-audit
+
+      - name: Run Bandit (SAST)
+        run: bandit -r . -c bandit.yaml
+
+      - name: Run Pip-Audit (Dependencies)
+        run: pip-audit
+
+  # Infrastructure Scan
+  scan-infra:
+    name: Infrastructure (Trivy) Audit
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Run Trivy Scanner
+      - name: Install Trivy Scanner
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
           scan-ref: '.'
           format: 'table'
-          exit-code: '0'
+          exit-code: '1'
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
