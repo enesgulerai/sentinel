@@ -1,3 +1,25 @@
+### v1.19.6
+
+#### Changed Files & Core Modifications
+- **`.github/workflows/security.yaml`**: Updated the security scanning workflow for Python dependencies. This includes switching from `actions/setup-python` and `pip` to `astral-sh/setup-uv-action` for environment management and dependency installation. The Rust security audit process was also streamlined by directly invoking `cargo audit` and installing `cargo-audit` via an action.
+- **`src/api/go.mod`**: Updated the Go version from `1.26.4` to `1.26.5`.
+
+#### Reason for Changes
+- **Enhanced Python Security Scanning**: The primary driver for these changes is to improve the efficiency and reliability of security audits for Python dependencies. The integration of `uv` (a fast Python package installer and resolver) aims to provide a more robust and performant dependency management and scanning experience.
+- **Streamlined Rust Security Audits**: Simplified the Rust security audit process within the CI/CD pipeline for better maintainability and potentially faster execution.
+- **Go Version Update**: Minor updates to the Go version in the API module.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Improved Python Dependency Management**: Leveraging `uv` offers faster dependency resolution and installation, leading to quicker CI/CD pipeline runs for Python projects.
+    - **More Efficient Security Audits**: The integration of `uv` and streamlined Rust audits contribute to a more efficient and effective security posture.
+    - **Reduced CI/CD Complexity**: Consolidating dependency management and security tooling within `uv` simplifies the workflow configuration.
+- **(-) Disadvantages / Notes:**
+    - **New Tooling Adoption**: The adoption of `uv` introduces a new tool into the development workflow. While beneficial, it requires developers to be familiar with its usage.
+    - **Potential for Initial Configuration Adjustments**: Migrating to `uv` might require minor adjustments to existing dependency management configurations or build scripts.
+
+---
+
 ### v1.19.5
 
 #### Changed Files & Core Modifications
