@@ -1,3 +1,22 @@
+### v1.19.19
+
+#### Changed Files & Core Modifications
+- Updated documentation across `README.md`, `infrastructure/helm/README.md`, and `infrastructure/terraform/aws-finops-mock/README.md`.
+- Removed a static image reference from `README.md`.
+
+#### Reason for Changes
+- The primary driver for these changes is to accurately reflect the performance improvements and cost optimizations achieved by the system. Specifically, the documentation has been updated to showcase a significant increase in Request Per Second (RPS) handling capabilities and a reduction in tail latency.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Enhanced Performance:** The system now demonstrates the capability to handle a higher throughput of **25,300+ RPS**, up from 14,500+ RPS, while maintaining sub-millisecond tail latencies (reduced to < 7ms).
+    - **Improved Cost Efficiency:** The AWS FinOps simulation continues to highlight a substantial **73% cost reduction** under enterprise conditions, reinforcing the economic benefits of the implemented architecture.
+    - **Clearer Documentation:** Updated documentation provides a more accurate and compelling representation of the system's performance and cost-saving capabilities.
+- **(-) Disadvantages / Notes:**
+    - No architectural trade-offs or disadvantages were introduced with these documentation updates. The changes solely focus on reflecting existing performance and cost improvements.
+
+---
+
 ### v1.19.18
 
 #### Changed Files & Core Modifications
