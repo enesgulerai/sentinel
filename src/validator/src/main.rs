@@ -46,9 +46,9 @@ struct FraudEvent {
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = env::args().collect();
-    let is_probe = args.iter().any(|arg| {
-        arg == "--check-startup" || arg == "--check-live" || arg == "--check-ready"
-    });
+    let is_probe = args
+        .iter()
+        .any(|arg| arg == "--check-startup" || arg == "--check-live" || arg == "--check-ready");
 
     let connection_string =
         env::var("REDPANDA_BROKER").unwrap_or_else(|_| "localhost:19092".to_string());
