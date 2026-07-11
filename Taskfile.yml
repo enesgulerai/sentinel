@@ -54,7 +54,7 @@ tasks:
         platforms: [linux, darwin]
       - kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=120s
       - echo "Pre-pulling Dragonfly image to prevent network timeouts and ImagePullBackOff..."
-      - docker pull docker.dragonflydb.io/dragonflydb/dragonfly:v1.17.1
+      - docker pull valkey/valkey:8.0
       - echo "Deploying Sentinel infrastructure via Helm..."
       - helm upgrade --install sentinel-prod ./infrastructure/helm/sentinel -n sentinel-namespace --create-namespace
 

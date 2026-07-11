@@ -76,33 +76,38 @@ validator:
       value: "redpanda:9092"
   resources:
     requests:
-      cpu: "50m"
+      cpu: "100m"
       memory: "64Mi"
     limits:
-      cpu: "100m"
+      cpu: "250m"
       memory: "128Mi"
   startupProbe:
     exec:
       command:
-        - /bin/sh
-        - -c
-        - /app/validator --check-startup
-    failureThreshold: 6
-    periodSeconds: 5
+        - /app/sentinel-validator
+        - --check-startup
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    failureThreshold: 10
+    timeoutSeconds: 10
   livenessProbe:
     exec:
       command:
-        - /bin/sh
-        - -c
-        - /app/validator --check-live
+        - /app/sentinel-validator
+        - --check-live
+    initialDelaySeconds: 5
     periodSeconds: 20
+    failureThreshold: 3
+    timeoutSeconds: 3
   readinessProbe:
     exec:
       command:
-        - /bin/sh
-        - -c
-        - /app/validator --check-ready
+        - /app/sentinel-validator
+        - --check-ready
+    initialDelaySeconds: 5
     periodSeconds: 10
+    failureThreshold: 3
+    timeoutSeconds: 3
 
 # Python Consumer Helm Chart Values
 consumer:
@@ -166,8 +171,8 @@ postgres:
 redis:
   enabled: true
   image:
-    repository: docker.dragonflydb.io/dragonflydb/dragonfly
-    tag: "v1.17.1"
+    repository: valkey/valkey
+    tag: "8.0"
   resources:
     requests:
       memory: "512Mi"
