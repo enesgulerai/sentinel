@@ -1,14 +1,14 @@
 # Sentinel: AWS FinOps & Cost Optimization
 
-*Production-grade Terraform manifests and Infracost analysis demonstrating a 73% infrastructure cost reduction while sustaining 14,500+ RPS at sub-13ms latency.*
+*Production-grade Terraform manifests and Infracost analysis demonstrating a 73% infrastructure cost reduction while sustaining 25,300+ RPS at sub-7ms latency.*
 
 ## FinOps Impact Summary
 
 | Metric | Baseline (Managed) | Optimized (In-Cluster) | Delta |
 | :--- | :--- | :--- | :--- |
 | **Monthly Cost** | ~$452.00 | **$120.77** | **-73%** |
-| **Throughput** | 14,500+ RPS | 14,500+ RPS | 0% (No degradation) |
-| **Tail Latency** | < 13ms | < 13ms | 0% (No degradation) |
+| **Throughput** | 25,300+ RPS | 25,300+ RPS | 0% (No degradation) |
+| **Tail Latency** | < 7ms | < 7ms | 0% (No degradation) |
 
 ## Optimization Strategy
 

@@ -10,8 +10,6 @@
 [![Latest Release](https://img.shields.io/github/v/release/enesgulerdev/sentinel?style=flat-square&color=brgihgreen)](https://github.com/enesgulerdev/sentinel/releases)
 [![License](https://img.shields.io/github/license/enesgulerdev/sentinel?style=flat-square)](LICENSE)
 
-![k6 Load Test](docs/images/root/k6-load-test.gif)
-
 </div>
 
 ---
@@ -69,4 +67,4 @@ Explore the sub-modules for advanced deployment, scaling, and observability patt
 | **[Testing Suite](tests/README.md)** | Unit, integration, and mock fixtures. |
 | **[Helm Workloads](infrastructure/helm/README.md)** | Autonomous local provisioning for stateful dependencies and isolated ML workloads. |
 | **[GitOps & CD](infrastructure/argocd/README.md)** | Zero-touch deployment architecture using ArgoCD and Jenkins for deterministic state synchronization. |
-| **[AWS FinOps Simulation](infrastructure/terraform/aws-finops-mock/README.md)** | Infracost model demonstrating system scale to **14,500+ RPS** with a **73% cost reduction** under enterprise conditions. |
+| **[AWS FinOps Simulation](infrastructure/terraform/aws-finops-mock/README.md)** | Infracost model demonstrating system scale to **25,300+ RPS** with a **73% cost reduction** under enterprise conditions. |

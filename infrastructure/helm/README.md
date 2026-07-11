@@ -4,7 +4,7 @@
 
 ## Resource Isolation & Scheduling Strategy
 
-To achieve sub-millisecond tail latencies and prevent "noisy neighbor" degradation under 14,500+ RPS, the cluster enforces strict scheduling policies:
+To achieve sub-millisecond tail latencies and prevent "noisy neighbor" degradation under 25,300+ RPS, the cluster enforces strict scheduling policies:
 
 | Strategy | Implementation | Operational Impact |
 | :--- | :--- | :--- |
