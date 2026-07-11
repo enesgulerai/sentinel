@@ -1,3 +1,25 @@
+### v1.19.18
+
+#### Changed Files & Core Modifications
+- **`docker-compose.yml`**: Updated the Redis image from `dragonflydb/dragonfly:v1.17.1` to `valkey/valkey:8.0` and adjusted the health check command accordingly.
+- **`infrastructure/helm/sentinel/values.yaml`**: Updated image tags for `api`, `validator`, and `consumer` services to `88c07a2`.
+- **`src/api/go.mod` and `src/api/go.sum`**: Updated dependencies for `klauspost/compress`, `golang.org/x/crypto`, `golang.org/x/net`, `golang.org/x/sys`, and `golang.org/x/text`.
+- **`src/validator/src/main.rs`**: Applied standard Rust formatting (`rustfmt`) to the `main.rs` file.
+
+#### Reason for Changes
+This release focuses on dependency updates and infrastructure alignment. The primary driver for the `docker-compose.yml` change is the migration from DragonflyDB to Valkey, ensuring continued compatibility and leveraging the latest stable versions. Updates to Helm values align deployment configurations with the latest image tags. Dependency updates in the API module address potential security vulnerabilities and incorporate performance improvements from upstream libraries. The formatting change in the validator ensures code consistency.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Improved Stability and Security:** Updating dependencies can bring in security patches and bug fixes.
+    - **Infrastructure Modernization:** Transitioning to Valkey provides a robust and actively maintained in-memory data store.
+    - **Codebase Health:** Applying `rustfmt` improves code readability and maintainability.
+    - **Deployment Consistency:** Synchronized image tags across services ensure consistent deployments.
+- **(-) Disadvantages / Notes:**
+    - The change from DragonflyDB to Valkey might require a brief period of observation to ensure no regressions in performance or behavior specific to the application's Redis interactions.
+
+---
+
 ### v1.19.17
 
 #### Changed Files & Core Modifications
