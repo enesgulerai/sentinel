@@ -1,3 +1,28 @@
+### v1.19.17
+
+#### Changed Files & Core Modifications
+- **`Taskfile.yml`**: Updated the pre-pulling of the Redis image to use `valkey/valkey:8.0` instead of `dragonflydb/dragonfly:v1.17.1`.
+- **`infrastructure/helm/sentinel/values.yaml`**:
+    - Updated image tags for `sentinel-api`, `sentinel-validator`, and `sentinel-consumer` to `da127da`.
+    - Modified the Redis image repository to `valkey/valkey` and tag to `8.0`.
+    - Adjusted resource requests and limits for the validator.
+    - Significantly updated probe configurations (startup, liveness, readiness) for the validator, including command changes, increased timeouts, and adjusted thresholds.
+- **`src/validator/src/main.rs`**: Modified the validator's main function to correctly handle probe commands (`--check-startup`, `--check-live`, `--check-ready`) by exiting successfully when these arguments are present, preventing unnecessary processing.
+
+#### Reason for Changes
+This release addresses issues related to Kubernetes probe timeouts for the validator component. The changes aim to improve the reliability of the validator's health checks by adjusting probe configurations and ensuring the probe commands execute efficiently. Additionally, this release updates the underlying Redis image from DragonflyDB to Valkey, reflecting a shift in the chosen database technology.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - Resolved Kubernetes probe timeouts, leading to more stable and reliable validator deployments.
+    - Improved health check accuracy and responsiveness for the validator.
+    - Transitioned to Valkey, potentially leveraging its specific features and performance characteristics.
+- **(-) Disadvantages / Notes:**
+    - The change from DragonflyDB to Valkey is a significant technology shift. While Valkey is a fork of Redis, it's important to ensure compatibility and performance characteristics meet expectations.
+    - Increased probe timeouts and adjusted thresholds might mask underlying issues if not carefully monitored. Resource adjustments for the validator should be validated for performance impact.
+
+---
+
 ### v1.19.16
 
 #### Changed Files & Core Modifications
