@@ -18,12 +18,18 @@ repos:
       - id: conventional-pre-commit
         stages: [commit-msg]
 
+  # YAML Linter
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+
   # Python
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.20
     hooks:
       - id: ruff
-        args: [ --fix ]
+        args: [--fix]
       - id: ruff-format
 
   - repo: https://github.com/PyCQA/bandit
