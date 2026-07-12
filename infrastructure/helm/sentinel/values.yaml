@@ -27,11 +27,11 @@ api:
       value: "5432"
   resources:
     requests:
+      cpu: "10m"
+      memory: "32Mi"
+    limits:
       cpu: "500m"
       memory: "128Mi"
-    limits:
-      cpu: "2000m"
-      memory: "256Mi"
   autoscaling:
     enabled: true
     minReplicas: 1
@@ -76,11 +76,11 @@ validator:
       value: "redpanda:9092"
   resources:
     requests:
+      cpu: "10m"
+      memory: "32Mi"
+    limits:
       cpu: "100m"
       memory: "64Mi"
-    limits:
-      cpu: "250m"
-      memory: "128Mi"
   startupProbe:
     exec:
       command:
@@ -124,10 +124,10 @@ consumer:
       value: "postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/$(POSTGRES_DB)"
   resources:
     requests:
-      cpu: "1000m"
-      memory: "256Mi"
+      cpu: "50m"
+      memory: "128Mi"
     limits:
-      cpu: "1000m"
+      cpu: "400m"
       memory: "256Mi"
   startupProbe:
     exec:
@@ -161,11 +161,11 @@ postgres:
     database: "sentinel_db"
   resources:
     requests:
-      cpu: "100m"
-      memory: "128Mi"
+      cpu: "20m"
+      memory: "64Mi"
     limits:
-      cpu: "100m"
-      memory: "128Mi"
+      cpu: "500m"
+      memory: "256Mi"
 
 # Redis Helm Chart Values
 redis:
@@ -175,21 +175,21 @@ redis:
     tag: "8.0"
   resources:
     requests:
-      memory: "512Mi"
-      cpu: "500m"
+      memory: "10m"
+      cpu: "32Mi"
     limits:
-      memory: "1Gi"
-      cpu: "1000m"
+      memory: "800m"
+      cpu: "128Mi"
 
 # Redpanda Helm Chart Values
 redpanda:
   enabled: true
   resources:
     requests:
-      cpu: "500m"
-      memory: "512Mi"
+      cpu: "50m"
+      memory: "256Mi"
     limits:
-      cpu: "500m"
+      cpu: "1000m"
       memory: "512Mi"
 
 console:
