@@ -1,3 +1,24 @@
+### v1.19.21
+
+#### Changed Files & Core Modifications
+- **CI/CD Pipeline (`.github/workflows/format.yaml`):** Integrated `yamllint` into the code quality pipeline to enforce YAML formatting standards.
+- **Pre-commit Configuration (`.pre-commit-config.yaml`):** Added `yamllint` as a pre-commit hook to ensure YAML files adhere to defined formatting rules before commits are allowed.
+- **YAML Linting Configuration (`.yamllint`):** Introduced a new configuration file to define specific rules and exceptions for `yamllint`, customizing the linting process.
+
+#### Reason for Changes
+To enhance code quality and maintainability, this release introduces automated linting for YAML files. This ensures consistency and adherence to best practices across all YAML configurations and manifests used within the project.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - Improved code consistency and readability for all YAML files.
+    - Early detection of formatting errors, reducing potential runtime issues.
+    - Enhanced developer experience by automating code quality checks.
+- **(-) Disadvantages / Notes:**
+    - Requires developers to have `yamllint` installed or rely on the CI pipeline for validation.
+    - The specific `yamllint` rules are configured to be less strict in certain areas (e.g., `document-start`, `new-lines`, `comments-indentation`) to accommodate existing project conventions.
+
+---
+
 ### v1.19.20
 
 #### Changed Files & Core Modifications
