@@ -1,3 +1,21 @@
+### v1.19.20
+
+#### Changed Files & Core Modifications
+- Modified resource allocation (CPU and memory requests/limits) for several components within the Sentinel Helm chart, including `api`, `validator`, `consumer`, `postgres`, `redis`, and `redpanda`.
+
+#### Reason for Changes
+- These adjustments were made to calibrate resource boundaries more precisely, informed by performance testing (K6 telemetry). The goal is to ensure optimal resource utilization and stability for the deployed services.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - Improved resource efficiency and potential cost savings through more accurate resource allocation.
+    - Enhanced service stability and performance by preventing resource contention and starvation.
+    - Better alignment of resource provisioning with actual observed usage patterns.
+- **(-) Disadvantages / Notes:**
+    - While aiming for efficiency, overly aggressive resource reductions could potentially lead to performance degradation under peak load if the telemetry data did not capture all edge cases. Monitoring after deployment is recommended.
+
+---
+
 ### v1.19.19
 
 #### Changed Files & Core Modifications
