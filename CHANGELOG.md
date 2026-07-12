@@ -1,3 +1,17 @@
+### v1.19.22
+
+#### Changed Files & Core Modifications
+- The `.yamllint` configuration file has been updated. This includes adding an exclusion for Helm templates within the `infrastructure/helm/sentinel/templates/` directory and disabling rules related to document start, new lines, comments indentation, and line length.
+
+#### Reason for Changes
+- These changes were made to refine the linting process for YAML files. Specifically, the exclusion of Helm templates addresses potential linting conflicts or unnecessary warnings within that specific templating system. Disabling certain rules aims to provide more flexibility or accommodate existing patterns in the codebase.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:** Improved CI/CD pipeline efficiency by reducing noise from Helm template linting. Enhanced developer experience by tailoring linting rules to project-specific needs.
+- **(-) Disadvantages / Notes:** None.
+
+---
+
 ### v1.19.21
 
 #### Changed Files & Core Modifications
