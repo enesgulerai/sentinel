@@ -1,7 +1,13 @@
 extends: default
+
+ignore: |
+  infrastructure/helm/sentinel/templates/
+
 rules:
   document-start: disable
   new-lines: disable
   comments-indentation: disable
+  line-length: disable
+
   truthy:
     allowed-values: ['true', 'false', 'on']
