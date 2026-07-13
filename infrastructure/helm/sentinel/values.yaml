@@ -9,7 +9,7 @@ api:
   replicaCount: 1
   image:
     repository: ghcr.io/enesgulerdev/sentinel-api
-    tag: "88c07a2"
+    tag: "e7fb40f"
     pullPolicy: IfNotPresent
   service:
     type: LoadBalancer
@@ -69,7 +69,7 @@ validator:
   replicaCount: 2
   image:
     repository: ghcr.io/enesgulerdev/sentinel-validator
-    tag: "88c07a2"
+    tag: "e7fb40f"
     pullPolicy: IfNotPresent
   env:
     - name: REDPANDA_BROKER
@@ -115,7 +115,7 @@ consumer:
   replicaCount: 1
   image:
     repository: ghcr.io/enesgulerdev/sentinel-consumer
-    tag: "88c07a2"
+    tag: "e7fb40f"
     pullPolicy: IfNotPresent
   env:
     - name: REDPANDA_BROKER
