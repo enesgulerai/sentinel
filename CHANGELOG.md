@@ -1,3 +1,42 @@
+### v1.20.0
+
+#### Changed Files & Core Modifications
+
+*   **Infrastructure as Code (Terraform & Helm):**
+    *   Removed the Redpanda Console service and its associated Helm chart configurations.
+    *   Updated Terraform configurations for AWS EKS, including adjustments to subnet configurations and the introduction of a launch template for worker nodes.
+    *   Modified Helm `values.yaml` to comment out resource limits for API, Validator, Consumer, and PostgreSQL components, and for Redis.
+*   **CI/CD & Security Policies:**
+    *   Introduced Open Policy Agent (OPA) and Conftest rules for validating Infrastructure as Code (IaC) and Docker images.
+    *   Updated the Jenkins Dockerfile to run as a non-root user.
+    *   Automated image tag updates in GitOps configurations.
+*   **Load Testing:**
+    *   Modified the k6 load test script to include iteration and random elements in the virtual user payload for more dynamic testing.
+
+#### Reason for Changes
+
+This release focuses on enhancing operational efficiency, cost optimization, and security posture. Key drivers include:
+
+*   **Resource Optimization:** The removal of Redpanda Console aims to reduce resource consumption and simplify the infrastructure.
+*   **FinOps Compliance:** Terraform configurations were updated to align with FinOps policies, specifically by restricting EKS nodes to a single Availability Zone and enforcing the use of Spot instances to minimize AWS costs.
+*   **Security Hardening:** New OPA and Conftest policies have been implemented to enforce security best practices in IaC and Docker image builds, such as preventing the use of `:latest` tags, ensuring non-root execution, and promoting multi-stage builds. The Jenkins container was also updated to run as a non-root user.
+*   **Improved Testing:** Load test parameters were refined to generate more realistic and varied test data.
+
+#### Advantages & Architectural Trade-offs
+
+*   **(+) Advantages:**
+    *   **Cost Reduction:** Significant potential for cost savings through FinOps-aligned infrastructure configurations (e.g., Spot instances, single AZ deployment).
+    *   **Enhanced Security:** Improved security through automated policy enforcement for IaC and Docker images, and by running containers as non-root users.
+    *   **Resource Efficiency:** Reduced infrastructure footprint by removing the Redpanda Console.
+    *   **Improved Test Realism:** More dynamic and representative load testing scenarios.
+    *   **Streamlined Operations:** Automated image tag updates simplify the GitOps workflow.
+*   **(-) Disadvantages / Notes:**
+    *   **Resource Limits Temporarily Disabled:** Resource limits for several components (API, Validator, Consumer, PostgreSQL, Redis) have been commented out in the Helm `values.yaml`. This may lead to increased resource consumption if not managed carefully and requires monitoring.
+    *   **EKS Multi-AZ Requirement:** While worker nodes are restricted to a single AZ for cost savings, the EKS control plane still requires multiple subnets across different AZs for its own high-availability requirements. This is a necessary compromise for the FinOps strategy.
+    *   **Potential Impact of Policy Enforcement:** The new OPA/Conftest policies may require adjustments to existing Dockerfiles or IaC configurations to comply with the defined rules.
+
+---
+
 ### v1.19.23
 
 #### Changed Files & Core Modifications
