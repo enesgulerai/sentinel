@@ -10,3 +10,5 @@ RUN apt-get update && \
     chmod +x /usr/local/bin/docker && \
     rm -rf docker docker.tgz && \
     rm -rf /var/lib/apt/lists/*
+
+USER jenkins
