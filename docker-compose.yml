@@ -24,21 +24,6 @@ services:
     networks:
       - sentinel_net
 
-  # Console
-  console:
-    image: docker.redpanda.com/redpandadata/console:v2.4.5
-    container_name: sentinel-console
-    ports:
-      - "8080:8080"
-    entrypoint: /app/console
-    environment:
-      - KAFKA_BROKERS=redpanda:9092
-    depends_on:
-      redpanda:
-        condition: service_healthy
-    networks:
-      - sentinel_net
-
   # Redis
   redis:
     image: valkey/valkey:8.0
