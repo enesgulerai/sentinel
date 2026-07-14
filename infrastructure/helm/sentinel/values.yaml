@@ -29,9 +29,9 @@ api:
     requests:
       cpu: "10m"
       memory: "32Mi"
-    limits:
-      cpu: "500m"
-      memory: "128Mi"
+#    limits:
+#      cpu: "500m"
+#      memory: "128Mi"
   autoscaling:
     enabled: true
     minReplicas: 1
@@ -78,9 +78,9 @@ validator:
     requests:
       cpu: "10m"
       memory: "32Mi"
-    limits:
-      cpu: "100m"
-      memory: "64Mi"
+#    limits:
+#      cpu: "100m"
+#      memory: "64Mi"
   startupProbe:
     exec:
       command:
@@ -126,9 +126,9 @@ consumer:
     requests:
       cpu: "50m"
       memory: "128Mi"
-    limits:
-      cpu: "400m"
-      memory: "256Mi"
+#    limits:
+#      cpu: "400m"
+#      memory: "256Mi"
   startupProbe:
     exec:
       command:
@@ -163,9 +163,9 @@ postgres:
     requests:
       cpu: "20m"
       memory: "64Mi"
-    limits:
-      cpu: "500m"
-      memory: "256Mi"
+#    limits:
+#      cpu: "500m"
+#      memory: "256Mi"
 
 # Redis Helm Chart Values
 redis:
@@ -175,11 +175,11 @@ redis:
     tag: "8.0"
   resources:
     requests:
-      memory: "10m"
-      cpu: "32Mi"
-    limits:
-      memory: "800m"
-      cpu: "128Mi"
+      cpu: "32m"
+      memory: "10Mi"
+#    limits:
+#      cpu: "128m"
+#      memory: "800Mi"
 
 # Redpanda Helm Chart Values
 redpanda:
@@ -188,32 +188,6 @@ redpanda:
     requests:
       cpu: "50m"
       memory: "256Mi"
-    limits:
-      cpu: "1000m"
-      memory: "512Mi"
-
-console:
-  enabled: true
-  resources:
-    requests:
-      cpu: "100m"
-      memory: "128Mi"
-    limits:
-      cpu: "100m"
-      memory: "128Mi"
-  startupProbe:
-    httpGet:
-      path: /admin/health
-      port: 8080
-    failureThreshold: 20
-    periodSeconds: 10
-  livenessProbe:
-    httpGet:
-      path: /admin/health
-      port: 8080
-    periodSeconds: 20
-  readinessProbe:
-    httpGet:
-      path: /admin/health
-      port: 8080
-    periodSeconds: 10
+#    limits:
+#      cpu: "1000m"
+#      memory: "512Mi"
