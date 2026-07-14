@@ -1,3 +1,17 @@
+### v1.20.1
+
+#### Changed Files & Core Modifications
+- Updated `pyproject.toml` and `uv.lock` to reflect a dependency upgrade for the `pillow` Python package.
+
+#### Reason for Changes
+- This update addresses security vulnerabilities identified in previous versions of the `pillow` library.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:** Enhances the security posture of the Python environment by mitigating known vulnerabilities. This ensures the integrity and safety of operations relying on image processing capabilities.
+- **(-) Disadvantages / Notes:** No significant architectural trade-offs are introduced. The upgrade is a direct security fix.
+
+---
+
 ### v1.20.0
 
 #### Changed Files & Core Modifications
