@@ -1,3 +1,29 @@
+### v1.20.2
+
+#### Changed Files & Core Modifications
+- **`infrastructure/terraform/aws-finops-mock/eks.tf`**: Introduced a KMS key for EKS secret encryption, enforced IMDSv2 for EC2 instances, enabled EKS control plane logging, and refined VPC endpoint access configurations.
+- **`infrastructure/terraform/aws-finops-mock/network.tf`**: Implemented VPC Flow Logs with associated IAM roles and CloudWatch log groups, secured the default security group, and added explicit skips for Checkov rules related to public IPs on subnets and KMS encryption for flow logs, citing FinOps and cost optimization reasons.
+
+#### Reason for Changes
+These changes address security vulnerabilities identified by Checkov, enhancing the overall security posture of the AWS infrastructure. Specifically, the modifications aim to:
+- Secure EKS secrets through KMS encryption.
+- Improve instance metadata security by enforcing IMDSv2.
+- Enable comprehensive logging for EKS control plane components for better auditing and debugging.
+- Enhance network visibility and security by enabling VPC Flow Logs and locking down the default security group.
+- Optimize costs by selectively skipping certain security checks where the benefits do not outweigh the financial implications (e.g., public IPs on subnets for FinOps, KMS encryption for flow logs).
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - Enhanced security through KMS encryption for secrets and IMDSv2 enforcement.
+    - Improved operational visibility and auditability with EKS control plane logging and VPC Flow Logs.
+    - More robust network security with a locked-down default security group.
+- **(-) Disadvantages / Notes:**
+    - Increased infrastructure complexity due to the addition of KMS, IAM roles, and CloudWatch log configurations.
+    - Potential for increased AWS costs associated with VPC Flow Logs and CloudWatch log storage, although specific configurations aim to mitigate this (e.g., retention periods, skipping KMS for flow logs).
+    - Explicitly skipping certain Checkov rules indicates a conscious decision to prioritize FinOps and cost-effectiveness over absolute adherence to every security recommendation, which may require ongoing monitoring and justification.
+
+---
+
 ### v1.20.1
 
 #### Changed Files & Core Modifications
