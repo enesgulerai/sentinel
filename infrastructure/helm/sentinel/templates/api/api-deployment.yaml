@@ -5,6 +5,7 @@ metadata:
   name: sentinel-api
   labels:
     app: sentinel-api
+    env: production
 spec:
   replicas: {{ .Values.api.replicaCount }}
   selector:

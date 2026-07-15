@@ -5,6 +5,7 @@ metadata:
   name: sentinel-redis
   labels:
     app: redis
+    env: production
 spec:
   replicas: 1
   selector:

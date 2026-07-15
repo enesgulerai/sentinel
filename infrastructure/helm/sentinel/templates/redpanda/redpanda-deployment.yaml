@@ -5,6 +5,7 @@ metadata:
   name: sentinel-redpanda
   labels:
     app: redpanda
+    env: production
 spec:
   replicas: 1
   selector:

@@ -5,6 +5,7 @@ metadata:
   name: sentinel-validator
   labels:
     app: sentinel-validator
+    env: production
 spec:
   replicas: {{ .Values.validator.replicaCount }}
   selector:
