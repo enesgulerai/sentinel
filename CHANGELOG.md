@@ -1,3 +1,25 @@
+### v1.21.0
+
+#### Changed Files & Core Modifications
+- Introduced Open Policy Agent (OPA) for Kubernetes policy enforcement.
+- Added OPA policies to enforce deployment standards, including resource requests, prevention of privileged containers, prohibition of `:latest` image tags, and mandatory labels.
+- Updated Helm chart deployments for API, consumer, HPA, Redis, Redpanda, and validator to include the `env: production` label.
+
+#### Reason for Changes
+This release introduces a robust policy enforcement mechanism for Kubernetes deployments using Open Policy Agent (OPA). The goal is to standardize deployments, enhance reliability, and improve security by automatically validating configurations against predefined rules. This proactive approach helps prevent common misconfigurations that can lead to operational issues.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Enhanced Reliability:** Enforcing resource requests ensures proper scheduling and prevents resource starvation.
+    - **Improved Security:** Prohibiting privileged containers and `:latest` image tags significantly reduces security vulnerabilities.
+    - **Standardization:** Mandatory labels like `env` improve observability and cost management.
+    - **Automated Compliance:** OPA policies automate the enforcement of deployment best practices, reducing manual review overhead.
+- **(-) Disadvantages / Notes:**
+    - This change introduces a new dependency on OPA for Kubernetes policy enforcement. Ensure OPA is correctly deployed and configured in your Kubernetes environment.
+    - The introduction of mandatory labels may require adjustments to existing deployment configurations if they do not already adhere to these standards.
+
+---
+
 ### v1.20.2
 
 #### Changed Files & Core Modifications
