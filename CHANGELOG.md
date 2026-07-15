@@ -1,3 +1,27 @@
+### v1.21.1
+
+#### Changed Files & Core Modifications
+- The `.github/workflows/security.yaml` file has been updated to integrate new security scanning tools into the DevSecOps pipeline.
+- A new `infra` filter has been added to the `detect-changes` job to specifically track changes within the `infrastructure/**` and `policy/**` directories.
+- Two new jobs, `scan-terraform-checkov` and `scan-helm-conftest`, have been introduced.
+    - `scan-terraform-checkov` leverages the Checkov tool to perform security audits on Terraform configurations.
+    - `scan-helm-conftest` utilizes Conftest with OPA policies to audit Kubernetes configurations managed by Helm.
+
+#### Reason for Changes
+To enhance the security posture of our infrastructure and Kubernetes deployments, we have integrated automated security scanning tools directly into our CI/CD pipeline. This proactive approach aims to identify and mitigate security vulnerabilities and policy violations early in the development lifecycle.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Improved Security:** Early detection of security misconfigurations in Terraform and Kubernetes manifests.
+    - **Policy Enforcement:** Ensures adherence to defined security and compliance policies for infrastructure and Kubernetes resources.
+    - **Automation:** Reduces manual effort and potential for human error in security reviews.
+    - **DevSecOps Integration:** Seamlessly embeds security checks within the existing development workflow.
+- **(-) Disadvantages / Notes:**
+    - **Infrastructure Dependency:** Requires the GitHub Actions runner environment to have the necessary tools (Checkov, Helm, Conftest) installed or available.
+    - **Policy Maintenance:** The effectiveness of the `scan-helm-conftest` job relies on the quality and maintenance of the OPA policies located in the `policy/` directory.
+
+---
+
 ### v1.21.0
 
 #### Changed Files & Core Modifications
