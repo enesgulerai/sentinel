@@ -1,7 +1,7 @@
 package main
 
 # 1. Enforce Resource Requests (Limits intentionally omitted to prevent CFS throttling)
-deny contains msg if {
+deny[msg] {
   input.kind == "Deployment"
   container := input.spec.template.spec.containers[_]
 
@@ -12,7 +12,7 @@ deny contains msg if {
 }
 
 # 2. Prevent Privileged Containers
-deny contains msg if {
+deny[msg] {
   input.kind == "Deployment"
   container := input.spec.template.spec.containers[_]
 
@@ -22,7 +22,7 @@ deny contains msg if {
 }
 
 # 3. Prevent ':latest' Image Tags
-deny contains msg if {
+deny[msg] {
   input.kind == "Deployment"
   container := input.spec.template.spec.containers[_]
 
@@ -32,7 +32,7 @@ deny contains msg if {
 }
 
 # 4. Enforce Mandatory Labels (e.g., 'env')
-deny contains msg if {
+deny[msg] {
   input.kind == "Deployment"
 
   not input.metadata.labels.env
