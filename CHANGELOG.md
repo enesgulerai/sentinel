@@ -1,3 +1,20 @@
+### v1.21.2
+
+#### Changed Files & Core Modifications
+- The Rego policy files (`policy/k8s_rules.rego`) have been updated. The syntax for defining denial rules has been adjusted from `deny contains msg if { ... }` to `deny[msg] { ... }`.
+
+#### Reason for Changes
+- This change was made to ensure compatibility with the latest version of `conftest`, a tool used for policy enforcement. The updated syntax aligns with the expected format for defining policy rules in the current `conftest` environment.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - Improved compatibility with the `conftest` tool, ensuring that policy checks continue to function as expected.
+    - Maintains the integrity and effectiveness of existing Kubernetes security policies.
+- **(-) Disadvantages / Notes:**
+    - No functional changes to the policy logic itself. This is a syntax update for tooling compatibility.
+
+---
+
 ### v1.21.1
 
 #### Changed Files & Core Modifications
