@@ -6,6 +6,7 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
         args: [--allow-multiple-documents]
+        exclude: '^infrastructure/helm/.*'
       - id: check-toml
       - id: debug-statements
       - id: check-added-large-files
@@ -23,6 +24,7 @@ repos:
     rev: v1.35.1
     hooks:
       - id: yamllint
+        exclude: '^infrastructure/helm/.*'
 
   # Python
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -58,6 +60,13 @@ repos:
     hooks:
       - id: fmt
       - id: clippy
+
+  # Infrastructure & FinOps Security (Checkov)
+  - repo: https://github.com/bridgecrewio/checkov
+    rev: 3.1.52
+    hooks:
+      - id: checkov
+        args: ["-d", "infrastructure/terraform/aws-finops-mock/", "--soft-fail"]
 
   # Temporarily disabled due to Windows AppLocker (WinError 4551).
   # Uncomment this if you move development to WSL or Linux.

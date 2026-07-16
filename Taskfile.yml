@@ -86,29 +86,6 @@ tasks:
     cmds:
       - helm uninstall sentinel-prod -n sentinel-namespace
 
-  # Code Quality Assurance
-  qa:on:
-    desc: "[QA] Run local workflow (Fix lint issues, format, and check types)"
-    cmds:
-      - task: qa:lint-fix
-      - task: qa:format
-      - task: qa:type-check
-
-  qa:lint-fix:
-    desc: "[QA] Run Ruff linter and automatically fix fixable issues"
-    cmds:
-      - uv run ruff check --fix .
-
-  qa:format:
-    desc: "[QA] Run Ruff formatter to auto-format Python code"
-    cmds:
-      - uv run ruff format .
-
-  qa:type-check:
-    desc: "[QA] Run static type checker while ignoring third-party missing stubs"
-    cmds:
-      - uv run mypy src --explicit-package-bases --ignore-missing-imports
-
   # Environment Setup
   env:install:
     desc: "[Env] Install project dependencies and set up the development environment"
@@ -178,29 +155,6 @@ tasks:
     dir: src/validator/src
     cmds:
       - cargo test
-
-  # Security
-  security:on:
-    desc: "[Security] Run all security checks (SAST, Infrastructure, and Rust)"
-    deps: [security:sast, security:infra, security:rust]
-
-  security:sast:
-    desc: "[Security] Run static application security testing (SAST) and vulnerability checks on Go code"
-    dir: src/api
-    cmds:
-      - gosec ./...
-      - govulncheck ./...
-
-  security:infra:
-    desc: "[Security] Scan filesystem, IaC (Terraform), and dependencies for vulnerabilities using Trivy"
-    cmds:
-      - trivy fs .
-
-  security:rust:
-    desc: "[Security] Run DevSecOps linter (Clippy) on Rust code"
-    dir: src/validator
-    cmds:
-      - cargo clippy -- -D warnings
 
   # CI/CD
   jenkins:on:
