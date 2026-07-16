@@ -1,3 +1,22 @@
+### v1.21.3
+
+#### Changed Files & Core Modifications
+- **Tooling & Automation:** The `Taskfile.yml` has been refactored to streamline task definitions, particularly for code quality and security checks. Pre-commit hooks in `.pre-commit-config.yaml` have been updated to exclude Helm chart directories from certain checks and to integrate a new security scanning tool, Checkov.
+
+#### Reason for Changes
+- **Enhanced Developer Experience & Security Posture:** This release focuses on improving the development workflow and strengthening the security of the codebase. By consolidating and refining tooling, we aim to reduce friction for developers and proactively identify potential security vulnerabilities earlier in the development cycle. The exclusion of Helm directories from specific checks prevents unnecessary noise and ensures focused scanning on relevant code.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Improved Code Quality Enforcement:** Streamlined tasks and updated pre-commit hooks ensure more consistent application of code quality standards.
+    - **Proactive Security Scanning:** Integration of Checkov enhances the detection of infrastructure and security misconfigurations.
+    - **Reduced CI/CD Noise:** Excluding Helm directories from certain checks optimizes the scanning process.
+    - **Developer Efficiency:** A more organized and efficient tooling setup leads to a better developer experience.
+- **(-) Disadvantages / Notes:**
+    - The addition of Checkov introduces a new dependency for infrastructure security scanning.
+
+---
+
 ### v1.21.2
 
 #### Changed Files & Core Modifications
