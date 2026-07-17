@@ -16,6 +16,11 @@
 
 **Sentinel** is an enterprise-grade, real-time fraud detection system. It simulates high-throughput financial transactions via streaming (Redpanda/Kafka) and evaluates them in milliseconds using an optimized ONNX inference engine.
 
+![Performance Benchmark](docs/images/rps-report/k6-load-test.png)
+*Peak Performance Benchmark: Sustaining 25,300+ RPS with 7.79ms average latency over 4.5 million requests.*
+
+*Note: Note: Peak 25,300+ RPS was achieved under optimal hardware conditions. Standard local Docker Desktop deployments typically yield ~18,000+ RPS due to local CPU and network bridge constraints.*
+
 ## Quick Start
 
 ### Prerequisites
@@ -25,30 +30,28 @@
 
 ### Setup & Run
 
-```bash
-# 1. Clone repository
-git clone https://github.com/enesgulerdev/sentinel.git
-cd sentinel
+    # 1. Clone repository
+    git clone https://github.com/enesgulerdev/sentinel.git
+    cd sentinel
 
-# 2. Configure environment (Requires Google Drive File ID for gdown)
-cp .env.example .env
+    # 2. Configure environment (Requires Google Drive File ID for gdown)
+    cp .env.example .env
 
-# 3. Install dependencies via uv
-task env:install
+    # 3. Install dependencies via uv
+    task env:install
 
-# 4. Execute ML Pipeline (Fetch dataset, preprocess, train baseline)
-task ml:pipeline
+    # 4. Execute ML Pipeline (Fetch dataset, preprocess, train baseline)
+    task ml:pipeline
 
-# 5. Start microservices (API Gateway, Redpanda, etc.)
-task docker:on
-```
+    # 5. Start microservices (API Gateway, Redpanda, etc.)
+    task docker:on
 
 ### Container Management
-```bash
-task docker:on    # Start all services
-task docker:down  # Stop gracefully (keeps images intact)
-task docker:off   # Full wipe (removes containers, networks, volumes, images)
-```
+
+    task docker:on    # Start all services
+    task docker:down  # Stop gracefully (keeps images intact)
+    task docker:off   # Full wipe (removes containers, networks, volumes, images)
+
 
 ## Local Services
 
@@ -67,4 +70,6 @@ Explore the sub-modules for advanced deployment, scaling, and observability patt
 | **[Testing Suite](tests/README.md)** | Unit, integration, and mock fixtures. |
 | **[Helm Workloads](infrastructure/helm/README.md)** | Autonomous local provisioning for stateful dependencies and isolated ML workloads. |
 | **[GitOps & CD](infrastructure/argocd/README.md)** | Zero-touch deployment architecture using ArgoCD and Jenkins for deterministic state synchronization. |
-| **[AWS FinOps Simulation](infrastructure/terraform/aws-finops-mock/README.md)** | Infracost model demonstrating system scale to **25,300+ RPS** with a **73% cost reduction** under enterprise conditions. |
+| **[AWS FinOps Simulation](infrastructure/terraform/aws-finops-mock/README.md)** | Infracost model demonstrating system scale to **25,300+ RPS** with an **85% cost reduction** under enterprise conditions. |
+| **[Policy & Governance](policy/README.md)** | Enterprise Policy-as-Code standards enforcing infrastructure, container, and Kubernetes security via OPA/Rego. |
+| **[AI Release Agent](agent/release/README.md)** | Autonomous, AI-driven Python agent for dynamic Semantic Versioning and automated release notes generation via Gemini. |
