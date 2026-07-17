@@ -1,3 +1,27 @@
+### v1.21.4
+
+#### Changed Files & Core Modifications
+- **Documentation Overhaul:** Significant updates to the `README.md` files across the `core`, `agent/release`, and `policy` directories.
+- **Performance Benchmarks:** Introduction of new images and updated text in `README.md` to reflect peak performance metrics.
+- **AWS FinOps Simulation:** Updated `README.md` for the AWS FinOps Terraform module, including new cost reduction figures and revised optimization strategies.
+- **Policy-as-Code Documentation:** New `README.md` for the `policy` directory, detailing OPA/Rego rules for infrastructure, container, and Kubernetes governance.
+- **AI Release Agent Documentation:** New `README.md` for the `agent/release` directory, outlining the functionality and usage of the AI-driven release automation.
+- **Image Updates:** Reorganization and addition of new images related to performance benchmarks and cost analysis reports.
+
+#### Reason for Changes
+This release focuses on enhancing the project's documentation and introducing new capabilities for automated release management and policy enforcement. The goal is to provide clearer guidance on system performance, cost optimization strategies, and robust security/governance practices.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Enhanced Clarity and Guidance:** Comprehensive documentation for FinOps, SecOps, and the new AI Release Agent provides users with detailed insights into system capabilities, deployment strategies, and operational best practices.
+- **(+) Improved Performance Visibility:** Updated benchmarks in the main `README.md` clearly illustrate the system's high-throughput capabilities (25,300+ RPS with sub-7ms latency).
+- **(+) Significant Cost Reduction:** The AWS FinOps simulation now demonstrates an improved cost reduction of 85% through optimized infrastructure choices (Graviton ARM64, Spot Instances, in-cluster datastores) and refined architectural strategies.
+- **(+) Robust Policy Enforcement:** The introduction of Policy-as-Code documentation outlines a framework for automated security, FinOps, and architectural compliance using OPA/Rego, ensuring consistency and preventing misconfigurations.
+- **(+) Automated Release Management:** The new AI Release Agent automates Semantic Versioning and release note generation, reducing manual effort and ensuring consistent, high-quality release documentation.
+- **(-) Infrastructure Requirements:** The advanced FinOps and Policy-as-Code features rely on specific infrastructure configurations (e.g., EKS, Terraform, OPA/Conftest) and may require additional setup for users to fully leverage.
+- **(-) AI Dependency:** The AI Release Agent requires access to the Gemini API, which may incur costs and necessitates API key management.
+
+---
+
 ### v1.21.3
 
 #### Changed Files & Core Modifications
