@@ -73,3 +73,4 @@ Explore the sub-modules for advanced deployment, scaling, and observability patt
 | **[AWS FinOps Simulation](infrastructure/terraform/aws-finops-mock/README.md)** | Infracost model demonstrating system scale to **25,300+ RPS** with an **85% cost reduction** under enterprise conditions. |
 | **[Policy & Governance](policy/README.md)** | Enterprise Policy-as-Code standards enforcing infrastructure, container, and Kubernetes security via OPA/Rego. |
 | **[AI Release Agent](agent/release/README.md)** | Autonomous, AI-driven Python agent for dynamic Semantic Versioning and automated release notes generation via Gemini. |
+| **[AI Doc Agent](agent/doc/README.md)** | Autonomous, AI-driven Engineering Council that analyzes git diffs to generate weekly persona-based architectural reviews. |

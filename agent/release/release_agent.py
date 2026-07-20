@@ -1,6 +1,6 @@
 import os
 import re
-import subprocess
+import subprocess  # nosec B404
 import sys
 import time
 
@@ -10,7 +10,7 @@ from google.genai import types
 
 def run_command(command):
     try:
-        result = subprocess.run(command, capture_output=True, text=True, check=True, shell=True)
+        result = subprocess.run(command, capture_output=True, text=True, check=True, shell=True)  # nosec B602
         return result.stdout.strip()
     except subprocess.CalledProcessError as e:
         print(f"Error executing command: {e.stderr}", file=sys.stderr)
@@ -67,17 +67,54 @@ def bump_version(current_version, bump_type):
     return f"v{major}.{minor}.{patch}"
 
 
-def generate_release_notes(next_version, commit_messages, git_diff):
+def determine_personas(diff_data):
+    personas = set()
+    if not diff_data:
+        return ["Release Manager"]
+
+    if re.search(r"b/src/(data|features|models|utils)/", diff_data):
+        personas.add("Lead Data Scientist (evaluating MLOps and model inference impact)")
+
+    if re.search(
+        r"b/(infrastructure/.*\.(tf|yaml|yml)|Dockerfile.*|\.github/workflows/.*|Jenkinsfile|docker-compose.*)",
+        diff_data,
+    ):
+        personas.add("Senior Cloud/DevOps Engineer (evaluating deployment, infrastructure, and CI/CD impact)")
+
+    if re.search(r"b/policy/.*\.rego", diff_data):
+        personas.add("Zero-Trust Security Architect (evaluating policy-as-code and security constraints)")
+
+    if re.search(r"b/.*\.go", diff_data):
+        personas.add("Staff Go Backend Engineer (evaluating API latency and concurrent throughput changes)")
+
+    if re.search(r"b/.*\.rs", diff_data):
+        personas.add("Systems Rust Engineer (evaluating memory safety and core logic updates)")
+
+    if len(personas) > 1:
+        personas.add("Principal Tech Lead (orchestrating cross-domain release strategies)")
+    elif len(personas) == 0:
+        personas.add("Senior Software Engineer")
+
+    return list(personas)
+
+
+def generate_release_notes(next_version, commit_messages, git_diff, personas):
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        print("Warning: GEMINI_API_KEY environment variable not found.", file=sys.stderr)
-        return "Failed to generate: Missing API Key."
+        print("[CRITICAL] GEMINI_API_KEY environment variable not found.", file=sys.stderr)
+        print(
+            "ACTION REQUIRED: Please create a '.env' file in the project root by copying '.env.example' and adding your API key.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     client = genai.Client(api_key=api_key)
+    persona_string = ", ".join(personas)
 
     system_instruction = (
-        "You are an expert Release Automation Agent. Your task is to analyze the provided commit messages "
-        "and line-by-line code differences (git diff). You must write professional, structured release notes.\n"
+        f"You are the Release Automation Council composed of: {persona_string}. "
+        "Your task is to analyze the provided commit messages and line-by-line code differences (git diff). "
+        "You must write professional, structured release notes reflecting your domain expertise.\n"
         "Do NOT mention internal variables, syntax details, or mundane structural changes unless they imply architectural impact. "
         "Focus on the 'Why' and the business/engineering value."
     )
@@ -139,6 +176,16 @@ Please strictly fill out the following template structure based on the inputs. I
 
 if __name__ == "__main__":
     print("Release Agent is initializing...")
+
+    # 1. Fail-Fast Check for API Key at startup
+    if not os.environ.get("GEMINI_API_KEY"):
+        print("[CRITICAL] GEMINI_API_KEY environment variable not found.", file=sys.stderr)
+        print(
+            "ACTION REQUIRED: Please create a '.env' file in the project root by copying '.env.example' and adding your API key.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     current_tag = get_latest_tag()
     print(f"Current Latest Version: {current_tag}")
 
@@ -154,9 +201,14 @@ if __name__ == "__main__":
     next_tag = bump_version(current_tag, bump_decision)
     print(f"Proposed New Version: {next_tag}")
 
-    print("Gathering Git Diff and invoking Gemini AI for Release Notes...")
+    print("Gathering Git Diff and analyzing personas...")
     diff_data = get_git_diff(current_tag)
-    release_notes = generate_release_notes(next_tag, commits, diff_data)
+
+    assigned_personas = determine_personas(diff_data)
+    print(f"Dynamic Personas Assigned: {', '.join(assigned_personas)}")
+
+    print("Invoking Gemini AI for Release Notes...")
+    release_notes = generate_release_notes(next_tag, commits, diff_data, assigned_personas)
 
     if release_notes.startswith("Failed to generate"):
         print(f"CRITICAL ERROR: {release_notes}")

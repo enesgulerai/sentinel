@@ -40,6 +40,7 @@ dependencies = [
     "pydantic-settings>=2.14.2",
     "soupsieve>=2.8.4",
     "pillow>=12.3.0",
+    "google-genai>=2.12.1",
 ]
 
 [tool.pytest.ini_options]

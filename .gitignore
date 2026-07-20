@@ -15,18 +15,18 @@ __pycache__/
 .ruff_cache/
 .mypy_cache/
 
-# 3. Go Cache & Build Artifacts
+# Go Cache & Build Artifacts
 vendor/
 bin/
 *.exe
 *.test
 *.out
 
-# 4. Rust Cache & Build Artifacts
+# Rust Cache & Build Artifacts
 /src/validator/target/
 **/*.rs.bk
 
-# 5. Data & ML Artifacts
+# Data & ML Artifacts
 data/raw/*
 data/processed/*
 !data/raw/.gitkeep
@@ -68,10 +68,13 @@ coverage.xml
 *,cover
 .ipynb_checkpoints/
 
-# 8. IDEs, OS & Taskfile
+# IDEs, OS & Taskfile
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
 .task/
 .docker/
+
+# AI reports
+agent/doc/weekly_report_*.md

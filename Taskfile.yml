@@ -1,5 +1,7 @@
 version: '3'
 
+dotenv: ['.env']
+
 tasks:
   default:
     desc: "[System] Display this help menu listing all available commands"
@@ -168,3 +170,14 @@ tasks:
     dir: docker/jenkins
     cmds:
       - docker compose down
+
+  # Agent
+  agent:doc:
+    desc: "[Agent] Runs the autonomous Engineering Council to generate the weekly architectural report"
+    cmds:
+      - uv run agent/doc/doc_agent.py
+
+  agent:release:
+    desc: "[Agent] Executes the AI-powered Release Agent for automated SemVer bump and changelog generation"
+    cmds:
+      - uv run agent/release/release_agent.py
