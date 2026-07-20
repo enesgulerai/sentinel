@@ -1,3 +1,37 @@
+### v1.22.0
+
+#### Changed Files & Core Modifications
+- **New Agent for Architectural Reviews:** Introduced a new `agent/doc` directory containing `doc_agent.py` and `README.md`. This agent is responsible for generating weekly architectural review reports.
+- **Enhanced Release Agent:** Modified `agent/release/release_agent.py` to incorporate dynamic persona assignment and integrate with the new "Engineering Council" concept for release note generation.
+- **Configuration Updates:**
+    - `.env.example` now includes `GEMINI_API_KEY` for AI integration.
+    - `.gitignore` has been updated to exclude AI-generated reports.
+    - `Taskfile.yml` now includes tasks for running both the `doc` and `release` agents.
+    - `README.md` has been updated to document the new AI agents.
+- **Dependency Updates:** `pyproject.toml` and `uv.lock` now include `google-genai` and related dependencies.
+
+#### Reason for Changes
+This release introduces significant advancements in the automation of engineering processes, specifically focusing on improving release management and architectural oversight. The primary drivers are:
+
+1.  **Automated Release Notes Generation:** To streamline the release process, an AI-powered agent has been enhanced to automatically generate structured release notes based on commit messages and code diffs. This agent now leverages dynamic personas to provide more contextually relevant and domain-specific analysis.
+2.  **Proactive Architectural Review:** A new "Autonomous Engineering Council" (Doc Agent) has been established to provide regular, persona-driven architectural reviews. This agent analyzes code changes over a defined period to identify potential issues, track progress, and ensure architectural alignment, thereby reducing technical debt and improving overall system quality.
+3.  **Enhanced Developer Experience (DevEx):** By automating these critical but time-consuming tasks, developers can focus more on core development, leading to increased productivity and faster iteration cycles. The fail-fast mechanisms and clear error reporting for missing configurations (like API keys) also improve the onboarding and operational experience.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Automated & Consistent Release Notes:** Ensures timely and structured release notes, reducing manual effort and potential for human error.
+    - **Proactive Architectural Governance:** The Doc Agent provides continuous, AI-driven oversight, identifying potential architectural drift and technical debt early.
+    - **Dynamic Persona Analysis:** Both agents leverage AI to adopt relevant expert roles, leading to more insightful and targeted analysis for release notes and architectural reviews.
+    - **Improved DevEx:** Simplifies complex tasks like versioning and documentation generation, allowing engineers to focus on feature development.
+    - **Reduced Hallucinations:** Implemented stricter AI constraints and fail-fast mechanisms to ensure reliable and actionable outputs.
+- **(-) Disadvantages / Notes:**
+    - **External API Dependency:** The functionality of these agents is dependent on the availability and performance of the Gemini API.
+    - **Configuration Requirement:** Requires the `GEMINI_API_KEY` to be set in the environment, which needs to be managed securely.
+    - **Potential for AI Misinterpretation:** While efforts have been made to mitigate hallucinations, AI-generated content may still require human review for critical decisions.
+    - **Increased Operational Overhead:** Running these agents introduces new tasks and potential points of failure that need to be monitored.
+
+---
+
 ### v1.21.4
 
 #### Changed Files & Core Modifications
