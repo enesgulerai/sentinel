@@ -1,3 +1,29 @@
+### v1.23.0
+
+#### Changed Files & Core Modifications
+- **Infrastructure Documentation:** Updated `README.md` files within the `infrastructure/helm` and `tests/chaos` directories.
+- **Chaos Engineering:** Introduced new Chaos Mesh experiment definitions (`api-pod-kill.yaml`, `api-network-delay.yaml`) and their corresponding documentation.
+- **Network & Observability:** Integrated documentation and instructions for replacing `kube-proxy` with Cilium (eBPF) and enabling the Hubble UI.
+
+#### Reason for Changes
+This release focuses on enhancing the robustness and performance of the Sentinel project through two key initiatives:
+
+1.  **Chaos Engineering:** To proactively identify and address potential failure points, we've introduced a suite of chaos engineering experiments. These experiments are designed to test the system's resilience, self-healing capabilities, and fault tolerance under various simulated failure conditions.
+2.  **Network Performance Optimization:** To significantly improve network throughput and reduce latency, we are transitioning to an eBPF-based networking solution using Cilium. This architectural shift aims to eliminate network bottlenecks, especially under high load, and provide enhanced observability through Hubble.
+
+#### Advantages & Architectural Trade-offs
+-   **(+) Advantages:**
+    *   **Enhanced Resilience:** Chaos engineering experiments allow for early detection and mitigation of vulnerabilities, leading to a more stable and reliable system.
+    *   **Improved Network Performance:** Replacing `kube-proxy` with Cilium (eBPF) offers substantial reductions in network latency and increased throughput by performing network routing directly within the Linux kernel. This also ensures consistent $O(1)$ routing performance.
+    *   **Advanced Observability:** The integration of Hubble provides zero-instrumentation, real-time service mapping and traffic analysis, offering deep insights into microservice communication.
+    *   **Scalability:** The eBPF-based networking is better equipped to handle high RPS loads without CPU bottlenecks.
+-   **(-) Disadvantages / Notes:**
+    *   **Infrastructure Requirement:** The adoption of Cilium requires enabling `kube-proxy` replacement during Helm installation.
+    *   **Pod Restart:** After installing or upgrading Cilium, existing pods in the `sentinel-namespace` will need to be restarted to adopt the new CNI and receive updated IP addresses.
+    *   **Chaos Mesh Dependency:** Running chaos experiments requires the installation of Chaos Mesh.
+
+---
+
 ### v1.22.0
 
 #### Changed Files & Core Modifications
