@@ -44,7 +44,7 @@ kubectl port-forward svc/observability-grafana 3000:80 -n monitoring
 For local environments (e.g., Kind) bypass TLS validation to allow Kubernetes to scrape CPU/RAM metrics and trigger the HPA. Run via Powershell:
 
 ```powershell
-kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+kubectl apply -f [https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml](https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml)
 Set-Content -Path patch.json -Value '[{ "op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls" }]'
 kubectl patch -n kube-system deployment metrics-server --type=json --patch-file patch.json
 Remove-Item -Path patch.json -Force
@@ -66,4 +66,31 @@ Confirm the pipeline processed the traffic and assigned risk scores correctly:
 
 ```bash
 kubectl exec -it -n sentinel-namespace $(kubectl get pods -n sentinel-namespace -l app=postgres -o jsonpath='{.items[0].metadata.name}') -- psql -U sentinel -d sentinel_db -c "SELECT transaction_id, risk_score, created_at FROM transactions ORDER BY created_at DESC LIMIT 5;"
+```
+
+## Network & Observability (eBPF & Cilium)
+
+The Sentinel project is optimized by replacing the traditional `kube-proxy` (iptables) with **Cilium (eBPF)**. This architectural decision routes traffic directly at the Linux kernel level, significantly reducing network latency, preventing CPU bottlenecks during high RPS loads, and ensuring $O(1)$ routing performance.
+
+### 1. Install Cilium (eBPF Mode)
+To bootstrap the cluster in eBPF mode, ensure `kube-proxy` replacement is enabled during the Helm installation:
+
+```bash
+helm repo add cilium [https://helm.cilium.io/](https://helm.cilium.io/)
+helm repo update
+
+# Run as a single line in PowerShell
+helm install cilium cilium/cilium --namespace kube-system --set kubeProxyReplacement=true
+```
+*Note: After installation, you must restart existing pods to receive new IP addresses from the Cilium CNI (`kubectl delete pods --all -n sentinel-namespace`).*
+
+### 2. Enable Hubble UI (Service Map)
+Hubble provides zero-instrumentation observability, automatically generating a live service map of all L3/L4 and L7 traffic between microservices.
+
+```bash
+# Enable the UI and Relay components
+helm upgrade cilium cilium/cilium --namespace kube-system --reuse-values --set hubble.relay.enabled=true --set hubble.ui.enabled=true
+
+# Access the visual dashboard (http://localhost:12000)
+kubectl port-forward -n kube-system svc/hubble-ui 12000:80
 ```

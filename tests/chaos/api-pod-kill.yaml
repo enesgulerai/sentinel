@@ -1,0 +1,14 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: api-gateway-pod-kill
+  namespace: sentinel-namespace
+spec:
+  action: pod-kill
+  mode: fixed-percent
+  value: "50"
+  selector:
+    namespaces:
+      - sentinel-namespace
+    labelSelectors:
+      app: sentinel-api
