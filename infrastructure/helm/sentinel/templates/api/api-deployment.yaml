@@ -39,6 +39,8 @@ spec:
           env:
             - name: PORT
               value: "{{ .Values.api.service.port }}"
+            - name: AWS_ENDPOINT_URL
+              value: "http://localstack.{{ .Release.Namespace }}.svc.cluster.local:4566"
             {{- if .Values.api.env }}
             {{- toYaml .Values.api.env | nindent 12 }}
             {{- end }}

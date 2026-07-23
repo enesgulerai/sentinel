@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -13,6 +14,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	"github.com/goccy/go-json"
@@ -20,7 +26,6 @@ import (
 	"github.com/segmentio/kafka-go"
 	"go.uber.org/zap"
 
-	// Prometheus Imports
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -127,6 +132,7 @@ var (
 	logger      = zap.NewNop()
 	redisClient *redis.Client
 	kafkaWriter KafkaProducer
+	s3Client    *s3.Client
 
 	httpRequestsTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
@@ -160,8 +166,9 @@ func getEnv(key, fallback string) string {
 }
 
 func initServices() {
-	logger.Info("Starting Sentinel ML API Gateway (Go/Gin) - Max Performance Version (OTel Disabled)...")
+	logger.Info("Starting Sentinel ML API Gateway (Go/Gin) - Cloud-Native Version...")
 
+	// Redis Initialization
 	redisHost := getEnv("REDIS_HOST", "localhost")
 	redisPort := getEnv("REDIS_PORT", "6379")
 
@@ -184,6 +191,7 @@ func initServices() {
 	}
 	logger.Info("Connected to Redis", zap.String("host", redisHost), zap.String("port", redisPort))
 
+	// Kafka Initialization
 	kafkaBroker := getEnv("REDPANDA_BROKER", "localhost:19092")
 	topicName := getEnv("KAFKA_TOPIC", "raw-events")
 
@@ -199,6 +207,47 @@ func initServices() {
 		WriteTimeout: 3 * time.Second,
 	}
 	logger.Info("Connected to Redpanda (Async Mode)", zap.String("broker", kafkaBroker))
+
+	// AWS S3 Initialization
+	awsEndpoint := getEnv("AWS_ENDPOINT_URL", "")
+	awsRegion := getEnv("AWS_REGION", "us-east-1")
+
+	cfgOpts := []func(*config.LoadOptions) error{
+		config.WithRegion(awsRegion),
+	}
+
+	// Dynamic routing: If AWS_ENDPOINT_URL exists, adapt for LocalStack.
+	// Otherwise, it naturally connects to production AWS S3.
+	if awsEndpoint != "" {
+		customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
+			return aws.Endpoint{
+				PartitionID:   "aws",
+				URL:           awsEndpoint,
+				SigningRegion: awsRegion,
+			}, nil
+		})
+		cfgOpts = append(cfgOpts, config.WithEndpointResolverWithOptions(customResolver))
+		cfgOpts = append(cfgOpts, config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
+			Value: aws.Credentials{
+				AccessKeyID:     "mock_access_key",
+				SecretAccessKey: "mock_secret_key",
+				SessionToken:    "mock_session",
+			},
+		}))
+		logger.Info("AWS SDK configured for LocalStack integration", zap.String("endpoint", awsEndpoint))
+	} else {
+		logger.Info("AWS SDK configured for Production AWS integration")
+	}
+
+	cfg, err := config.LoadDefaultConfig(context.TODO(), cfgOpts...)
+	if err != nil {
+		logger.Fatal("Failed to load AWS configuration", zap.Error(err))
+	}
+
+	s3Client = s3.NewFromConfig(cfg, func(o *s3.Options) {
+		o.UsePathStyle = true // Essential for LocalStack S3 routing
+	})
+	logger.Info("AWS S3 Client successfully initialized")
 }
 
 func metricsMiddleware() gin.HandlerFunc {
@@ -230,11 +279,10 @@ func main() {
 		c.JSON(http.StatusOK, RootResponse{
 			Status:  "online",
 			Service: "Sentinel ML API (Go)",
-			Version: "1.16.2-max-performance",
+			Version: "1.17.0-cloud-native",
 		})
 	})
 
-	// Health and Readiness endpoints for Kubernetes
 	router.GET("/health/startup", func(c *gin.Context) {
 		c.String(http.StatusOK, "OK")
 	})
@@ -388,8 +436,6 @@ func ingestTransaction(c *gin.Context) {
 		return
 	}
 
-	// OTel kaldirildigi icin artik header'lara trace_id basmiyoruz.
-	// Sadece payload'u gonderiyoruz.
 	err = executeWithRetry(reqCtx, 3, 15*time.Millisecond, func() error {
 		return kafkaWriter.WriteMessages(reqCtx, kafka.Message{
 			Value: bodyBytes,
@@ -402,11 +448,33 @@ func ingestTransaction(c *gin.Context) {
 		return
 	}
 
+	// ASYNCHRONOUS AWS S3 AUDIT LOGGING
+	// Executed in a goroutine to prevent blocking the main request cycle
+	// Ensures zero impact on API latency and maintains max RPS performance
+	auditBucket := getEnv("S3_AUDIT_BUCKET", "sentinel-audit-logs-local")
+	go func(txID string, payloadData []byte) {
+		putCtx, cancelPut := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancelPut()
+
+		objectKey := fmt.Sprintf("audit/%s.json", txID)
+
+		_, s3Err := s3Client.PutObject(putCtx, &s3.PutObjectInput{
+			Bucket:      aws.String(auditBucket),
+			Key:         aws.String(objectKey),
+			Body:        bytes.NewReader(payloadData),
+			ContentType: aws.String("application/json"),
+		})
+
+		if s3Err != nil {
+			logger.Error("Failed to write audit log to AWS S3", zap.Error(s3Err), zap.String("txID", txID))
+		}
+	}(payload.TransactionID, bodyBytes)
+
 	transactionsProcessed.WithLabelValues("PASSED").Inc()
 	c.JSON(http.StatusAccepted, SuccessResponse{
 		Status:        "success",
 		TransactionID: payload.TransactionID,
 		Amount:        payload.Amount,
-		Source:        "Redpanda",
+		Source:        "Redpanda & S3 Audit",
 	})
 }

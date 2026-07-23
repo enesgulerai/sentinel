@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: localstack
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: localstack
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: localstack
+  template:
+    metadata:
+      labels:
+        app: localstack
+    spec:
+      containers:
+        - name: localstack
+          image: localstack/localstack:3.5.0
+          ports:
+            - containerPort: 4566
+          env:
+            - name: SERVICES
+              value: "s3,sqs,iam"
+            - name: DEBUG
+              value: "1"
+          resources:
+            limits:
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: localstack
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: localstack
+  ports:
+    - port: 4566
+      targetPort: 4566
+      protocol: TCP
