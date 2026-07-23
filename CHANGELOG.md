@@ -1,3 +1,34 @@
+### v1.24.0
+
+#### Changed Files & Core Modifications
+- **Infrastructure (Helm & Terraform):** Introduced new Kubernetes Deployments and Services for LocalStack, enabling a local cloud environment. Configured Terraform to manage LocalStack resources, including S3 buckets and SQS queues.
+- **API Deployment Configuration:** Modified the API's Kubernetes deployment to include an `AWS_ENDPOINT_URL` environment variable, allowing it to target the LocalStack instance within the cluster.
+- **API Application Code:**
+    - Updated `go.mod` and `go.sum` to include new AWS SDK v2 dependencies required for S3 integration.
+    - Modified `main.go` to initialize an AWS S3 client, with dynamic configuration for either production AWS or LocalStack endpoints.
+    - Implemented asynchronous S3 audit logging for incoming transactions within the `ingestTransaction` function, executed in a separate goroutine.
+    - Updated the application version string to "1.17.0-cloud-native".
+
+#### Reason for Changes
+This release focuses on enhancing the development and testing experience by introducing robust local cloud emulation capabilities. The primary drivers are:
+- **Improved Developer Productivity:** Enabling developers to run and test cloud-native services, specifically S3 interactions, locally without relying on external AWS credentials or incurring costs.
+- **Streamlined CI/CD:** Facilitating more comprehensive integration testing within CI pipelines by providing a consistent and isolated cloud environment.
+- **Enhanced Observability:** Implementing asynchronous S3 audit logging for all transactions to provide a persistent and auditable record, decoupled from the primary request path to maintain high throughput.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Local Development & Testing:** Significantly improves the developer workflow by allowing local execution and testing of S3-dependent features using LocalStack.
+    - **Cost Reduction:** Eliminates the need for actual AWS S3 calls during local development and potentially in CI environments, reducing operational costs.
+    - **Faster Feedback Loops:** Enables quicker iteration and testing cycles for features interacting with S3.
+    - **Decoupled Audit Logging:** Asynchronous S3 audit logging ensures that the primary API request latency and throughput remain unaffected, as the logging operation is non-blocking.
+    - **Production Readiness:** The S3 client initialization is designed to seamlessly switch between LocalStack and production AWS endpoints based on the `AWS_ENDPOINT_URL` configuration.
+- **(-) Disadvantages / Notes:**
+    - **Infrastructure Complexity:** Introduces new infrastructure components (LocalStack deployment and service) that require management and monitoring.
+    - **LocalStack Consistency:** While powerful, LocalStack may not perfectly replicate all AWS S3 behaviors. Thorough testing against actual AWS services is still recommended before production deployment.
+    - **Increased Dependency Management:** The inclusion of AWS SDK v2 dependencies adds to the project's dependency footprint.
+
+---
+
 ### v1.23.0
 
 #### Changed Files & Core Modifications
