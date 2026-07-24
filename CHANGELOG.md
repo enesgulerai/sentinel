@@ -1,3 +1,28 @@
+### v1.24.2
+
+#### Changed Files & Core Modifications
+
+*   **Dependency Updates:** The `gitpython` library has been updated to version `3.1.55` (from `3.1.50`). This addresses security vulnerabilities and ensures the use of a more stable and secure version.
+*   **Kubernetes Resource Definitions:** The Helm chart for `localstack` has been updated to include Kubernetes labels (`env: local`) and resource requests (`cpu: "250m"`, `memory: "256Mi"`) for the `localstack` container.
+
+#### Reason for Changes
+
+This release addresses two key areas:
+
+1.  **Security Vulnerabilities:** An update to `gitpython` was necessary to mitigate known security vulnerabilities within the library.
+2.  **Kubernetes Resource Management:** The addition of Kubernetes labels and resource requests to the `localstack` deployment improves the manageability and observability of this component within a Kubernetes environment. Specifically, the `env: local` label aids in environment identification, and resource requests help Kubernetes with scheduling and resource allocation.
+
+#### Advantages & Architectural Trade-offs
+
+*   **(+) Advantages:**
+    *   Enhanced security posture by resolving `gitpython` vulnerabilities.
+    *   Improved Kubernetes resource management and scheduling for the `localstack` service.
+    *   Better clarity and organization within Kubernetes deployments due to the addition of environment labels.
+*   **(-) Disadvantages / Notes:**
+    *   The addition of resource requests for `localstack` may require adjustments to cluster resource quotas or limits if not already provisioned.
+
+---
+
 ### v1.24.1
 
 #### Changed Files & Core Modifications
