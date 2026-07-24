@@ -1,3 +1,22 @@
+### v1.24.3
+
+#### Changed Files & Core Modifications
+- **`infrastructure/helm/sentinel/templates/localstack/localstack.yaml`**: Resource requests for the LocalStack container have been moved from the `image` section to the `resources` section.
+- **`src/api/main.go`**: Added a nil check for the S3 client before attempting to write audit logs.
+
+#### Reason for Changes
+The primary driver for these changes is to resolve intermittent CI pipeline failures observed in tests and conftest policies. Specifically, the failures were related to the LocalStack environment and the audit logging mechanism.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Improved CI Stability:** Resolving the CI pipeline failures enhances the reliability and stability of our continuous integration process.
+    - **Robust Audit Logging:** The addition of a nil check for the S3 client in `main.go` prevents potential panics in test environments where the S3 client might not be initialized, ensuring more predictable behavior.
+    - **Clearer Resource Management:** Moving LocalStack resource requests to the dedicated `resources` block in the Helm chart improves clarity and adherence to Kubernetes best practices for resource definition.
+- **(-) Disadvantages / Notes:**
+    - No significant disadvantages or architectural trade-offs are introduced by these changes. The modifications are focused on stability and correctness.
+
+---
+
 ### v1.24.2
 
 #### Changed Files & Core Modifications
