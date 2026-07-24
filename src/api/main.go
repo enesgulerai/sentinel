@@ -453,6 +453,11 @@ func ingestTransaction(c *gin.Context) {
 	// Ensures zero impact on API latency and maintains max RPS performance
 	auditBucket := getEnv("S3_AUDIT_BUCKET", "sentinel-audit-logs-local")
 	go func(txID string, payloadData []byte) {
+		if s3Client == nil {
+			logger.Warn("Audit Log Skipped: S3 client is uninitialized (Test Mode)", zap.String("txID", txID))
+			return
+		}
+
 		putCtx, cancelPut := context.WithTimeout(context.Background(), 2*time.Second)
 		defer cancelPut()
 
