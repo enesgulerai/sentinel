@@ -1,3 +1,24 @@
+### v1.24.1
+
+#### Changed Files & Core Modifications
+- **Documentation:** Updated architecture diagrams to reflect the current system flow and added comprehensive documentation for the LocalStack Terraform setup.
+- **Helm Charts:** Updated deployment configurations for the `api`, `validator`, and `consumer` services to reference the latest image tag (`58ede6b`).
+- **Terraform Configuration:** Introduced a new Terraform module for LocalStack, defining the S3 bucket for audit logs and enabling versioning. This replaces the previous SQS queue definition.
+
+#### Reason for Changes
+This release focuses on improving the clarity and maintainability of the project's infrastructure and documentation. The architectural diagrams have been refreshed to provide a more accurate representation of the system's event-driven flow. Furthermore, the local development environment has been enhanced by formalizing the LocalStack S3 infrastructure setup using Terraform, ensuring consistency and ease of deployment for local testing. The update to the Helm charts ensures that all deployed components are running the latest specified image.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - Enhanced clarity of system architecture through updated diagrams.
+    - Improved local development experience with a robust and documented LocalStack setup.
+    - Increased reliability and consistency in infrastructure provisioning via Terraform.
+    - Ensured all services are deployed with the latest specified image tag.
+- **(-) Disadvantages / Notes:**
+    - The removal of the SQS queue definition in the LocalStack Terraform configuration implies a shift in how certain inter-service communication or data handling might be managed locally. Users should verify if this impacts any local testing workflows that relied on the SQS queue.
+
+---
+
 ### v1.24.0
 
 #### Changed Files & Core Modifications
