@@ -7,6 +7,12 @@ terraform {
   }
 }
 
+variable "environment" {
+  description = "The deployment environment"
+  type        = string
+  default     = "local"
+}
+
 provider "aws" {
   region                      = "us-east-1"
   access_key                  = "mock_access_key"
@@ -14,31 +20,32 @@ provider "aws" {
   skip_credentials_validation = true
   skip_metadata_api_check     = true
   skip_requesting_account_id  = true
-
   s3_use_path_style           = true
 
   endpoints {
-    s3  = "http://localhost:4566"
-    sqs = "http://localhost:4566"
-    iam = "http://localhost:4566"
+    s3 = "http://localhost:4566"
+  }
+
+  default_tags {
+    tags = {
+      Environment = var.environment
+      Project     = "Sentinel"
+      ManagedBy   = "Terraform"
+    }
   }
 }
 
-# 1. S3 Bucket
 resource "aws_s3_bucket" "sentinel_audit_logs" {
   bucket = "sentinel-audit-logs-local"
 }
 
-# 2. SQS Queue
-resource "aws_sqs_queue" "sentinel_risk_queue" {
-  name = "sentinel-risk-transactions-queue"
+resource "aws_s3_bucket_versioning" "sentinel_audit_logs_versioning" {
+  bucket = aws_s3_bucket.sentinel_audit_logs.id
+  versioning_configuration {
+    status = "Enabled"
+  }
 }
-
 
 output "s3_bucket_name" {
   value = aws_s3_bucket.sentinel_audit_logs.bucket
-}
-
-output "sqs_queue_url" {
-  value = aws_sqs_queue.sentinel_risk_queue.url
 }

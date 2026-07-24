@@ -21,6 +21,50 @@
 
 *Note: Note: Peak 25,300+ RPS was achieved under optimal hardware conditions. Standard local Docker Desktop deployments typically yield ~18,000+ RPS due to local CPU and network bridge constraints.*
 
+```mermaid
+graph TD
+    %% Styling
+    classDef go fill:#00ADD8,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef rust fill:#DEA584,stroke:#fff,stroke-width:2px,color:#000;
+    classDef python fill:#FFD43B,stroke:#306998,stroke-width:2px,color:#306998;
+    classDef infra fill:#f9f9f9,stroke:#333,stroke-width:2px;
+    classDef storage fill:#ff9900,stroke:#fff,stroke-width:2px,color:#fff;
+    classDef broker fill:#8B0000,stroke:#fff,stroke-width:2px,color:#fff;
+
+    %% Nodes
+    Client([Client / K6 Load Tester])
+
+    subgraph API Layer
+        Gateway[Go Gin Gateway]:::go
+    end
+
+    subgraph Streaming & Validation
+        Redis[(Redis<br>Idempotency)]:::infra
+        Broker1{Redpanda<br>raw-events}:::broker
+        Validator[Rust Stream Processor]:::rust
+        Broker2{Redpanda<br>clean-events}:::broker
+    end
+
+    subgraph AI & Persistence
+        Consumer[Python Inference Engine<br>ONNX Model]:::python
+        S3[(AWS S3 / LocalStack<br>Audit Logs)]:::storage
+        DB[(PostgreSQL)]:::infra
+    end
+
+    %% Edges (Flow)
+    Client -->|HTTP POST| Gateway
+    Gateway -->|1. Check tx_hash| Redis
+    Redis -.->|Duplicate? Block| Gateway
+    Gateway -->|2. Fire & Forget| S3
+    Gateway -->|3. Publish| Broker1
+    Broker1 -->|4. Consume Batch| Validator
+    Validator -->|5. Type Check & Validate| Validator
+    Validator -->|6. Publish Validated| Broker2
+    Broker2 -->|7. Consume Batch| Consumer
+    Consumer -->|8. Fraud Inference| Consumer
+    Consumer -->|9. Persist Result| DB
+```
+
 ## Quick Start
 
 ### Prerequisites
