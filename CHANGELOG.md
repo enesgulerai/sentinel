@@ -1,3 +1,17 @@
+### v1.24.4
+
+#### Changed Files & Core Modifications
+- Modified `src/api/main.go` to update the AWS SDK configuration for local development environments. The previous custom endpoint resolver has been replaced with the `config.WithBaseEndpoint` option.
+
+#### Reason for Changes
+- The previous implementation used a deprecated method for resolving AWS endpoints, which was flagged by `golangci-lint`. This change addresses the linting issue by adopting the current recommended approach for configuring custom endpoints, particularly relevant for local development with tools like LocalStack.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:** Resolves a technical debt by updating to a supported AWS SDK configuration method, ensuring continued compatibility and adherence to best practices. This maintains the ability to easily test against local AWS-compatible services.
+- **(-) Disadvantages / Notes:** No significant architectural trade-offs or performance impacts are expected. This is a maintenance update focused on code quality and compatibility.
+
+---
+
 ### v1.24.3
 
 #### Changed Files & Core Modifications
