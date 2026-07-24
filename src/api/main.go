@@ -219,14 +219,7 @@ func initServices() {
 	// Dynamic routing: If AWS_ENDPOINT_URL exists, adapt for LocalStack.
 	// Otherwise, it naturally connects to production AWS S3.
 	if awsEndpoint != "" {
-		customResolver := aws.EndpointResolverWithOptionsFunc(func(service, region string, options ...interface{}) (aws.Endpoint, error) {
-			return aws.Endpoint{
-				PartitionID:   "aws",
-				URL:           awsEndpoint,
-				SigningRegion: awsRegion,
-			}, nil
-		})
-		cfgOpts = append(cfgOpts, config.WithEndpointResolverWithOptions(customResolver))
+		cfgOpts = append(cfgOpts, config.WithBaseEndpoint(awsEndpoint))
 		cfgOpts = append(cfgOpts, config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
 			Value: aws.Credentials{
 				AccessKeyID:     "mock_access_key",
