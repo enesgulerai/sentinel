@@ -1,3 +1,37 @@
+### v1.24.5
+
+#### Changed Files & Core Modifications
+- **`README.md`**: Updated documentation to include instructions for running load tests and added a new section for local AWS simulation.
+- **`Taskfile.yml`**: Modified Docker build process to include `--build` for `docker:on`, updated the pre-pulling message to reflect the `valkey` image, and streamlined `helm:forward` by removing the console port-forward.
+- **`docker/consumer/requirements.txt`**: Removed OpenTelemetry dependencies.
+- **`docker/validator/Dockerfile`**: Optimized the build process by switching to an Alpine-based Rust image and using `apk` for package management, resulting in a smaller image size.
+- **`infrastructure/helm/README.md`**: Updated the estimated container sizes for the Go API and Rust Validator, and refined instructions for patching the metrics server for local development.
+- **`src/api/main.go`**: Refactored the AWS S3 audit logging to use a buffered channel and a pool of worker goroutines for asynchronous processing, improving API responsiveness and throughput.
+- **`src/inference/consumer.py`**: Enhanced cross-platform compatibility by conditionally installing `uvloop` and added a check for Windows environments. Also updated the default database connection string to use `sentinel_user`.
+- **`tests/README.md`**: Updated the load testing tool from `oha` to `k6`.
+
+#### Reason for Changes
+This release focuses on enhancing system performance, reliability, and developer experience. Key drivers include:
+- **API Concurrency and Throughput:** Optimizing the asynchronous processing of audit logs to the S3 bucket is critical for maintaining low API latency under high load.
+- **Cross-Platform Compatibility:** Ensuring the system functions correctly across different operating systems, particularly for development and testing environments.
+- **Image Optimization:** Reducing container image sizes for faster deployments and lower resource consumption.
+- **Documentation and Tooling:** Improving developer workflows by updating documentation and load testing tools.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Improved API Latency and Throughput:** The asynchronous S3 audit log processing via a worker pool significantly reduces the impact of I/O operations on API request handling, allowing for higher concurrent throughput.
+    - **Reduced Container Footprint:** The optimized `validator` Docker image is substantially smaller, leading to faster deployments and reduced storage requirements.
+    - **Enhanced Cross-Platform Support:** The conditional `uvloop` installation and Windows detection improve the reliability of the inference consumer across various development and deployment environments.
+    - **Streamlined Local Development:** Simplifying the `helm:forward` task by removing unnecessary port-forwarding configurations.
+    - **Modernized Load Testing:** Integration of `k6` provides a more robust and feature-rich load testing framework.
+    - **Improved Developer Workflow:** Clearer documentation for load testing and local AWS simulation facilitates easier setup and verification.
+- **(-) Disadvantages / Notes:**
+    - The new S3 audit logging mechanism introduces a buffered channel (`s3TaskQueue`) with a capacity of 50,000 tasks. If this buffer becomes full, audit logs will be dropped to maintain API performance. Monitoring of this queue size and worker utilization is recommended.
+    - The removal of OpenTelemetry dependencies from the consumer may impact distributed tracing capabilities for that specific component.
+    - The default database user in the consumer has been updated to `sentinel_user`, requiring potential configuration adjustments in environments using the previous default.
+
+---
+
 ### v1.24.4
 
 #### Changed Files & Core Modifications
