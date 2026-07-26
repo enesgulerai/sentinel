@@ -19,7 +19,7 @@ tasks:
       IMAGE_TAG: '{{.GIT_SHA}}'
     cmds:
       - echo "Starting all services with IMAGE_TAG={{.GIT_SHA}}"
-      - docker compose up -d
+      - docker compose up -d --build
 
   docker:off:
     desc: "[Docker] Sequentially stop containers and clear all unused images"
@@ -55,7 +55,7 @@ tasks:
       - cmd: sleep 5
         platforms: [linux, darwin]
       - kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=120s
-      - echo "Pre-pulling Dragonfly image to prevent network timeouts and ImagePullBackOff..."
+      - echo "Pre-pulling Valkey image to prevent network timeouts and ImagePullBackOff..."
       - docker pull valkey/valkey:8.0
       - echo "Deploying Sentinel infrastructure via Helm..."
       - helm upgrade --install sentinel-prod ./infrastructure/helm/sentinel -n sentinel-namespace --create-namespace
@@ -75,13 +75,11 @@ tasks:
       - helm upgrade --install observability prometheus-community/kube-prometheus-stack -n monitoring --create-namespace --wait
 
   helm:forward:
-    desc: "[Helm] Bind K8s isolated network to localhost via Ingress (API: 8000, Console: 8080)"
+    desc: "[Helm] Bind K8s isolated network to localhost via Ingress (API: 8000)"
     cmds:
       - |
         echo "Starting Ingress port-forwarding... Press Ctrl+C to stop all connections."
         kubectl port-forward svc/ingress-nginx-controller 8000:80 -n ingress-nginx &
-        kubectl port-forward svc/console 8080:8080 -n sentinel-namespace &
-        wait
 
   helm:off:
     desc: "[Helm] Uninstall the Sentinel Helm release and clean up resources"

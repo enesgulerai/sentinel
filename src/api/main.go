@@ -128,11 +128,20 @@ type SuccessResponse struct {
 	Source        string  `json:"source"`
 }
 
+// S3UploadTask represents a queued audit log task
+type S3UploadTask struct {
+	TransactionID string
+	Payload       []byte
+}
+
 var (
 	logger      = zap.NewNop()
 	redisClient *redis.Client
 	kafkaWriter KafkaProducer
 	s3Client    *s3.Client
+
+	// Channel buffer size determines how many tasks can be queued before we start dropping them
+	s3TaskQueue = make(chan S3UploadTask, 50000)
 
 	httpRequestsTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
@@ -165,10 +174,38 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
+// startS3Workers spins up a fixed number of goroutines to process the S3 queue
+func startS3Workers(workerCount int) {
+	for i := 0; i < workerCount; i++ {
+		go func() {
+			auditBucket := getEnv("S3_AUDIT_BUCKET", "sentinel-audit-logs-local")
+			for task := range s3TaskQueue {
+				if s3Client == nil {
+					continue
+				}
+
+				putCtx, cancelPut := context.WithTimeout(context.Background(), 2*time.Second)
+				objectKey := fmt.Sprintf("audit/%s.json", task.TransactionID)
+
+				_, s3Err := s3Client.PutObject(putCtx, &s3.PutObjectInput{
+					Bucket:      aws.String(auditBucket),
+					Key:         aws.String(objectKey),
+					Body:        bytes.NewReader(task.Payload),
+					ContentType: aws.String("application/json"),
+				})
+
+				if s3Err != nil {
+					logger.Error("Failed to write audit log to AWS S3", zap.Error(s3Err), zap.String("txID", task.TransactionID))
+				}
+				cancelPut()
+			}
+		}()
+	}
+}
+
 func initServices() {
 	logger.Info("Starting Sentinel ML API Gateway (Go/Gin) - Cloud-Native Version...")
 
-	// Redis Initialization
 	redisHost := getEnv("REDIS_HOST", "localhost")
 	redisPort := getEnv("REDIS_PORT", "6379")
 
@@ -191,7 +228,6 @@ func initServices() {
 	}
 	logger.Info("Connected to Redis", zap.String("host", redisHost), zap.String("port", redisPort))
 
-	// Kafka Initialization
 	kafkaBroker := getEnv("REDPANDA_BROKER", "localhost:19092")
 	topicName := getEnv("KAFKA_TOPIC", "raw-events")
 
@@ -208,7 +244,6 @@ func initServices() {
 	}
 	logger.Info("Connected to Redpanda (Async Mode)", zap.String("broker", kafkaBroker))
 
-	// AWS S3 Initialization
 	awsEndpoint := getEnv("AWS_ENDPOINT_URL", "")
 	awsRegion := getEnv("AWS_REGION", "us-east-1")
 
@@ -216,8 +251,6 @@ func initServices() {
 		config.WithRegion(awsRegion),
 	}
 
-	// Dynamic routing: If AWS_ENDPOINT_URL exists, adapt for LocalStack.
-	// Otherwise, it naturally connects to production AWS S3.
 	if awsEndpoint != "" {
 		cfgOpts = append(cfgOpts, config.WithBaseEndpoint(awsEndpoint))
 		cfgOpts = append(cfgOpts, config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
@@ -238,9 +271,12 @@ func initServices() {
 	}
 
 	s3Client = s3.NewFromConfig(cfg, func(o *s3.Options) {
-		o.UsePathStyle = true // Essential for LocalStack S3 routing
+		o.UsePathStyle = true
 	})
 	logger.Info("AWS S3 Client successfully initialized")
+
+	// Initialize the fixed worker pool (e.g., 100 concurrent workers)
+	startS3Workers(100)
 }
 
 func metricsMiddleware() gin.HandlerFunc {
@@ -322,6 +358,7 @@ func main() {
 		logger.Error("Error closing kafka writer", zap.Error(err))
 	}
 
+	close(s3TaskQueue)
 	logger.Info("Shutdown complete.")
 }
 
@@ -441,32 +478,14 @@ func ingestTransaction(c *gin.Context) {
 		return
 	}
 
-	// ASYNCHRONOUS AWS S3 AUDIT LOGGING
-	// Executed in a goroutine to prevent blocking the main request cycle
-	// Ensures zero impact on API latency and maintains max RPS performance
-	auditBucket := getEnv("S3_AUDIT_BUCKET", "sentinel-audit-logs-local")
-	go func(txID string, payloadData []byte) {
-		if s3Client == nil {
-			logger.Warn("Audit Log Skipped: S3 client is uninitialized (Test Mode)", zap.String("txID", txID))
-			return
-		}
-
-		putCtx, cancelPut := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancelPut()
-
-		objectKey := fmt.Sprintf("audit/%s.json", txID)
-
-		_, s3Err := s3Client.PutObject(putCtx, &s3.PutObjectInput{
-			Bucket:      aws.String(auditBucket),
-			Key:         aws.String(objectKey),
-			Body:        bytes.NewReader(payloadData),
-			ContentType: aws.String("application/json"),
-		})
-
-		if s3Err != nil {
-			logger.Error("Failed to write audit log to AWS S3", zap.Error(s3Err), zap.String("txID", txID))
-		}
-	}(payload.TransactionID, bodyBytes)
+	// NON-BLOCKING ASYNCHRONOUS TASK QUEUING
+	// Sends the task to the channel. If the 50,000 limit buffer is full, it skips to default.
+	select {
+	case s3TaskQueue <- S3UploadTask{TransactionID: payload.TransactionID, Payload: bodyBytes}:
+		// Task successfully queued for worker processing
+	default:
+		logger.Warn("S3 worker pool queue is full, dropping audit log to maintain RPS", zap.String("txID", payload.TransactionID))
+	}
 
 	transactionsProcessed.WithLabelValues("PASSED").Inc()
 	c.JSON(http.StatusAccepted, SuccessResponse{

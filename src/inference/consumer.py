@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 import os
+import sys
 import warnings
 from pathlib import Path
 
@@ -9,7 +10,6 @@ import numpy as np
 import onnxruntime as ort
 import orjson
 import psycopg
-import uvloop
 from aiokafka import AIOKafkaConsumer
 
 from src.utils.logger import get_logger
@@ -34,7 +34,7 @@ SCALER_PATH = models_dir / "robust_scaler.joblib"
 
 REDPANDA_BROKER = os.getenv("REDPANDA_BROKER", "localhost:19092")
 TOPIC_NAME = os.getenv("KAFKA_TOPIC", "clean-events")
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://sentinel:sentinel_password@localhost:5432/sentinel_db")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://sentinel_user:secure_password@localhost:5432/sentinel_db")
 
 BATCH_SIZE = 500
 POLL_TIMEOUT_MS = 1000
@@ -163,12 +163,16 @@ async def start_inference_engine():
 
 if __name__ == "__main__":
     with contextlib.suppress(KeyboardInterrupt):
-        try:
-            import uvloop
+        # Platform check added for robust cross-platform execution
+        if sys.platform != "win32":
+            try:
+                import uvloop
 
-            uvloop.install()
-            logger.info("uvloop engine activated for high-performance I/O.")
-        except ImportError:
-            logger.info("uvloop not available (likely Windows dev environment). Using standard asyncio.")
+                uvloop.install()
+                logger.info("uvloop engine activated for high-performance I/O.")
+            except ImportError:
+                logger.info("uvloop not available. Using standard asyncio.")
+        else:
+            logger.info("Windows environment detected. Using standard asyncio.")
 
         asyncio.run(start_inference_engine())

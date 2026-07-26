@@ -1,11 +1,9 @@
 # Build Stage
-FROM rust:1-slim AS builder
+FROM rust:1-alpine AS builder
 
 WORKDIR /usr/src/app
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends pkg-config libssl-dev && \
-    rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache musl-dev pkgconfig openssl-dev
 
 COPY src/validator/Cargo.toml src/validator/Cargo.lock ./
 RUN mkdir src && \
@@ -18,17 +16,15 @@ RUN touch src/main.rs && \
     cargo build --release
 
 # Runtime Stage
-FROM debian:bookworm-slim
+FROM alpine:3.19
 
 LABEL org.opencontainers.image.source="https://github.com/enesgulerdev/sentinel"
 
 WORKDIR /app
 
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends libssl3 ca-certificates && \
-    rm -rf /var/lib/apt/lists/* && \
-    groupadd -r sentinelgroup && \
-    useradd -r -g sentinelgroup sentineluser
+RUN apk add --no-cache openssl ca-certificates && \
+    addgroup -S sentinelgroup && \
+    adduser -S -G sentinelgroup sentineluser
 
 COPY --from=builder --chown=sentineluser:sentinelgroup /usr/src/app/target/release/validator ./sentinel-validator
 

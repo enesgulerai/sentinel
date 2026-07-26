@@ -22,7 +22,7 @@ task helm:off      # Teardown release and purge cluster resources
 ```
 
 ## Observability Stack
-Deploy the `kube-prometheus-stack` to monitor real-time health, HPA metrics, and the ultra low footrpint of the core services (~15MB Go API, ~3MB Rust Validator).
+Deploy the `kube-prometheus-stack` to monitor real-time health, HPA metrics, and the ultra low footrpint of the core services (~65MB Go API, ~19MB Rust Validator).
 
 ```bash
 # 1. Deploy Prometheus & Grafana
@@ -44,7 +44,10 @@ kubectl port-forward svc/observability-grafana 3000:80 -n monitoring
 For local environments (e.g., Kind) bypass TLS validation to allow Kubernetes to scrape CPU/RAM metrics and trigger the HPA. Run via Powershell:
 
 ```powershell
-kubectl apply -f [https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml](https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml)
+# Install Metrics Server for HPA
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+# Patch Metrics Server to allow insecure TLS for local development
 Set-Content -Path patch.json -Value '[{ "op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls" }]'
 kubectl patch -n kube-system deployment metrics-server --type=json --patch-file patch.json
 Remove-Item -Path patch.json -Force
@@ -65,7 +68,7 @@ kubectl get hpa -n sentinel-namespace -w
 Confirm the pipeline processed the traffic and assigned risk scores correctly:
 
 ```bash
-kubectl exec -it -n sentinel-namespace $(kubectl get pods -n sentinel-namespace -l app=postgres -o jsonpath='{.items[0].metadata.name}') -- psql -U sentinel -d sentinel_db -c "SELECT transaction_id, risk_score, created_at FROM transactions ORDER BY created_at DESC LIMIT 5;"
+kubectl exec -it -n sentinel-namespace $(kubectl get pods -n sentinel-namespace -l app=postgres -o jsonpath='{.items[0].metadata.name}') -- psql -U sentinel_user -d sentinel_db -c "SELECT transaction_id, risk_score, created_at FROM transactions ORDER BY created_at DESC LIMIT 5;"
 ```
 
 ## Network & Observability (eBPF & Cilium)

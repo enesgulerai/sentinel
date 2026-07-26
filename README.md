@@ -90,6 +90,9 @@ graph TD
     # 5. Start microservices (API Gateway, Redpanda, etc.)
     task docker:on
 
+    # 6. Run load tests to verify system performance
+    k6 run tests/fixtures/loadtest.js
+
 ### Container Management
 
     task docker:on    # Start all services
@@ -118,3 +121,4 @@ Explore the sub-modules for advanced deployment, scaling, and observability patt
 | **[Policy & Governance](policy/README.md)** | Enterprise Policy-as-Code standards enforcing infrastructure, container, and Kubernetes security via OPA/Rego. |
 | **[AI Release Agent](agent/release/README.md)** | Autonomous, AI-driven Python agent for dynamic Semantic Versioning and automated release notes generation via Gemini. |
 | **[AI Doc Agent](agent/doc/README.md)** | Autonomous, AI-driven Engineering Council that analyzes git diffs to generate weekly persona-based architectural reviews. |
+| **[Local AWS Simulation](infrastructure/terraform/localstack/README.md)** | Fully offline AWS S3 audit logging and event routing simulation via LocalStack. |

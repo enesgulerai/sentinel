@@ -9,7 +9,7 @@
 | **Go (API)** | `testing`, `httptest`, `redismock` | API routing, state management, HTTP handlers. |
 | **Rust (Validator)** | `cargo test` | Strict schema validation, serialization. |
 | **Python (Consumer)**| `pytest`, `pytest-asyncio`, `AsyncMock` | Async event pipelines, inference engine mocking. |
-| **Load Testing** | `oha` (Rust-based) | High-concurrency HTTP stress generation. |
+| **Load Testing** | `k6` | High-concurrency HTTP stress generation. |
 
 ## Execution Lifecycle
 
