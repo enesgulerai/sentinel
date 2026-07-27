@@ -1,3 +1,28 @@
+### v1.24.6
+
+#### Changed Files & Core Modifications
+- **CI/CD Pipeline Enhancements:** Introduced a new `format-terraform` job in the `.github/workflows/format.yaml` to automate Terraform formatting and linting. This includes setting up Terraform and TFLint within the CI environment.
+- **Pre-commit Hook Integration:** Updated `.pre-commit-config.yaml` to incorporate native local hooks for Rust and Terraform. This replaces previous Go-specific hooks and adds `cargo fmt`, `cargo clippy`, `terraform fmt`, and `tflint` to the local development workflow.
+- **Terraform Configuration:** Added a new `.tflint.hcl` file to define TFLint configuration, including enabling the AWS provider and specific rules.
+- **Terraform Code Adjustments:** Minor formatting and whitespace adjustments were made across various Terraform files (`eks.tf`, `network.tf`, `main.tf`, `provider.tf`) to align with new formatting standards and ensure consistency.
+- **Terraform Version Pinning:** Explicitly set `required_version = ">= 1.5.0"` in `main.tf` and `provider.tf` for the Localstack and OCI configurations, respectively, to enforce a minimum Terraform version.
+
+#### Reason for Changes
+This release focuses on improving the development workflow and ensuring code quality for infrastructure as code. The integration of TFLint and native pre-commit hooks for Terraform and Rust aims to catch formatting and linting issues earlier in the development cycle, reducing the likelihood of errors reaching production. Standardizing Terraform formatting and enforcing minimum versions also contributes to a more robust and maintainable infrastructure codebase.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - Enhanced code quality and consistency for Terraform and Rust code through automated formatting and linting.
+    - Earlier detection of potential infrastructure misconfigurations and style violations.
+    - Improved developer experience by providing immediate feedback on code quality during local development.
+    - Reduced technical debt by enforcing standards and best practices.
+    - Increased reliability of infrastructure deployments by catching issues before they are committed.
+- **(-) Disadvantages / Notes:**
+    - Developers will need to ensure their local environments are set up to run these new pre-commit hooks.
+    - The introduction of TFLint may surface new linting rules that require attention in existing Terraform code.
+
+---
+
 ### v1.24.5
 
 #### Changed Files & Core Modifications
