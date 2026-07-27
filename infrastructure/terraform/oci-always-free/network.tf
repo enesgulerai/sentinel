@@ -24,10 +24,10 @@ resource "oci_core_default_route_table" "sentinel_public_rt" {
 }
 
 resource "oci_core_subnet" "sentinel_public_subnet" {
-  compartment_id    = var.compartment_ocid
-  vcn_id            = oci_core_vcn.sentinel_vcn.id
-  cidr_block        = "10.0.1.0/24"
-  display_name      = "sentinel-public-subnet"
-  dns_label         = "sentinelpub"
-  route_table_id    = oci_core_vcn.sentinel_vcn.default_route_table_id
+  compartment_id = var.compartment_ocid
+  vcn_id         = oci_core_vcn.sentinel_vcn.id
+  cidr_block     = "10.0.1.0/24"
+  display_name   = "sentinel-public-subnet"
+  dns_label      = "sentinelpub"
+  route_table_id = oci_core_vcn.sentinel_vcn.default_route_table_id
 }

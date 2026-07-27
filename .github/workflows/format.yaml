@@ -90,3 +90,29 @@ jobs:
 
       - name: Check YAML Formatting
         run: yamllint .
+
+  format-terraform:
+    name: Terraform Format & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.7.0"
+
+      - name: Check Terraform Formatting
+        run: terraform fmt -check -recursive infrastructure/terraform/
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: "v0.64.0"
+
+      - name: Init TFLint
+        run: tflint --init
+
+      - name: Run TFLint
+        run: tflint -f compact --recursive

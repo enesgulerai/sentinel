@@ -41,32 +41,45 @@ repos:
         args: ["-c", "pyproject.toml"]
         additional_dependencies: ["bandit[toml]"]
 
-  # Go
-  - repo: https://github.com/dnephin/pre-commit-golang
-    rev: v0.5.1
-    hooks:
-      - id: go-fmt
-      - id: go-vet
-
-  - repo: https://github.com/golangci/golangci-lint
-    rev: v2.12.2
-    hooks:
-      - id: golangci-lint
-        args: [--timeout=5m, --path-prefix=src/api]
-
-  # Rust
-  - repo: https://github.com/doublify/pre-commit-rust
-    rev: v1.0
-    hooks:
-      - id: fmt
-      - id: clippy
-
   # Infrastructure & FinOps Security (Checkov)
   - repo: https://github.com/bridgecrewio/checkov
     rev: 3.1.52
     hooks:
       - id: checkov
         args: ["-d", "infrastructure/terraform/aws-finops-mock/", "--soft-fail"]
+
+  # Native Local Hooks for Rust and Terraform (Windows & Monorepo Compatible)
+  - repo: local
+    hooks:
+      # Rust
+      - id: rust-fmt
+        name: Rust Format
+        entry: cargo fmt --manifest-path src/validator/Cargo.toml --
+        language: system
+        files: \.rs$
+        pass_filenames: false
+
+      - id: rust-clippy
+        name: Rust Clippy
+        entry: cargo clippy --manifest-path src/validator/Cargo.toml -- -D warnings
+        language: system
+        files: \.rs$
+        pass_filenames: false
+
+      # Terraform
+      - id: terraform-fmt
+        name: Terraform Format
+        entry: terraform fmt -recursive infrastructure/terraform/
+        language: system
+        files: \.tf$
+        pass_filenames: false
+
+      - id: terraform-tflint
+        name: Terraform TFLint
+        entry: tflint -f compact --recursive
+        language: system
+        files: \.tf$
+        pass_filenames: false
 
   # Temporarily disabled due to Windows AppLocker (WinError 4551).
   # Uncomment this if you move development to WSL or Linux.

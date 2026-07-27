@@ -80,7 +80,7 @@ resource "aws_eks_node_group" "sentinel_nodes" {
 
   # FinOps Optimization: Nodes are restricted to a single AZ (public_1)
   # to completely avoid cross-AZ data transfer charges.
-  subnet_ids      = [aws_subnet.public_1.id]
+  subnet_ids = [aws_subnet.public_1.id]
 
   ami_type       = "AL2_ARM_64"
   instance_types = ["t4g.medium"]

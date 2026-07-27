@@ -11,7 +11,7 @@ resource "aws_vpc" "sentinel_vpc" {
 
 resource "aws_internet_gateway" "sentinel_igw" {
   vpc_id = aws_vpc.sentinel_vpc.id
-  tags = { Name = "sentinel-igw" }
+  tags   = { Name = "sentinel-igw" }
 }
 
 # Architectural Decision Record (ADR): Public vs Private Subnets
@@ -90,7 +90,7 @@ resource "aws_iam_role_policy" "vpc_flow_log_policy" {
           "logs:DescribeLogGroups",
           "logs:DescribeLogStreams",
         ]
-        Effect   = "Allow"
+        Effect = "Allow"
         # CKV_AWS_355 & 290: Strict restriction instead of "*"
         Resource = "${aws_cloudwatch_log_group.sentinel_vpc_log_group.arn}:*"
       }
