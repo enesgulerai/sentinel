@@ -19,26 +19,17 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Projenin standardı olan 'uv' ile çok daha hızlı kurulum
       - name: Setup uv Environment
         uses: astral-sh/setup-uv@v5
         with:
           version: "latest"
           enable-cache: true
 
-      - name: Setup Python
-        run: uv python pin 3.11
-
-      - name: Install Dependencies
-        run: uv pip install --system google-genai
-
       - name: Run AI Release Agent
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          # Not: release_agent.py kodunun içinde NEXT_TAG değerini
-          # GITHUB_ENV dosyasına yazdırdığından emin ol!
-          python agent/release/release_agent.py
+          uv run --python 3.11 --with google-genai agent/release/release_agent.py
 
       - name: Update CHANGELOG.md
         run: |
@@ -55,7 +46,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ -f "release_notes.md" ]; then
-            # NEXT_TAG değişkeninin boş gelmesine karşı güvenlik kilidi
             if [ -z "${{ env.NEXT_TAG }}" ]; then
               echo "Error: NEXT_TAG is empty! Make sure release_agent.py writes to GITHUB_ENV."
               exit 1
