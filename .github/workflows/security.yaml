@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: ["main"]
 
+permissions:
+  contents: read
+
 jobs:
   # Path Filtering: Detect which services changed to run jobs conditionally
   detect-changes:
@@ -66,16 +69,16 @@ jobs:
           cache: true
           cache-dependency-path: 'src/api/go.sum'
 
-      - name: Install Security Tools
-        run: |
-          go install github.com/securego/gosec/v2/cmd/gosec@latest
-          go install golang.org/x/vuln/cmd/govulncheck@latest
-
       - name: Run Gosec (SAST)
-        run: gosec -exclude-dir=tests ./...
+        uses: securego/gosec@master
+        with:
+          args: '-exclude-dir=tests ./...'
+          working-directory: src/api
 
-      - name: Run Govulncheck (Dependencies)
-        run: govulncheck ./...
+      - name: Install & Run Govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
 
   # Rust SecOps
   scan-validator-rust:
@@ -145,8 +148,10 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Install Trivy Scanner
+      - name: Run Trivy Scanner
         uses: aquasecurity/trivy-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           scan-type: 'fs'
           scan-ref: '.'
@@ -188,10 +193,9 @@ jobs:
           version: latest
 
       - name: Setup Conftest
-        run: |
-          wget https://github.com/open-policy-agent/conftest/releases/download/v0.48.0/conftest_0.48.0_Linux_x86_64.tar.gz
-          tar xzf conftest_0.48.0_Linux_x86_64.tar.gz
-          sudo mv conftest /usr/local/bin
+        uses: open-policy-agent/conftest-action@v1
+        with:
+          version: 'v0.48.0'
 
       - name: Run K8s Policy Tests
         run: |

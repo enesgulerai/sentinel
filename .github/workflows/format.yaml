@@ -3,14 +3,24 @@ name: Code Quality Pipeline
 on:
   push:
     branches: ["main"]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
   pull_request:
     branches: ["main"]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # Go Format
   format-go:
     name: Go Format & Lint
     runs-on: ubuntu-latest
@@ -44,6 +54,7 @@ jobs:
           working-directory: src/api
           args: --timeout=5m
 
+  # Python Format
   format-python:
     name: Python Format & Lint
     runs-on: ubuntu-latest
@@ -60,6 +71,7 @@ jobs:
       - name: Run Ruff Formatter
         run: uvx ruff format --check src/inference
 
+  # Rust Format
   format-rust:
     name: Rust Format
     runs-on: ubuntu-latest
@@ -78,6 +90,7 @@ jobs:
       - name: Check Rust Formatting
         run: cargo fmt -- --check
 
+  # YAML Format
   format-yaml:
     name: YAML Format & Lint
     runs-on: ubuntu-latest
@@ -91,6 +104,7 @@ jobs:
       - name: Check YAML Formatting
         run: yamllint .
 
+  # Terraform Format
   format-terraform:
     name: Terraform Format & Lint
     runs-on: ubuntu-latest
@@ -110,6 +124,12 @@ jobs:
         uses: terraform-linters/setup-tflint@v4
         with:
           tflint_version: "v0.64.0"
+
+      - name: Cache TFLint Plugins
+        uses: actions/cache@v4
+        with:
+          path: ~/.tflint.d/plugins
+          key: ${{ runner.os }}-tflint-${{ hashFiles('.tflint.hcl') }}
 
       - name: Init TFLint
         run: tflint --init
