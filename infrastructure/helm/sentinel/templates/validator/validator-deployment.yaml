@@ -15,6 +15,9 @@ spec:
     metadata:
       labels:
         app: sentinel-validator
+        environment: {{ .Values.global.labels.environment | quote }}
+        owner: {{ .Values.global.labels.owner | quote }}
+        project: {{ .Values.global.labels.project | quote }}
     spec:
       initContainers:
         - name: wait-for-redpanda

@@ -15,6 +15,9 @@ spec:
     metadata:
       labels:
         app: redis
+        environment: {{ .Values.global.labels.environment | quote }}
+        owner: {{ .Values.global.labels.owner | quote }}
+        project: {{ .Values.global.labels.project | quote }}
     spec:
       containers:
       - name: redis

@@ -39,6 +39,12 @@ provider "aws" {
 
 resource "aws_s3_bucket" "sentinel_audit_logs" {
   bucket = "sentinel-audit-logs-local"
+
+  tags = {
+    Environment = "dev"
+    Owner       = "sentinel-team"
+    Project     = "sentinel"
+  }
 }
 
 resource "aws_s3_bucket_versioning" "sentinel_audit_logs_versioning" {

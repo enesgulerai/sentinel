@@ -15,6 +15,9 @@ spec:
     metadata:
       labels:
         app: sentinel-consumer
+        environment: {{ .Values.global.labels.environment | quote }}
+        owner: {{ .Values.global.labels.owner | quote }}
+        project: {{ .Values.global.labels.project | quote }}
     spec:
       {{- with .Values.consumer.tolerations }}
       tolerations:

@@ -6,6 +6,8 @@ resource "aws_vpc" "sentinel_vpc" {
   tags = {
     Name        = "sentinel-production-vpc"
     Environment = "Production"
+    Owner       = "sentinel-team"
+    Project     = "sentinel"
   }
 }
 

@@ -70,6 +70,12 @@ resource "aws_eks_cluster" "sentinel_eks" {
     }
     resources = ["secrets"]
   }
+
+  tags = {
+    Environment = "dev"
+    Owner       = "sentinel-team"
+    Project     = "sentinel"
+  }
 }
 
 # EKS Node Group (Worker Nodes)

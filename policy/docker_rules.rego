@@ -20,10 +20,6 @@ deny contains msg if {
   image := instruction.Value[0]
 
   image != "scratch"
-
-  # Exception: Infrastructure tools like Jenkins are exempt
-  not startswith(lower(image), "jenkins/")
-
   not contains(lower(image), "slim")
   not contains(lower(image), "alpine")
 
@@ -40,13 +36,10 @@ deny contains msg if {
 
 # 4. Prevent explicit root USER
 deny contains msg if {
-  # Get all USER instructions in the file
   user_instructions := [u | u := input[_]; u.Cmd == "user"]
   count(user_instructions) > 0
 
-  # Check only the VERY LAST USER instruction
   last_user := user_instructions[count(user_instructions) - 1].Value[0]
-
   lower(last_user) == "root"
 
   msg := "Security Risk: Container must not end with 'root' user. The final USER instruction must drop privileges."
@@ -56,10 +49,6 @@ deny contains msg if {
 deny contains msg if {
   from_instructions := [f | f := input[_]; f.Cmd == "from"]
   count(from_instructions) < 2
-
-  # Exception: If the base image is Jenkins, single-stage is allowed
-  first_image := from_instructions[0].Value[0]
-  not startswith(lower(first_image), "jenkins/")
 
   msg := "Optimization Risk: Single-stage build detected. Use Multi-Stage building (multiple FROM statements) to reduce final image size."
 }

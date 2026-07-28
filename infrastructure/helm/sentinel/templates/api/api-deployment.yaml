@@ -15,6 +15,9 @@ spec:
     metadata:
       labels:
         app: sentinel-api
+        environment: {{ .Values.global.labels.environment | quote }}
+        owner: {{ .Values.global.labels.owner | quote }}
+        project: {{ .Values.global.labels.project | quote }}
     spec:
       enableServiceLinks: false
       initContainers:

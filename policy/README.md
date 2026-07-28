@@ -8,36 +8,44 @@ Manual code reviews are slow and error-prone. By defining our Security, FinOps, 
 ---
 
 ## 1. Cloud Infrastructure Policies (AWS / Terraform)
-Located in `aws_rules.rego`. These policies strictly control our cloud footprint, heavily focusing on **FinOps** and cost-efficiency.
+Located in `aws_rules.rego`. These policies strictly control our cloud footprint, heavily focusing on the four pillars of modern cloud governance: **FinOps, Network Security, Data Security, and IAM Least Privilege.**
 
-* **Mandatory Spot & Graviton Instances:** EKS Node Groups are strictly limited to `t4g.medium` and `t4g.small` instance types, and must use `SPOT` capacity.
-  * *The "Why":* AWS Graviton (t4g) provides up to 40% better price-performance over x86. Forcing SPOT instances ensures we pay a fraction of on-demand prices for our underlying compute.
-* **Strict Tagging Enforcement:** All VPCs (and core infrastructure) must carry an `Environment` tag.
-  * *The "Why":* Without strict tagging, granular cloud cost allocation is impossible. This ensures the FinOps dashboard can accurately track spending per environment.
+* **FinOps & Governance:** EKS Node Groups are strictly limited to Graviton instances (`t4g.medium`, `t4g.small`) and must use `SPOT` capacity. Legacy `gp2` disks are deprecated in favor of `gp3`.
+  * *The "Why":* AWS Graviton provides up to 40% better price-performance. Enforcing SPOT instances and gp3 volumes drastically reduces compute and storage costs.
+* **Mandatory Enterprise Tagging:** All critical resources (VPC, EKS Clusters, S3 Buckets) must carry `Environment`, `Owner`, and `Project` tags.
+  * *The "Why":* Without strict tagging, granular cloud cost allocation and resource ownership tracking are impossible.
+* **Network Security:** Security Groups are prohibited from exposing dangerous ports (e.g., 22, 3306, 5432) to the internet (`0.0.0.0/0`).
+  * *The "Why":* Misconfigured Security Groups are the leading cause of cloud breaches. Blocking global access to administrative or database ports prevents brute-force attacks.
+* **Data Security:** EBS volumes must be encrypted by default (`encrypted = true`), and S3 buckets can never use a `public-read` ACL.
+  * *The "Why":* Ensures data-at-rest is protected against unauthorized physical or logical access, preventing accidental data leaks.
+* **IAM Least Privilege:** IAM Policies cannot contain `Action = "*"` or `Resource = "*"`.
+  * *The "Why":* Full admin privileges violate the Principle of Least Privilege. If a resource is compromised, restricting IAM scope limits the blast radius.
 
 ---
 
 ## 2. Containerization Policies (Docker)
-Located in `docker_rules.rego`. These rules enforce strict image optimization and least-privilege principles at the build phase.
+Located in `docker_rules.rego`. These policies enforce a zero-exception, enterprise-grade standard for all container images within the project, focusing entirely on supply chain security and size optimization.
 
-* **Multi-Stage Builds & Lightweight Images:** Single-stage builds are rejected. All base images must be lightweight variants (`alpine` or `slim`), with exceptions for specific infrastructure tools (e.g., Jenkins).
-  * *The "Why":* Multi-stage builds and slim base images drastically reduce the attack surface by eliminating unnecessary OS packages. They also accelerate pipeline build times and reduce ECR storage costs.
-* **Least Privilege (Non-Root User):** Containers cannot run as root. A `USER` instruction must exist, and the final instruction cannot switch back to `root`.
-  * *The "Why":* If a vulnerability is exploited within the application, running as a non-root user prevents the attacker from easily escalating privileges to the underlying worker node.
-* **No Immutable Tags:** Using `:latest` as a base image is blocked.
-  * *The "Why":* Upstream `:latest` images can change without warning, breaking build idempotency and introducing supply-chain security risks.
+* **Strict Multi-Stage Builds:** Single-stage builds are completely forbidden. Every Dockerfile must use at least two `FROM` instructions.
+  * *The "Why":* Keeps the final production image incredibly lean by leaving behind build tools, compilers, and temporary downloads (like `curl` or `tar`). This drastically reduces both the image size and the attack surface.
+* **Lightweight Base Images Only:** Base images must be a `slim` or `alpine` variant (or `scratch`).
+  * *The "Why":* Heavy operating systems contain hundreds of unnecessary packages with potential CVEs (vulnerabilities). Minimal images are significantly more secure, pull faster, and boot faster.
+* **No ':latest' Tags:** Pinning explicit version tags is mandatory.
+  * *The "Why":* The `:latest` tag is a moving target. Explicit versioning ensures absolute build reproducibility and prevents pipeline breakage when a base image is unexpectedly updated upstream.
+* **Enforced Non-Root User:** A `USER` instruction must be present, and the final user cannot be `root`.
+  * *The "Why":* Running containers as root is a major security flaw. If a container is compromised, a non-root user prevents the attacker from easily gaining root access to the underlying host or cluster.
 
 ---
 
 ## 3. Orchestration Policies (Kubernetes)
-Located in `k8s_rules.rego`. These rules govern how applications behave once deployed into the EKS cluster.
+Located in `k8s_rules.rego`. These rules govern how applications behave once deployed into the EKS cluster, heavily focusing on cluster reliability, security, and FinOps visibility.
 
-* **Resource Requests Required (Limits Omitted):** All containers must define resource `requests`.
-  * *The "Why":* Requests are critical for the Kubernetes scheduler. However, we intentionally **do not enforce CPU limits**. Setting CPU limits often leads to CFS (Completely Fair Scheduler) quota throttling, artificially degrading app latency even when the node has idle CPU cycles.
-* **No Privileged Pods:** Containers cannot run with `securityContext.privileged == true`.
-  * *The "Why":* Privileged containers bypass namespace isolation. A compromised privileged pod equals a compromised Kubernetes cluster.
-* **Deployment Idempotency & Tagging:** Kubernetes deployments cannot use `:latest` image tags and must include mandatory `env` labels.
-  * *The "Why":* Guarantees that rollbacks are predictable and enables cost tracking down to the specific microservice.
+* **Resource Management (CFS Protection):** All containers must define resource `requests`. However, setting CPU `limits` is **strictly forbidden**.
+  * *The "Why":* Requests are critical for the Kubernetes scheduler to place pods correctly. Intentionally omitting CPU limits prevents CFS (Completely Fair Scheduler) quota throttling, which can artificially degrade application latency even when the underlying node has idle CPU cycles.
+* **Pod Security & Isolation:** Containers cannot run with `securityContext.privileged == true`.
+  * *The "Why":* Privileged containers bypass namespace isolation. A compromised privileged container can easily escalate privileges to the underlying worker node, putting the entire cluster at risk.
+* **Supply Chain & Enterprise FinOps:** Kubernetes deployments cannot use the `:latest` image tag. Additionally, all Pod templates must include mandatory enterprise labels (`environment`, `owner`, `project`).
+  * *The "Why":* Banning `:latest` guarantees deployment idempotency and ensures rollbacks are predictable. Enforcing enterprise labels ensures that Kubernetes cost-monitoring tools (like Kubecost) can accurately allocate cluster spending down to the specific microservice and team.
 
 ---
 
@@ -45,17 +53,24 @@ Located in `k8s_rules.rego`. These rules govern how applications behave once dep
 
 You can evaluate your code against these policies locally without waiting for CI/CD feedback. Ensure [Conftest](https://www.conftest.dev/) is installed.
 
+**To test Terraform:**
+```bash
+conftest test -p policy/aws_rules.rego infrastructure/terraform/
+```
+
 **To test Dockerfiles:**
 ```bash
-conftest test -p policy/docker_rules.rego Dockerfile
+# For Windows (PowerShell):
+conftest test -p policy/docker_rules.rego (Get-ChildItem docker\*\Dockerfile).FullName
+
+# For Linux/Mac (Bash/Zsh):
+conftest test -p policy/docker_rules.rego docker/*/Dockerfile
+
+# Alternative for Linux/Mac (If Dockerfiles are nested deeply):
+conftest test -p policy/docker_rules.rego $(find docker -name "Dockerfile")
 ```
 
 **To test K8s Helm Charts:**
 ```bash
 helm template sentinel infrastructure/helm/sentinel/ | conftest test -p policy/k8s_rules.rego -
-```
-
-**To test Terraform:**
-```bash
-conftest test -p policy/aws_rules.rego infrastructure/terraform/
 ```

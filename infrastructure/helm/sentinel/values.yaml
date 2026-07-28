@@ -1,6 +1,10 @@
 # Sentinel Global Helm Chart Values
 global:
-  environment: production
+  labels:
+    environment: "production"
+    owner: "sentinel-team"
+    project: "sentinel"
+
   imagePullPolicy: IfNotPresent
 
 # Go Gateway Helm Chart Values
