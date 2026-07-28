@@ -1,3 +1,27 @@
+### v1.25.0
+
+#### Changed Files & Core Modifications
+- **Policy Enforcement:** Introduced comprehensive policy-as-code rules across AWS, Kubernetes, and Docker environments. This includes updates to `aws_rules.rego`, `docker_rules.rego`, and `k8s_rules.rego`.
+- **Infrastructure as Code:** Modified Helm chart values (`sentinel/values.yaml`) and Kubernetes deployment templates (e.g., `api-deployment.yaml`, `consumer-deployment.yaml`, etc.) to incorporate standardized labels. Terraform configurations (`eks.tf`, `network.tf`, `localstack.tf`) were updated to enforce these same tagging standards on AWS resources.
+- **CI/CD Pipeline:** Updated the `Dockerfile` for the Jenkins image to use a multi-stage build process for improved efficiency and security.
+
+#### Reason for Changes
+This release significantly enhances the project's governance and security posture by implementing strict, enterprise-wide policies. The core objective is to enforce a unified standard for security, cost management (FinOps), and operational reliability across all cloud and containerized components. This addresses the need for automated policy enforcement to prevent misconfigurations, reduce operational overhead, and ensure compliance with best practices.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Enhanced Security:** Stricter policies on network exposure, IAM privileges, and container execution (non-root, no privileged pods) significantly reduce the attack surface and blast radius of potential compromises.
+    - **Improved FinOps:** Mandatory tagging and optimized resource configurations (e.g., Graviton instances, SPOT capacity, gp3 volumes) provide better cost visibility and control, leading to substantial cost savings.
+    - **Increased Reliability & Performance:** Enforcing resource requests and avoiding CPU limits in Kubernetes deployments ensures better scheduling and prevents performance degradation due to throttling.
+    - **Supply Chain Security:** Mandating explicit image tags and multi-stage Docker builds reduces the risk of unexpected changes and minimizes image attack surfaces.
+    - **Automated Governance:** Policy-as-code provides immediate feedback during development and CI/CD, shifting security and compliance left and reducing manual review burdens.
+- **(-) Disadvantages / Notes:**
+    - **Infrastructure Updates:** Existing infrastructure and deployments may require adjustments to comply with the new tagging and resource configuration policies.
+    - **Build Process Optimization:** The Jenkins Dockerfile update introduces a multi-stage build, which is a best practice for image size and security but requires understanding the new build stages.
+    - **Policy Adherence:** Continuous monitoring and potential adjustments to policies will be necessary as the cloud environment and threat landscape evolve.
+
+---
+
 ### v1.24.7
 
 #### Changed Files & Core Modifications
