@@ -37,9 +37,17 @@ deny contains msg if {
   resource := input.resource[resource_type][_][_]
 
   tag := mandatory_tags[_]
-  not resource.tags[tag]
+  not has_tag(resource, tag)
 
   msg := sprintf("Governance Violation: Resource '%v' is missing the mandatory tag: '%v'.", [resource_type, tag])
+}
+
+# Helper function to parse tags whether Conftest reads them as an Object or an Array of Objects
+has_tag(resource, tag) if {
+  resource.tags[tag]
+}
+has_tag(resource, tag) if {
+  resource.tags[_][tag]
 }
 
 # 2. Network Security

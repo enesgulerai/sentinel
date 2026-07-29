@@ -26,8 +26,8 @@ jobs:
       - name: Run Infracost Analysis and Generate Summary
         run: |
           echo "Running Infracost standard breakdown..."
-          infracost breakdown --path=infrastructure/terraform/aws-finops-mock
 
-          echo "Generating HTML report for GitHub Summary..."
+          echo '```text' >> $GITHUB_STEP_SUMMARY
           infracost breakdown --path=infrastructure/terraform/aws-finops-mock \
-                              --format=html >> $GITHUB_STEP_SUMMARY
+                              --format=table >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
