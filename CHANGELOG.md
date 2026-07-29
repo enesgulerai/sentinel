@@ -1,3 +1,28 @@
+### v1.25.1
+
+#### Changed Files & Core Modifications
+- **New CI/CD Workflows:** Introduced two new GitHub Actions workflows:
+    - `chaos-test.yaml`: Automates nightly chaos engineering experiments, including load testing with Chaos Mesh for stress, network delay, pod kill, and network loss scenarios.
+    - `opa-policy.yaml`: Implements automated Open Policy Agent (OPA) governance checks using Conftest for Docker, Kubernetes (Helm templates), and AWS Terraform configurations.
+- **Removed Redundant Security Scan:** The `scan-helm-conftest` job within `security.yaml` has been removed as its functionality is now covered by the new `opa-policy.yaml` workflow.
+- **Chaos Experiment Definitions:** Added new YAML files defining specific chaos injection experiments (e.g., `api-cpu-stress.yaml`, `api-network-delay.yaml`, `api-pod-kill.yaml`, `redis-network-loss.yaml`).
+
+#### Reason for Changes
+These changes are driven by the need to enhance system resilience and enforce governance policies through automation. The introduction of chaos engineering aims to proactively identify and address potential failure points under simulated adverse conditions. The OPA policy validation ensures that infrastructure and application configurations adhere to predefined security and compliance standards before deployment.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Improved Resilience:** Proactive identification of system weaknesses through automated chaos engineering.
+    - **Enhanced Security & Compliance:** Automated enforcement of governance policies across container, orchestration, and cloud resources.
+    - **Increased CI/CD Efficiency:** Integration of governance and resilience testing directly into the CI/CD pipeline, reducing manual effort and lead time.
+    - **Better Observability:** Chaos experiments can provide valuable insights into system behavior under stress.
+- **(-) Disadvantages / Notes:**
+    - **Increased CI/CD Complexity:** The addition of new workflows and tools may require a learning curve for the team.
+    - **Resource Consumption:** Running chaos experiments and policy validations consumes CI/CD runner resources.
+    - **Potential for False Positives/Negatives:** Tuning of chaos experiments and OPA policies will be crucial to minimize noise and ensure effectiveness.
+
+---
+
 ### v1.25.0
 
 #### Changed Files & Core Modifications
