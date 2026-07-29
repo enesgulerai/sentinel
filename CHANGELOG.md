@@ -1,3 +1,33 @@
+### v1.25.2
+
+#### Changed Files & Core Modifications
+
+*   **CI/CD Workflow Enhancements:** Several GitHub Actions workflows have been updated to improve clarity and functionality. This includes renaming workflows for better categorization (e.g., `CI: Code Quality & Formatting`, `CI: Infracost FinOps Check`, `CD: Release Agent`, `CI: Security Code Scanning`, `CI: Application Unit Tests`).
+*   **Infracost FinOps Check Workflow:** The `infracost.yaml` workflow has been significantly modified. It now triggers on pushes to the `main` branch and includes `workflow_dispatch` for manual runs. The permissions have been adjusted to `contents: read`. The output has been enhanced to print standard breakdown logs and generate a GitHub Step Summary report for cost estimations.
+*   **Chaos Engineering Documentation:** The `tests/chaos/README.md` file has been updated to include details about the automated CI pipeline for chaos scenarios, new chaos experiment scenarios (CPU Stress, Redis Network Loss), and refined instructions for prerequisites, installation, execution, and cleanup.
+
+#### Reason for Changes
+
+These changes are driven by the need to enhance our continuous integration and delivery pipelines, improve cost visibility, and strengthen our chaos engineering practices.
+
+*   The renaming of CI/CD workflows provides better organization and immediate understanding of each pipeline's purpose.
+*   The enhancements to the Infracost workflow aim to provide more actionable cost insights directly within the CI process, enabling better FinOps practices. Triggering on `main` branch pushes and adding `workflow_dispatch` allows for more flexible and timely cost analysis. The output to GitHub Step Summary makes cost reports more accessible.
+*   The updates to the Chaos Engineering documentation aim to provide a more comprehensive guide for users and to reflect the automation of these tests within the CI pipeline, ensuring regular validation of system resilience.
+
+#### Advantages & Architectural Trade-offs
+
+*   **(+) Advantages:**
+    *   **Improved CI/CD Clarity:** Workflow renames make the purpose of each pipeline immediately clear.
+    *   **Enhanced FinOps Visibility:** The Infracost workflow now provides more integrated and accessible cost estimations, aiding in financial governance.
+    *   **Automated Resilience Testing:** The documentation now clearly outlines the automated CI pipeline for chaos engineering, ensuring regular validation of system stability.
+    *   **Expanded Chaos Engineering Scenarios:** The addition of new scenarios (CPU Stress, Redis Network Loss) allows for more thorough testing of system resilience under various failure conditions.
+    *   **Streamlined Chaos Engineering Documentation:** Updated instructions simplify the setup and execution of chaos experiments.
+*   **(-) Disadvantages / Notes:**
+    *   The Infracost workflow now requires `contents: read` permissions.
+    *   Manual execution of chaos scenarios still requires the installation of Chaos Mesh and its CRDs in the Kubernetes cluster.
+
+---
+
 ### v1.25.1
 
 #### Changed Files & Core Modifications
