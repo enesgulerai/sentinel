@@ -1,3 +1,23 @@
+### v1.25.4
+
+#### Changed Files & Core Modifications
+- **CI/CD Pipeline (`.github/workflows/infracost.yaml`):** The Infracost analysis output format within the GitHub Actions workflow has been updated from HTML to a plain text table. This change affects how cost estimation results are presented in the CI/CD summary.
+- **Policy as Code (`policy/aws_rules.rego`):** Introduced a new helper function `has_tag` to robustly handle the parsing of resource tags, accommodating variations in how Conftest might represent them (as an object or an array of objects). This enhances the reliability of tag-based governance rules.
+
+#### Reason for Changes
+- **Improved CI/CD Visibility:** The modification to the Infracost output format aims to provide a more direct and easily digestible cost breakdown within the GitHub Actions summary, improving developer visibility into infrastructure costs during the development lifecycle.
+- **Enhanced Tagging Enforcement:** The update to the AWS tagging policy addresses inconsistencies in tag parsing, ensuring more reliable enforcement of mandatory tags across AWS resources. This strengthens governance and compliance by accurately identifying resources missing required metadata.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Enhanced Developer Experience:** The plain text table format for Infracost output in CI/CD summaries offers immediate clarity on cost implications without requiring users to open separate reports.
+    - **Increased Policy Robustness:** The `has_tag` helper function makes the tag enforcement policy more resilient to variations in input data, reducing false negatives and improving the overall effectiveness of governance.
+    - **Improved Governance and Compliance:** More reliable tag enforcement leads to better resource organization, cost allocation, and security posture.
+- **(-) Disadvantages / Notes:**
+    - The previous HTML report format for Infracost is no longer generated directly in the GitHub Summary. If detailed HTML reports are required, they would need to be configured separately.
+
+---
+
 ### v1.25.3
 
 #### Changed Files & Core Modifications
