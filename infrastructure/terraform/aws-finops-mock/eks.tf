@@ -72,7 +72,7 @@ resource "aws_eks_cluster" "sentinel_eks" {
   }
 
   tags = {
-    Environment = "dev"
+    Environment = "production"
     Owner       = "sentinel-team"
     Project     = "sentinel"
   }
