@@ -1,3 +1,24 @@
+### v1.25.3
+
+#### Changed Files & Core Modifications
+- **CI/CD Pipeline (`.github/workflows/infracost.yaml`):** The Infracost analysis workflow has been updated to generate an HTML report for the GitHub Step Summary, replacing the previous Markdown format. This change aims to improve the readability and presentation of cost analysis results within the CI/CD process.
+- **Infrastructure Configuration (`infrastructure/terraform/aws-finops-mock/eks.tf`, `infrastructure/terraform/aws-finops-mock/network.tf`):** Environment tags for EKS cluster and VPC resources have been standardized to lowercase "production". This ensures consistency in environment labeling across infrastructure components.
+- **API Dependencies (`src/api/go.mod`, `src/api/go.sum`):** Updated AWS SDK for Go v2 dependencies. This includes explicit inclusion of `aws-sdk-go-v2`, `config`, `credentials`, and `s3` as direct requirements, while also updating the `golang.org/x/text` dependency. These updates are likely to incorporate the latest features, security patches, or bug fixes from the AWS SDK.
+
+#### Reason for Changes
+This release addresses issues identified in CI workflows related to validation and security failures. Specifically, the Infracost reporting format was updated for better visibility, and infrastructure resource tagging was standardized for improved environment management. The dependency updates in the API are part of ongoing maintenance to ensure the use of current and secure libraries.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - Enhanced visibility and clarity of cost analysis reports within CI/CD through HTML formatting.
+    - Improved consistency in infrastructure environment tagging, aiding in better resource management and automation.
+    - Updated AWS SDK dependencies may bring performance improvements, new features, and critical security patches to the API.
+- **(-) Disadvantages / Notes:**
+    - The change in Infracost report format might require minor adjustments in any downstream tooling or processes that parse the GitHub Step Summary.
+    - Updating SDKs can sometimes introduce subtle behavioral changes, though these are typically well-tested.
+
+---
+
 ### v1.25.2
 
 #### Changed Files & Core Modifications
