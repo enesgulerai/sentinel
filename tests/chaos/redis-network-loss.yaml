@@ -1,18 +1,18 @@
 apiVersion: chaos-mesh.org/v1alpha1
 kind: NetworkChaos
 metadata:
-  name: api-network-delay
+  name: redis-network-loss
   namespace: sentinel-namespace
 spec:
-  action: delay
+  action: loss
   mode: all
   selector:
     namespaces:
       - sentinel-namespace
     labelSelectors:
-      app: sentinel-api
-  delay:
-    latency: "2000ms"
-    jitter: "100ms"
+      app: sentinel-redis
+  loss:
+    loss: "100"
+    correlation: "0"
   direction: both
   duration: "30s"

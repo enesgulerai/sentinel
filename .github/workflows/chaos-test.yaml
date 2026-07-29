@@ -1,0 +1,52 @@
+name: "Nightly: Chaos Mesh Injection & Load Test"
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 2 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  run-chaos-engineering:
+    name: K6 Load Test with Chaos Injection
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Kubernetes Cluster (KinD)
+        uses: engineerd/setup-kind@v0.5.0
+        with:
+          version: "v1.29.0"
+
+      - name: Install Chaos Mesh
+        run: |
+          curl -sSL https://mirrors.chaos-mesh.org/v2.6.2/install.sh | bash -s -- --local kind
+
+      - name: Deploy Sentinel Infrastructure (Helm)
+        run: |
+          helm upgrade --install sentinel infrastructure/helm/sentinel/ --namespace sentinel-namespace --create-namespace --wait
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Inject Chaos (Stress, Delay & Loss)
+        run: |
+          echo "Unleashing the Chaos Monkey..."
+          kubectl apply -f tests/chaos/api-cpu-stress.yaml
+          kubectl apply -f tests/chaos/api-network-delay.yaml
+          kubectl apply -f tests/chaos/api-gateway-pod-kill.yaml
+          kubectl apply -f tests/chaos/redis-network-loss.yaml
+
+          sleep 10
+
+      - name: Run k6 Load Test Under Chaos
+        run: |
+          k6 run tests/fixtures/loadtest.js

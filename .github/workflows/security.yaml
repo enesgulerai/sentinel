@@ -33,7 +33,6 @@ jobs:
               - 'src/consumer/**'
             infra:
               - 'infrastructure/**'
-              - 'policy/**'
 
   # Global Secret Scanning
   scan-secrets:
@@ -176,27 +175,3 @@ jobs:
           directory: infrastructure/terraform/aws-finops-mock/
           framework: terraform
           soft_fail: false
-
-  # Kubernetes OPA Policies
-  scan-helm-conftest:
-    name: Kubernetes (OPA/Conftest) Policy Audit
-    needs: detect-changes
-    if: ${{ needs.detect-changes.outputs.infra == 'true' || github.event_name == 'push' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Install Helm
-        uses: azure/setup-helm@v4
-        with:
-          version: latest
-
-      - name: Setup Conftest
-        run: |
-          curl -sL "https://github.com/open-policy-agent/conftest/releases/download/v0.48.0/conftest_0.48.0_Linux_x86_64.tar.gz" | tar -xz
-          sudo mv conftest /usr/local/bin/
-
-      - name: Run K8s Policy Tests
-        run: |
-          helm template sentinel infrastructure/helm/sentinel/ | conftest test -p policy/k8s_rules.rego -

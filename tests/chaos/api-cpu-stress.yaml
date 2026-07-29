@@ -1,14 +1,17 @@
 apiVersion: chaos-mesh.org/v1alpha1
-kind: PodChaos
+kind: StressChaos
 metadata:
-  name: api-gateway-pod-kill
+  name: api-cpu-stress
   namespace: sentinel-namespace
 spec:
-  action: pod-kill
-  mode: fixed-percent
-  value: 50
+  mode: all
   selector:
     namespaces:
       - sentinel-namespace
     labelSelectors:
       app: sentinel-api
+  stressors:
+    cpu:
+      workers: 2
+      load: 100
+  duration: "30s"
