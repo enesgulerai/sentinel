@@ -1,4 +1,4 @@
-name: Test Pipeline
+name: "CI: Application Unit Tests"
 
 on:
   push:

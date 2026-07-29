@@ -1,4 +1,4 @@
-name: AI Release Agent
+name: "CD: Release Agent"
 
 on:
   push:

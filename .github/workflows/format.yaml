@@ -1,4 +1,4 @@
-name: Code Quality Pipeline
+name: "CI: Code Quality & Formatting"
 
 on:
   push:
