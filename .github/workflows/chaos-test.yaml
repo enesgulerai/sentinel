@@ -85,5 +85,11 @@ jobs:
 
       - name: Run k6 Load Test Under Chaos
         run: |
+          echo "Opening port-forward tunnel to Ingress Controller..."
+          kubectl port-forward svc/ingress-nginx-controller 8000:80 -n ingress-nginx &
 
+          echo "Waiting 3 seconds for tunnel to establish..."
+          sleep 3
+
+          echo "Starting k6 load test..."
           k6 run tests/fixtures/loadtest.js
