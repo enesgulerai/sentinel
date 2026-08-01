@@ -1,3 +1,21 @@
+### v1.25.7
+
+#### Changed Files & Core Modifications
+- **`policy/aws_rules.rego`**: This file, which contains Open Policy Agent (OPA) rules for AWS governance, has been updated. The modifications focus on enhancing the logic for parsing and validating mandatory tags on AWS resources.
+
+#### Reason for Changes
+- The previous implementation exhibited inconsistencies in how it parsed Terraform-generated tags across different environments. This led to situations where resources correctly tagged in one environment might be flagged as non-compliant in another, undermining the reliability of our policy-as-code enforcement.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Improved Policy Enforcement Accuracy:** The updated parsing logic ensures that mandatory tags are consistently and accurately identified across all environments, regardless of how Terraform structures them. This strengthens our zero-trust posture by ensuring critical metadata is always present.
+    - **Reduced False Positives/Negatives:** By resolving parsing inconsistencies, this change minimizes the risk of incorrectly flagging compliant resources or missing non-compliant ones.
+    - **Enhanced Governance:** Provides a more robust and reliable mechanism for enforcing organizational tagging standards, which is crucial for cost allocation, security auditing, and resource management.
+- **(-) Disadvantages / Notes:**
+    - No direct disadvantages or architectural trade-offs are introduced by this change. The modifications are purely focused on improving the accuracy and reliability of existing policy enforcement.
+
+---
+
 ### v1.25.6
 
 #### Changed Files & Core Modifications
