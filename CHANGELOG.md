@@ -1,3 +1,17 @@
+### v1.25.15
+
+#### Changed Files & Core Modifications
+- Modified the CI workflow file (`.github/workflows/chaos-test.yaml`) to correct a typo in a Kubernetes manifest filename reference.
+
+#### Reason for Changes
+- A typo in the CI configuration prevented the correct application of a chaos experiment manifest, specifically related to pod kill scenarios. This change ensures that the chaos testing infrastructure correctly references and applies all necessary experiment configurations.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:** Resolves a configuration error in the CI pipeline, ensuring the integrity and completeness of chaos testing. This improves the reliability of our automated testing by guaranteeing that all intended chaos experiments are executed.
+- **(-) Disadvantages / Notes:** None. This is a minor correction to an existing test configuration.
+
+---
+
 ### v1.25.14
 
 #### Changed Files & Core Modifications
