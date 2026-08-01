@@ -32,20 +32,36 @@ deny contains msg if {
 mandatory_tags := {"Environment", "Owner", "Project"}
 
 deny contains msg if {
-	resource_types := {"aws_vpc", "aws_eks_cluster", "aws_s3_bucket"}
-	resource_type := resource_types[_]
-	resource := input.resource[resource_type][_][_]
+  resource_types := {"aws_vpc", "aws_eks_cluster", "aws_s3_bucket"}
+  resource_type := resource_types[_]
 
-	tag := mandatory_tags[_]
-	not has_tag(resource, tag)
+  wrapper := input.resource[resource_type][_]
 
-	msg := sprintf("Governance Violation: Resource '%v' is missing the mandatory tag: '%v'.", [resource_type, tag])
+  tag := mandatory_tags[_]
+  not has_tag(wrapper, tag)
+
+  msg := sprintf("Governance Violation: Resource '%v' is missing the mandatory tag: '%v'.", [resource_type, tag])
 }
 
-has_tag(resource, tag) if {
-	tags := resource.tags
-	[path, value] := walk(tags)
-	path[_] == tag
+has_tag(wrapper, tag) if {
+  type_name(wrapper) == "array"
+  val := wrapper[_].tags[tag]
+  val != ""
+}
+has_tag(wrapper, tag) if {
+  type_name(wrapper) == "array"
+  val := wrapper[_].tags[_][tag]
+  val != ""
+}
+has_tag(wrapper, tag) if {
+  type_name(wrapper) == "object"
+  val := wrapper.tags[tag]
+  val != ""
+}
+has_tag(wrapper, tag) if {
+  type_name(wrapper) == "object"
+  val := wrapper.tags[_][tag]
+  val != ""
 }
 
 # 2. Network Security
@@ -84,7 +100,6 @@ deny contains msg if {
 # 4. IAM Least Privilege
 
 # Rule 4.1: Action = "*" or Resource = "*" is forbidden in IAM Policies (No Full Admin).
-# Terraform stores IAM policies as JSON strings, so we parse them using Regex.
 deny contains msg if {
   policy := input.resource.aws_iam_policy[_][_]
   regex.match(`"Action"\s*:\s*"\*"`, policy.policy)
