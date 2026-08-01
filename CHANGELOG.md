@@ -1,3 +1,18 @@
+### v1.25.13
+
+#### Changed Files & Core Modifications
+- Modified Kubernetes manifests for network chaos experiments (`api-network-delay.yaml` and `redis-network-loss.yaml`).
+- The `direction` field within the chaos experiment specifications has been updated from `both` to `to`.
+
+#### Reason for Changes
+- Corrected an invalid configuration in the network chaos manifests. The previous `both` direction setting was not correctly interpreted, leading to unintended behavior or failure in applying network disruptions as intended.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:** Ensures network chaos experiments are configured and executed with the intended directionality, improving the reliability and accuracy of chaos testing scenarios. This resolves a configuration defect, leading to more predictable test outcomes.
+- **(-) Disadvantages / Notes:** No significant architectural trade-offs or disadvantages are introduced by this change.
+
+---
+
 ### v1.25.12
 
 #### Changed Files & Core Modifications
