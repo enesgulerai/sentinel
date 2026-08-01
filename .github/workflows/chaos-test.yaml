@@ -77,7 +77,7 @@ jobs:
           echo "Unleashing the Chaos Monkey..."
           kubectl apply -f tests/chaos/api-cpu-stress.yaml
           kubectl apply -f tests/chaos/api-network-delay.yaml
-          kubectl apply -f tests/chaos/api-pod-pod-kill.yaml
+          kubectl apply -f tests/chaos/api-pod-kill.yaml
           kubectl apply -f tests/chaos/redis-network-loss.yaml
 
           echo "Giving Chaos Daemon 15 seconds to apply network and cgroup rules..."
