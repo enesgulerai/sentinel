@@ -1,3 +1,17 @@
+### v1.25.8
+
+#### Changed Files & Core Modifications
+- The CI configuration for the chaos testing workflow (`.github/workflows/chaos-test.yaml`) has been updated. Specifically, the action used to set up the KinD Kubernetes cluster has been replaced, and the node image for the cluster has been updated.
+
+#### Reason for Changes
+- The previous `setup-kind` action was deprecated, leading to download errors (404). This change replaces the deprecated action with a maintained alternative to ensure the stability and reliability of the chaos testing environment.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:** Resolves a critical CI/CD pipeline failure by addressing a deprecated dependency, ensuring the continuity of chaos testing. This improves the robustness of our automated testing infrastructure.
+- **(-) Disadvantages / Notes:** The change involves updating a core component of the CI infrastructure. While the new action is actively maintained, it's important to monitor its performance and compatibility in future releases. The specific `kindest/node` image version has also been updated, which may introduce subtle behavioral changes in the KinD cluster environment.
+
+---
+
 ### v1.25.7
 
 #### Changed Files & Core Modifications
