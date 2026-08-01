@@ -56,11 +56,13 @@ jobs:
 
       - name: Deploy Sentinel Infrastructure (Helm)
         run: |
+          echo "Deploying Sentinel via Helm (bypassing strict HPA wait)..."
           helm upgrade --install sentinel infrastructure/helm/sentinel/ \
             --namespace sentinel-namespace \
-            --create-namespace \
-            --wait \
-            --timeout 10m || (echo "Deployment failed! Fetching logs..." && kubectl get pods,events -n sentinel-namespace && exit 1)
+            --create-namespace
+
+          echo "Waiting for all pods to reach Ready state..."
+          kubectl wait --for=condition=Ready pods --all -n sentinel-namespace --timeout=10m
 
       - name: Install k6 (Binary Download for CI Speed)
         run: |
