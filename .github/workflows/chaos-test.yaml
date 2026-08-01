@@ -47,7 +47,8 @@ jobs:
           helm upgrade --install sentinel infrastructure/helm/sentinel/ \
             --namespace sentinel-namespace \
             --create-namespace \
-            --wait
+            --wait \
+            --timeout 10m || (echo "Deployment failed! Fetching logs..." && kubectl get pods,events -n sentinel-namespace && exit 1)
 
       - name: Install k6 (Binary Download for CI Speed)
         run: |
