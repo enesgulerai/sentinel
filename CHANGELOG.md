@@ -1,3 +1,20 @@
+### v1.25.10
+
+#### Changed Files & Core Modifications
+- **CI/CD Configuration (`.github/workflows/chaos-test.yaml`):** The Helm deployment process within the chaos testing workflow has been updated. This includes an increased timeout for Helm deployments and the addition of more detailed debug logging upon failure.
+
+#### Reason for Changes
+- These modifications were implemented to improve the reliability and diagnosability of the chaos testing environment. Increasing the deployment timeout addresses potential transient issues during Helm chart installations, while enhanced failure logging provides clearer insights when deployments do not succeed, aiding in faster troubleshooting.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - Enhanced stability of the chaos testing pipeline by accommodating longer deployment times.
+    - Improved debugging capabilities for deployment failures, leading to quicker resolution of CI/CD issues.
+- **(-) Disadvantages / Notes:**
+    - A longer timeout might slightly increase the overall execution time of the chaos test workflow in scenarios where deployments are slow.
+
+---
+
 ### v1.25.9
 
 #### Changed Files & Core Modifications
