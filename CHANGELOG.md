@@ -1,3 +1,17 @@
+### v1.25.16
+
+#### Changed Files & Core Modifications
+- Modified `tests/chaos/api-pod-kill.yaml` to correct a type mismatch in the `value` field within the pod kill manifest.
+
+#### Reason for Changes
+- A type mismatch was identified in the pod kill chaos experiment manifest. The `value` field, intended to represent a percentage, was incorrectly specified as an integer instead of a string. This could lead to unexpected behavior or failures in chaos testing scenarios.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:** Resolves a defect in the chaos testing framework, ensuring more reliable and accurate execution of pod kill experiments. This improves the overall stability and trustworthiness of our automated testing processes.
+- **(-) Disadvantages / Notes:** None.
+
+---
+
 ### v1.25.15
 
 #### Changed Files & Core Modifications
