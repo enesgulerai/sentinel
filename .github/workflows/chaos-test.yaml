@@ -42,6 +42,18 @@ jobs:
           echo "Waiting for Chaos Mesh pods to be ready..."
           kubectl wait --for=condition=Ready pods --all -n chaos-mesh --timeout=300s
 
+      - name: Install Metrics Server for HPA
+        run: |
+          echo "Installing Metrics Server..."
+          kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+          echo "Patching Metrics Server for KinD (insecure-tls)..."
+          kubectl patch -n kube-system deployment metrics-server --type=json \
+            -p '[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls"}]'
+
+          echo "Waiting for Metrics Server to be ready..."
+          kubectl wait deployment -n kube-system metrics-server --for condition=Available=True --timeout=120s
+
       - name: Deploy Sentinel Infrastructure (Helm)
         run: |
           helm upgrade --install sentinel infrastructure/helm/sentinel/ \
