@@ -1,3 +1,22 @@
+### v1.25.11
+
+#### Changed Files & Core Modifications
+- The `chaos-test.yaml` GitHub Actions workflow has been updated.
+- New steps have been introduced to install and configure the Kubernetes Metrics Server within the chaos testing environment.
+
+#### Reason for Changes
+- The chaos testing environment experienced timeouts when waiting for Horizontal Pod Autoscalers (HPAs) to become ready. This was due to the absence of a functional Metrics Server, which is a prerequisite for HPAs to gather resource utilization data.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - Resolves intermittent timeouts in the chaos testing pipeline, improving the reliability and stability of CI/CD for chaos-related deployments.
+    - Enables proper functioning of Horizontal Pod Autoscalers within the chaos testing environment, allowing for more accurate simulation of dynamic scaling scenarios.
+- **(-) Disadvantages / Notes:**
+    - Introduces an additional dependency on the Metrics Server within the chaos testing infrastructure.
+    - Requires the `metrics-server` to be deployed and configured correctly for the chaos testing environment to operate as expected.
+
+---
+
 ### v1.25.10
 
 #### Changed Files & Core Modifications
