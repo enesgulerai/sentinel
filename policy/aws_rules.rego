@@ -32,25 +32,20 @@ deny contains msg if {
 mandatory_tags := {"Environment", "Owner", "Project"}
 
 deny contains msg if {
-  resource_types := {"aws_vpc", "aws_eks_cluster", "aws_s3_bucket"}
-  resource_type := resource_types[_]
-  resource := input.resource[resource_type][_][_]
+	resource_types := {"aws_vpc", "aws_eks_cluster", "aws_s3_bucket"}
+	resource_type := resource_types[_]
+	resource := input.resource[resource_type][_][_]
 
-  tag := mandatory_tags[_]
-  not has_tag(resource, tag)
+	tag := mandatory_tags[_]
+	not has_tag(resource, tag)
 
-  msg := sprintf("Governance Violation: Resource '%v' is missing the mandatory tag: '%v'.", [resource_type, tag])
-}
-
-# Helper function to parse tags whether Conftest reads them as an Object or an Array of Objects
-has_tag(resource, tag) if {
-  val := resource.tags[tag]
-  val != ""
+	msg := sprintf("Governance Violation: Resource '%v' is missing the mandatory tag: '%v'.", [resource_type, tag])
 }
 
 has_tag(resource, tag) if {
-  val := resource.tags[_][tag]
-  val != ""
+	tags := resource.tags
+	[path, value] := walk(tags)
+	path[_] == tag
 }
 
 # 2. Network Security
