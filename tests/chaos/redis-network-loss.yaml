@@ -14,5 +14,5 @@ spec:
   loss:
     loss: "100"
     correlation: "0"
-  direction: both
+  direction: to
   duration: "30s"
