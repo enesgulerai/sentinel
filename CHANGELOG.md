@@ -1,3 +1,20 @@
+### v1.25.12
+
+#### Changed Files & Core Modifications
+- The CI workflow for chaos testing (`.github/workflows/chaos-test.yaml`) has been updated. The Helm deployment step now bypasses the strict Helm `--wait` flag and instead utilizes a `kubectl wait` command to ensure all pods reach the `Ready` condition.
+
+#### Reason for Changes
+- This change addresses potential issues with Helm's strict waiting mechanism during CI deployments, particularly in complex environments where Horizontal Pod Autoscaler (HPA) might be involved. By switching to a direct `kubectl pod readiness check`, we ensure that the chaos tests proceed only after the application pods are fully operational, leading to more reliable test outcomes.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - Improved reliability of chaos testing by ensuring deployments are fully ready before proceeding.
+    - More robust handling of Kubernetes deployment states, especially when HPA is active.
+- **(-) Disadvantages / Notes:**
+    - This change is primarily within the CI/CD pipeline and does not directly impact the production application's runtime behavior. The timeout for pod readiness remains 10 minutes.
+
+---
+
 ### v1.25.11
 
 #### Changed Files & Core Modifications
