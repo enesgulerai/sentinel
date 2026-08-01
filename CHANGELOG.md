@@ -1,3 +1,20 @@
+### v1.25.6
+
+#### Changed Files & Core Modifications
+- `policy/aws_rules.rego`: Modified the `has_tag` helper function to implement a deep recursive search for tags within AWS resources. This change enhances the policy engine's ability to correctly identify mandatory tags, even when they are nested within complex or inconsistently structured HCL (HashiCorp Configuration Language) data.
+
+#### Reason for Changes
+- The previous implementation of the tag checking logic in Conftest's HCL parser was encountering issues with certain Terraform configurations. This resulted in mandatory tags not being correctly identified, leading to potential policy violations being missed. The update addresses these parser bugs by introducing a more robust and recursive method for tag discovery.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Improved Policy Enforcement:** Ensures that mandatory tags are consistently and accurately detected across a wider range of Terraform configurations, strengthening governance and compliance.
+    - **Enhanced Robustness:** The recursive search mechanism makes the policy engine more resilient to variations in how tags are defined in the infrastructure-as-code.
+- **(-) Disadvantages / Notes:**
+    - This change is a workaround for specific limitations within the Conftest HCL parser. Future updates to Conftest or its HCL parsing library may allow for a simpler implementation.
+
+---
+
 ### v1.25.5
 
 #### Changed Files & Core Modifications
