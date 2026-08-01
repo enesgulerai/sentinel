@@ -1,3 +1,18 @@
+### v1.25.5
+
+#### Changed Files & Core Modifications
+- **Policy Definition (`policy/aws_rules.rego`):** The tag validation logic within the AWS policy rules has been enhanced. This modification ensures that the policy engine can correctly interpret and validate resource tags regardless of whether they are provided as a direct object or an array of key-value pairs.
+- **Configuration Files:** Renamed several YAML configuration files (`Taskfile.yml`, `docker-compose.yml`, `docker/jenkins/docker-compose.yml`) to their `.yaml` extension for consistency.
+
+#### Reason for Changes
+The tag validation rule in the AWS policy was updated to accommodate different formats in which resource tags might be parsed by the policy evaluation tool. This ensures more robust and accurate policy enforcement across various AWS resource configurations.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:** Increased policy enforcement accuracy and reliability by supporting a wider range of tag formats. This reduces the likelihood of false positives or negatives in policy evaluations, leading to better security and compliance posture.
+- **(-) Disadvantages / Notes:** No significant architectural trade-offs or disadvantages are introduced by this change. The renaming of configuration files is a minor organizational improvement.
+
+---
+
 ### v1.25.4
 
 #### Changed Files & Core Modifications
