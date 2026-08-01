@@ -44,10 +44,13 @@ deny contains msg if {
 
 # Helper function to parse tags whether Conftest reads them as an Object or an Array of Objects
 has_tag(resource, tag) if {
-  resource.tags[tag]
+  val := resource.tags[tag]
+  val != ""
 }
+
 has_tag(resource, tag) if {
-  resource.tags[_][tag]
+  val := resource.tags[_][tag]
+  val != ""
 }
 
 # 2. Network Security
