@@ -1,3 +1,21 @@
+### v1.25.17
+
+#### Changed Files & Core Modifications
+- **`.github/workflows/chaos-test.yaml`**: Modified the CI workflow for chaos testing. This update introduces the setup of a port-forwarding tunnel to the ingress controller before executing k6 load tests.
+
+#### Reason for Changes
+- To enable more accurate and reliable load testing scenarios within the chaos testing environment. Previously, direct access to the ingress controller for load testing might have been inconsistent or blocked, leading to unreliable test results.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - Improved reliability and accuracy of chaos load tests by ensuring direct and stable access to the ingress controller.
+    - Enhanced ability to simulate realistic traffic patterns under adverse conditions.
+- **(-) Disadvantages / Notes:**
+    - Introduces a slight overhead to the chaos test execution due to the port-forwarding setup and a short delay.
+    - Requires the `ingress-nginx` namespace and the `ingress-nginx-controller` service to be available and accessible within the Kubernetes cluster for the chaos tests to run successfully.
+
+---
+
 ### v1.25.16
 
 #### Changed Files & Core Modifications
