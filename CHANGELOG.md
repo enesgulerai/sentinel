@@ -1,3 +1,18 @@
+### v1.25.14
+
+#### Changed Files & Core Modifications
+- The CI workflow file `.github/workflows/chaos-test.yaml` was updated.
+- The change involves correcting the filename reference for a Kubernetes manifest used in the chaos testing workflow. Specifically, the manifest for the "pod kill" test has been updated from `api-gateway-pod-kill.yaml` to `api-pod-pod-kill.yaml`.
+
+#### Reason for Changes
+- This change addresses an inaccuracy in the chaos testing configuration. The previous filename did not correctly point to the intended chaos experiment, potentially leading to the wrong test being executed or the test failing due to a missing resource.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:** Ensures the chaos testing suite accurately targets the intended components for resilience testing, improving the reliability of our automated quality assurance processes. This leads to more robust deployments by validating failure scenarios correctly.
+- **(-) Disadvantages / Notes:** No significant architectural trade-offs or negative impacts are introduced by this change. It is a configuration correction within the CI pipeline.
+
+---
+
 ### v1.25.13
 
 #### Changed Files & Core Modifications
