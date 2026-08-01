@@ -1,3 +1,27 @@
+### v1.25.9
+
+#### Changed Files & Core Modifications
+- **`.github/workflows/chaos-test.yaml`**: This file, which defines the CI workflow for chaos testing, has been significantly refactored. Key changes include:
+    - **Chaos Mesh Installation**: Switched from a script-based installation to a Helm-based installation for Chaos Mesh. This provides better control over the Chaos Mesh deployment and its configuration.
+    - **k6 Installation**: Modified the installation method for k6 from APT package management to a direct binary download. This aims to improve the speed and reliability of the CI pipeline.
+    - **Concurrency Control**: Introduced concurrency settings to the workflow to prevent overlapping runs and improve resource management.
+    - **Chaos Injection and Load Testing**: Adjusted the timing and execution of chaos injection and k6 load tests to ensure proper application of chaos experiments before load testing begins.
+
+#### Reason for Changes
+The primary motivation for these changes is to enhance the stability and speed of the chaos testing pipeline. By refactoring the workflow, we aim to achieve more reliable test execution and reduce the overall time spent in the CI process. The shift to Helm for Chaos Mesh installation and direct binary downloads for k6 are strategic decisions to streamline dependencies and improve deployment efficiency.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Improved CI Stability**: The Helm-based installation of Chaos Mesh offers a more robust and declarative approach, reducing potential installation failures.
+    - **Faster CI Execution**: Direct binary downloads for k6 are generally faster and less prone to dependency issues compared to package managers, leading to quicker feedback loops.
+    - **Enhanced Chaos Testing Reliability**: The adjustments in the workflow ensure that chaos experiments are properly applied and given sufficient time to take effect before load testing commences, leading to more accurate and meaningful test results.
+    - **Better Resource Utilization**: Concurrency controls prevent redundant or conflicting workflow runs, optimizing resource usage.
+- **(-) Disadvantages / Notes:**
+    - **Helm Dependency**: The CI environment now requires Helm to be available for Chaos Mesh installation.
+    - **Runtime Configuration**: The Chaos Mesh installation includes specific configurations (`chaosDaemon.runtime=containerd`, `chaosDaemon.socketPath=/run/containerd/containerd.sock`) which are tailored to the current environment. Any changes to the container runtime or its socket path in the cluster might require adjustments to this workflow.
+
+---
+
 ### v1.25.8
 
 #### Changed Files & Core Modifications
