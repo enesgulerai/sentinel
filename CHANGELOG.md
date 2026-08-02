@@ -1,3 +1,21 @@
+### v1.25.20
+
+#### Changed Files & Core Modifications
+- **Dockerfiles:** Modifications were made to the `Dockerfile` for the API, consumer, and validator services. These changes introduce BuildKit cache mounts for Go modules, Go build artifacts, Python virtual environment dependencies, and Rust build caches.
+
+#### Reason for Changes
+These changes were implemented to optimize the Docker image build process. By leveraging BuildKit's cache mount capabilities, we aim to significantly reduce the time required to build Docker images for our services. This is crucial for improving developer productivity and streamlining CI/CD pipelines.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Drastically Reduced Build Times:** Utilizing BuildKit cache mounts allows subsequent builds to reuse previously downloaded dependencies and compiled artifacts, leading to substantial time savings.
+    - **Improved Developer Experience:** Faster build times mean quicker iteration cycles for developers.
+    - **Efficient CI/CD:** Streamlined build processes contribute to more efficient and cost-effective continuous integration and continuous deployment pipelines.
+- **(-) Disadvantages / Notes:**
+    - This change relies on BuildKit being enabled and configured for Docker builds. While BuildKit is the default in recent Docker versions, older environments might require explicit configuration.
+
+---
+
 ### v1.25.19
 
 #### Changed Files & Core Modifications
