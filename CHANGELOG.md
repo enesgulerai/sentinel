@@ -1,3 +1,21 @@
+### v1.25.19
+
+#### Changed Files & Core Modifications
+- The CI workflow file `.github/workflows/chaos-test.yaml` was updated.
+- The `kubectl port-forward` command within the chaos testing job was modified to target a deployment (`deploy/sentinel-api`) instead of a service (`svc/sentinel-api`).
+
+#### Reason for Changes
+- The chaos testing infrastructure was updated to directly target the API deployment for port-forwarding. This change ensures that the chaos tests are interacting with the actual running pods managed by the deployment, providing a more accurate simulation of real-world traffic patterns and potential failure scenarios. Previously, port-forwarding to the service might have bypassed certain aspects of the deployment's lifecycle or pod management.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - Improved accuracy of chaos testing by directly targeting the deployment, leading to more realistic failure injection and resilience validation.
+    - Enhanced debugging capabilities during chaos tests by ensuring the port-forward tunnel connects to the active pods managed by the deployment.
+- **(-) Disadvantages / Notes:**
+    - No significant architectural trade-offs are introduced. This is a refinement of the testing infrastructure.
+
+---
+
 ### v1.25.18
 
 #### Changed Files & Core Modifications
