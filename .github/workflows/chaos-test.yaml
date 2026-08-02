@@ -85,8 +85,11 @@ jobs:
 
       - name: Run k6 Load Test Under Chaos
         run: |
-          echo "Opening port-forward tunnel directly to the API service..."
-          kubectl port-forward svc/sentinel-api 8000:8000 -n sentinel-namespace > port-forward.log 2>&1 &
+          echo "List of available services for debugging:"
+          kubectl get svc -n sentinel-namespace
+
+          echo "Opening port-forward tunnel directly to the API deployment..."
+          kubectl port-forward deploy/sentinel-api 8000:8000 -n sentinel-namespace > port-forward.log 2>&1 &
 
           echo "Waiting 5 seconds for tunnel to establish..."
           sleep 5
