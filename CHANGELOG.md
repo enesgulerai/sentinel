@@ -1,3 +1,22 @@
+### v1.25.18
+
+#### Changed Files & Core Modifications
+- **CI Configuration (`.github/workflows/chaos-test.yaml`):** The CI workflow for chaos testing has been updated. The `kubectl port-forward` command now targets the `sentinel-api` service directly within the `sentinel-namespace` instead of the ingress controller. The duration for establishing the port-forward tunnel has been increased, and the logs from the port-forward process are now captured and displayed.
+- **Load Test Script (`tests/fixtures/loadtest.js`):** The duration of the k6 load test has been significantly reduced from 3 minutes to 30 seconds.
+
+#### Reason for Changes
+These changes are aimed at refining the chaos testing environment. By port-forwarding directly to the `sentinel-api` service, the test setup more accurately reflects direct service interaction under simulated failure conditions, rather than going through the ingress layer. The reduced k6 test duration allows for faster iteration and more frequent execution of chaos tests, improving the efficiency of identifying potential issues.
+
+#### Advantages & Architectural Trade-offs
+- **(+) Advantages:**
+    - **Improved Test Isolation:** Targeting the API service directly provides a more focused test of its resilience and behavior under chaos, reducing dependencies on the ingress controller's stability during these specific tests.
+    - **Faster Feedback Loop:** The reduced load test duration enables quicker execution of chaos tests, leading to faster identification and resolution of potential issues.
+    - **Enhanced Debugging:** Capturing and displaying port-forward logs aids in diagnosing connectivity issues during chaos testing.
+- **(-) Disadvantages / Notes:**
+    - The previous chaos tests were implicitly testing the ingress controller's behavior under load. This change shifts the focus, and separate testing strategies may be needed to ensure the ingress controller's resilience is adequately covered.
+
+---
+
 ### v1.25.17
 
 #### Changed Files & Core Modifications
