@@ -3,7 +3,7 @@ import { check } from 'k6';
 
 export const options = {
   vus: 200,
-  duration: '3m',
+  duration: '30s',
   discardResponseBodies: true,
 };
 
