@@ -16,7 +16,9 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 COPY docker/consumer/requirements.txt .
-RUN uv pip install --no-cache -r requirements.txt
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install -r requirements.txt
 
 # Runtime Stage
 FROM python:3.11-slim

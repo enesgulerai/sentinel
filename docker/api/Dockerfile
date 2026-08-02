@@ -4,10 +4,15 @@ FROM golang:1.26-alpine AS builder
 WORKDIR /app
 
 COPY src/api/go.mod src/api/go.sum ./
-RUN go mod download
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
 COPY src/api/ .
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o sentinel-api main.go
+
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o sentinel-api main.go
 
 # Runtime Stage
 FROM alpine:3.19
