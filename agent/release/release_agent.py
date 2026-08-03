@@ -1,5 +1,4 @@
 import os
-import re
 import subprocess  # nosec B404
 import sys
 import time
@@ -40,13 +39,24 @@ def get_git_diff(latest_tag):
 
 
 def analyze_semver_bump(commit_messages):
-    bump = "PATCH"
+    bump = "SKIP"
+
     for msg in commit_messages:
         msg_clean = msg.lower()
+
+        # Ignored prefixes - these do not trigger a release on their own
+        if any(msg_clean.startswith(prefix) for prefix in ["chore", "docs", "ci", "test"]):
+            continue
+
         if "breaking change" in msg_clean or "!" in msg_clean.split(":")[0]:
             return "MAJOR"
         elif msg_clean.startswith("feat"):
             bump = "MINOR"
+        elif (
+            msg_clean.startswith("fix") or msg_clean.startswith("perf") or msg_clean.startswith("refactor")
+        ) and bump == "SKIP":
+            bump = "PATCH"
+
     return bump
 
 
@@ -67,60 +77,24 @@ def bump_version(current_version, bump_type):
     return f"v{major}.{minor}.{patch}"
 
 
-def determine_personas(diff_data):
-    personas = set()
-    if not diff_data:
-        return ["Release Manager"]
-
-    if re.search(r"b/src/(data|features|models|utils)/", diff_data):
-        personas.add("Lead Data Scientist (evaluating MLOps and model inference impact)")
-
-    if re.search(
-        r"b/(infrastructure/.*\.(tf|yaml|yml)|Dockerfile.*|\.github/workflows/.*|Jenkinsfile|docker-compose.*)",
-        diff_data,
-    ):
-        personas.add("Senior Cloud/DevOps Engineer (evaluating deployment, infrastructure, and CI/CD impact)")
-
-    if re.search(r"b/policy/.*\.rego", diff_data):
-        personas.add("Zero-Trust Security Architect (evaluating policy-as-code and security constraints)")
-
-    if re.search(r"b/.*\.go", diff_data):
-        personas.add("Staff Go Backend Engineer (evaluating API latency and concurrent throughput changes)")
-
-    if re.search(r"b/.*\.rs", diff_data):
-        personas.add("Systems Rust Engineer (evaluating memory safety and core logic updates)")
-
-    if len(personas) > 1:
-        personas.add("Principal Tech Lead (orchestrating cross-domain release strategies)")
-    elif len(personas) == 0:
-        personas.add("Senior Software Engineer")
-
-    return list(personas)
-
-
-def generate_release_notes(next_version, commit_messages, git_diff, personas):
+def generate_release_notes(next_version, commit_messages, git_diff):
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         print("[CRITICAL] GEMINI_API_KEY environment variable not found.", file=sys.stderr)
-        print(
-            "ACTION REQUIRED: Please create a '.env' file in the project root by copying '.env.example' and adding your API key.",
-            file=sys.stderr,
-        )
         sys.exit(1)
 
     client = genai.Client(api_key=api_key)
-    persona_string = ", ".join(personas)
 
     system_instruction = (
-        f"You are the Release Automation Council composed of: {persona_string}. "
-        "Your task is to analyze the provided commit messages and line-by-line code differences (git diff). "
-        "You must write professional, structured release notes reflecting your domain expertise.\n"
-        "Do NOT mention internal variables, syntax details, or mundane structural changes unless they imply architectural impact. "
-        "Focus on the 'Why' and the business/engineering value."
+        "You are a Principal Platform Engineer responsible for writing clear, concise, and professional release notes. "
+        "Your audience includes other engineers, DevOps practitioners, and stakeholders. "
+        "Analyze the commit messages and git diff to explain 'what' changed and 'why' it matters. "
+        "Do NOT provide code review feedback, security fix suggestions, or mention minor syntax changes. "
+        "Focus purely on the architectural and functional value delivered in this release."
     )
 
     prompt = f"""
-Generate release notes for version **{next_version}**.
+Generate structured release notes for version **{next_version}**.
 
 ### Input Data:
 1. **Commit Logs:**
@@ -130,19 +104,18 @@ Generate release notes for version **{next_version}**.
 {git_diff}
 
 ### Target Markdown Template Structure:
-Please strictly fill out the following template structure based on the inputs. If a section has no data, omit it or group it intelligently. Do not hallucinate metrics.
+Please strictly fill out the following template. Omit empty sections. Do not hallucinate metrics.
 
 ### {next_version}
 
-#### Changed Files & Core Modifications
-- Summarize what files changed and what was modified at a high engineering level.
+#### 🚀 Features & Core Modifications
+- Summarize the main engineering changes and new capabilities.
 
-#### Reason for Changes
-- Explain the underlying issue or feature requirement that triggered these changes.
+#### 🛠 Stability & Performance (Fixes)
+- Mention resolved technical debt, bug fixes, or performance improvements.
 
-#### Advantages & Architectural Trade-offs
-- **(+) Advantages:** Mention improvements like lower latency, better isolation, resolved debt, etc.
-- **(-) Disadvantages / Notes:** Mention any cost implications, potential deprecations, or infrastructure requirements.
+#### 🏗 Architectural Impact
+- Note any changes to deployment, infrastructure requirements, or potential breaking changes.
 """
 
     max_retries = 5
@@ -161,15 +134,8 @@ Please strictly fill out the following template structure based on the inputs. I
             return response.text
         except Exception as e:
             err_msg = str(e)
-            if (
-                "503" in err_msg or "UNAVAILABLE" in err_msg or "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg
-            ) and attempt < max_retries - 1:
-                delay_match = re.search(r"retry in ([\d\.]+)s", err_msg)
-                sleep_time = int(float(delay_match.group(1))) + 2 if delay_match else retry_delay * (attempt + 1)
-                print(
-                    f"API busy or rate-limited. Smart-sleeping for {sleep_time}s... (Attempt {attempt + 1}/{max_retries})"
-                )
-                time.sleep(sleep_time)
+            if ("503" in err_msg or "UNAVAILABLE" in err_msg or "429" in err_msg) and attempt < max_retries - 1:
+                time.sleep(retry_delay * (attempt + 1))
                 continue
             return f"Failed to generate release notes via Gemini API: {err_msg}"
 
@@ -177,46 +143,32 @@ Please strictly fill out the following template structure based on the inputs. I
 if __name__ == "__main__":
     print("Release Agent is initializing...")
 
-    # 1. Fail-Fast Check for API Key at startup
-    if not os.environ.get("GEMINI_API_KEY"):
-        print("[CRITICAL] GEMINI_API_KEY environment variable not found.", file=sys.stderr)
-        print(
-            "ACTION REQUIRED: Please create a '.env' file in the project root by copying '.env.example' and adding your API key.",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
     current_tag = get_latest_tag()
     print(f"Current Latest Version: {current_tag}")
 
     commits = get_commit_messages(current_tag)
     if not commits or commits == [""]:
-        print("No new commits found. Release is not required.")
+        print("No new commits found. Exiting.")
         sys.exit(0)
 
-    print(f"Analyzed commit count: {len(commits)}")
     bump_decision = analyze_semver_bump(commits)
-    print(f"SemVer Analysis Result: {bump_decision} bump required.")
+    print(f"SemVer Analysis Result: {bump_decision}")
+
+    if bump_decision == "SKIP":
+        print("Only non-release commits (chore, docs, ci, test) found. Skipping release generation.")
+        sys.exit(0)
 
     next_tag = bump_version(current_tag, bump_decision)
     print(f"Proposed New Version: {next_tag}")
 
-    print("Gathering Git Diff and analyzing personas...")
     diff_data = get_git_diff(current_tag)
 
-    assigned_personas = determine_personas(diff_data)
-    print(f"Dynamic Personas Assigned: {', '.join(assigned_personas)}")
-
     print("Invoking Gemini AI for Release Notes...")
-    release_notes = generate_release_notes(next_tag, commits, diff_data, assigned_personas)
+    release_notes = generate_release_notes(next_tag, commits, diff_data)
 
     if release_notes.startswith("Failed to generate"):
         print(f"CRITICAL ERROR: {release_notes}")
         sys.exit(1)
-
-    print("\n=================== GENERATED RELEASE NOTES ===================")
-    print(release_notes)
-    print("===============================================================")
 
     with open("release_notes.md", "w", encoding="utf-8") as f:
         f.write(release_notes)
