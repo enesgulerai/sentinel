@@ -1,4 +1,5 @@
 import os
+import re
 import subprocess  # nosec B404
 import sys
 import time
@@ -41,21 +42,41 @@ def get_git_diff(latest_tag):
 def analyze_semver_bump(commit_messages):
     bump = "SKIP"
 
-    for msg in commit_messages:
-        msg_clean = msg.lower()
+    commit_pattern = re.compile(r"^(?P<type>[a-zA-Z]+)(?:\((?P<scope>[a-zA-Z0-9_\-]+)\))?(?P<breaking>!)?:")
 
-        # Ignored prefixes - these do not trigger a release on their own
-        if any(msg_clean.startswith(prefix) for prefix in ["chore", "docs", "ci", "test"]):
+    for msg in commit_messages:
+        msg_clean = msg.strip()
+
+        if "BREAKING CHANGE" in msg_clean:
+            return "MAJOR"
+
+        match = commit_pattern.match(msg_clean)
+
+        if not match:
+            if bump == "SKIP" and msg_clean:
+                bump = "PATCH"
             continue
 
-        if "breaking change" in msg_clean or "!" in msg_clean.split(":")[0]:
+        commit_type = match.group("type").lower()
+        is_breaking = bool(match.group("breaking"))
+
+        if is_breaking:
             return "MAJOR"
-        elif msg_clean.startswith("feat"):
-            bump = "MINOR"
-        elif (
-            msg_clean.startswith("fix") or msg_clean.startswith("perf") or msg_clean.startswith("refactor")
-        ) and bump == "SKIP":
-            bump = "PATCH"
+
+        if commit_type == "feat":
+            if bump in ["SKIP", "PATCH"]:
+                bump = "MINOR"
+
+        elif commit_type in ["fix", "perf", "refactor", "revert", "style"]:
+            if bump == "SKIP":
+                bump = "PATCH"
+
+        elif commit_type in ["chore", "docs", "ci", "test", "build"]:
+            pass
+
+        else:
+            if bump == "SKIP":
+                bump = "PATCH"
 
     return bump
 
