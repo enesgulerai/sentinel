@@ -1,3 +1,26 @@
+# Release Notes - v1.26.0
+
+This release focuses on enhancing security, refining the release automation process, and improving the accuracy of semantic versioning analysis.
+
+## 🚀 Features & Core Modifications
+
+*   **Strict Semantic Versioning Analysis:** The release agent now employs a strict, regex-based analysis of commit messages to determine semantic version bumps (MAJOR, MINOR, PATCH). This ensures more predictable and accurate versioning based on commit conventions.
+*   **Enhanced Release Agent Automation:** The release agent's CI workflow has been optimized with a nightly schedule and smarter semantic versioning analysis. This streamlines the release process by automating checks and version determination.
+
+## 🛠 Stability & Performance (Fixes)
+
+*   **Dependency Security Updates:**
+    *   The `cryptography` library has been updated to version `50.0.0`.
+    *   The `gitpython` library has been updated to version `3.1.57`.
+    These updates address high-severity vulnerabilities, significantly improving the security posture of the platform.
+
+## 🏗 Architectural Impact
+
+*   **Release Workflow Standardization:** CI workflows related to release processes have been standardized with consistent file naming conventions, improving maintainability and clarity of the automation infrastructure.
+*   **Release Agent Triggering:** The release agent workflow is now triggered on a nightly schedule (`cron: '0 23 * * *'`) and via manual dispatch (`workflow_dispatch`), providing flexibility in release cadence and on-demand execution.
+
+---
+
 ### v1.25.20
 
 #### Changed Files & Core Modifications
