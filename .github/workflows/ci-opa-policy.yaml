@@ -1,0 +1,72 @@
+name: "CI / OPA Policy Validation"
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - 'policy/**'
+      - 'infrastructure/**'
+      - 'docker/**'
+      - '!**.md'
+      - '!docs/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-docker:
+    name: Validate Container Policies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Conftest
+        run: |
+          wget https://github.com/open-policy-agent/conftest/releases/download/v0.48.0/conftest_0.48.0_Linux_x86_64.tar.gz
+          tar xzf conftest_0.48.0_Linux_x86_64.tar.gz
+          sudo mv conftest /usr/local/bin/
+
+      - name: Run Docker Policy Checks
+        run: conftest test -p policy/docker_rules.rego docker/*/Dockerfile
+
+  validate-k8s:
+    name: Validate Orchestration Policies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Conftest and Helm
+        run: |
+          wget https://github.com/open-policy-agent/conftest/releases/download/v0.48.0/conftest_0.48.0_Linux_x86_64.tar.gz
+          tar xzf conftest_0.48.0_Linux_x86_64.tar.gz
+          sudo mv conftest /usr/local/bin/
+
+          curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+          chmod 700 get_helm.sh
+          ./get_helm.sh
+
+      - name: Run K8s Policy Checks
+        run: helm template sentinel infrastructure/helm/sentinel/ | conftest test -p policy/k8s_rules.rego -
+
+  validate-aws:
+    name: Validate Cloud Policies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Conftest
+        run: |
+          wget https://github.com/open-policy-agent/conftest/releases/download/v0.48.0/conftest_0.48.0_Linux_x86_64.tar.gz
+          tar xzf conftest_0.48.0_Linux_x86_64.tar.gz
+          sudo mv conftest /usr/local/bin/
+
+      - name: Run AWS Policy Checks
+        run: conftest test -p policy/aws_rules.rego infrastructure/terraform/aws-finops-mock/

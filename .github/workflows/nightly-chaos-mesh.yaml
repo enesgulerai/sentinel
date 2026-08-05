@@ -1,9 +1,9 @@
-name: "Nightly: Chaos Mesh Injection & Load Test"
+name: "Nightly / Chaos Mesh Injection & Load Test"
 
 on:
-  workflow_dispatch:
   schedule:
-    - cron: '0 2 * * *'
+    - cron: '0 23 * * *'
+  workflow_dispatch:
 
 permissions:
   contents: read

@@ -45,8 +45,8 @@ tasks:
       - docker compose ps
 
   # Helm & Kubernetes
-  helm:on:
-    desc: "[Helm] Build the local ML image and deploy the Sentinel infrastructure autonomously"
+  helm:dev:
+    desc: "[Helm] Deploy Sentinel using LOCAL images (Inner Loop) for development"
     cmds:
       - kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/cloud/deploy.yaml
       - echo "Waiting for Ingress Controller to become ready..."
@@ -57,8 +57,23 @@ tasks:
       - kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=120s
       - echo "Pre-pulling Valkey image to prevent network timeouts and ImagePullBackOff..."
       - docker pull valkey/valkey:8.0
-      - echo "Deploying Sentinel infrastructure via Helm..."
-      - helm upgrade --install sentinel-prod ./infrastructure/helm/sentinel -n sentinel-namespace --create-namespace
+      - echo "Deploying LOCAL Sentinel infrastructure via Helm..."
+      - helm upgrade --install sentinel-dev ./infrastructure/helm/sentinel -n sentinel-namespace --create-namespace
+
+  helm:prod:
+    desc: "[Helm] Deploy Sentinel infrastructure using PROD images (Git SHA) from GHCR"
+    cmds:
+      - kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/cloud/deploy.yaml
+      - echo "Waiting for Ingress Controller to become ready..."
+      - cmd: powershell -Command "Start-Sleep -Seconds 5"
+        platforms: [windows]
+      - cmd: sleep 5
+        platforms: [linux, darwin]
+      - kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=120s
+      - echo "Pre-pulling Valkey image to prevent network timeouts and ImagePullBackOff..."
+      - docker pull valkey/valkey:8.0
+      - echo "Deploying PROD Sentinel infrastructure via Helm..."
+      - helm upgrade --install sentinel-prod ./infrastructure/helm/sentinel -f ./infrastructure/helm/sentinel/values.production.yaml -n sentinel-namespace --create-namespace
 
   helm:status:
     desc: "[Helm] Watch the real-time status of the Sentinel Helm deployment"
@@ -84,7 +99,11 @@ tasks:
   helm:off:
     desc: "[Helm] Uninstall the Sentinel Helm release and clean up resources"
     cmds:
-      - helm uninstall sentinel-prod -n sentinel-namespace
+      - echo "Cleaning up deployed Sentinel environments..."
+      - cmd: helm uninstall sentinel-dev -n sentinel-namespace
+        ignore_error: true
+      - cmd: helm uninstall sentinel-prod -n sentinel-namespace
+        ignore_error: true
 
   # Environment Setup
   env:install:

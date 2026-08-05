@@ -1,10 +1,11 @@
-name: "CI: Security Code Scanning"
+name: "CI / Security Code Scanning"
 
 on:
   push:
     branches: ["main"]
   pull_request:
     branches: ["main"]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -52,7 +53,7 @@ jobs:
   scan-api-go:
     name: API (Go) Security Audit
     needs: detect-changes
-    if: ${{ needs.detect-changes.outputs.api == 'true' || github.event_name == 'push' }}
+    if: ${{ needs.detect-changes.outputs.api == 'true' || github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -74,7 +75,7 @@ jobs:
           args: '-exclude-dir=tests ./...'
           working-directory: src/api
 
-      - name: Install & Run Govulncheck
+      - name: Install and Run Govulncheck
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
@@ -83,7 +84,7 @@ jobs:
   scan-validator-rust:
     name: Validator (Rust) Security Audit
     needs: detect-changes
-    if: ${{ needs.detect-changes.outputs.validator == 'true' || github.event_name == 'push' }}
+    if: ${{ needs.detect-changes.outputs.validator == 'true' || github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -115,7 +116,7 @@ jobs:
   scan-inference-python:
     name: Inference (Python) Security Audit
     needs: detect-changes
-    if: ${{ needs.detect-changes.outputs.consumer == 'true' || github.event_name == 'push' }}
+    if: ${{ needs.detect-changes.outputs.consumer == 'true' || github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -159,11 +160,11 @@ jobs:
           ignore-unfixed: true
           severity: 'CRITICAL,HIGH'
 
-  # Terraform SecOps & FinOps
+  # Terraform SecOps and FinOps
   scan-terraform-checkov:
     name: Terraform (Checkov) Security Audit
     needs: detect-changes
-    if: ${{ needs.detect-changes.outputs.infra == 'true' || github.event_name == 'push' }}
+    if: ${{ needs.detect-changes.outputs.infra == 'true' || github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code

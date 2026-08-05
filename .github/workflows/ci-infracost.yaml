@@ -1,15 +1,17 @@
-name: "CI: Infracost FinOps Check"
+name: "CI / Infracost FinOps Check"
 
 on:
   push:
     branches: ["main"]
     paths:
       - 'infrastructure/terraform/aws-finops-mock/**'
+  schedule:
+    - cron: '0 23 * * *'
   workflow_dispatch:
 
 jobs:
   infracost_analysis:
-    name: Cost Estimation
+    name: Infracost Estimation
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -25,8 +27,7 @@ jobs:
 
       - name: Run Infracost Analysis and Generate Summary
         run: |
-          echo "Running Infracost standard breakdown..."
-
+          echo "### FinOps: Infracost Breakdown" >> $GITHUB_STEP_SUMMARY
           echo '```text' >> $GITHUB_STEP_SUMMARY
           infracost breakdown --path=infrastructure/terraform/aws-finops-mock \
                               --format=table >> $GITHUB_STEP_SUMMARY
