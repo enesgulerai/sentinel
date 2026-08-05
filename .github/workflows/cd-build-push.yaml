@@ -1,0 +1,84 @@
+name: CD- Build and Push to GHCR
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/**'
+      - 'docker/**'
+      - '.github/workflows/cd-build-push.yaml'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_OWNER: enesgulerdev
+
+jobs:
+  build-and-push:
+    name: Build and Push Images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        service: [api, validator, consumer]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set Image Tag (Short SHA)
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/${{ matrix.service }}/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/sentinel-${{ matrix.service }}:${{ steps.vars.outputs.sha_short }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/sentinel-${{ matrix.service }}:latest
+
+  update-gitops:
+    name: Update GitOps Manifests
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Update values.production.yaml
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          cat <<EOF > infrastructure/helm/sentinel/values.production.yaml
+          api:
+            image:
+              tag: "${SHORT_SHA}"
+          validator:
+            image:
+              tag: "${SHORT_SHA}"
+          consumer:
+            image:
+              tag: "${SHORT_SHA}"
+          EOF
+
+      - name: Commit and Push changes
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add infrastructure/helm/sentinel/values.production.yaml
+          git commit -m "chore(gitops): update image tags to ${SHORT_SHA} [skip ci]" || echo "No changes to commit"
+          git push
