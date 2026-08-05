@@ -1,0 +1,9 @@
+api:
+  image:
+    tag: "b960a83"
+validator:
+  image:
+    tag: "b960a83"
+consumer:
+  image:
+    tag: "b960a83"
