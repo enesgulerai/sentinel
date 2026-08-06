@@ -1,6 +1,6 @@
 <div align="left">
 
-# Sentinel: Real-Time AI Fraud Detection
+# Sentinel: Enterprise Real-Time Fraud & Anomaly Ingestion Engine
 
 *Enterprise-grade, event-driven anomaly detection pipeline with sub-millisecond ONNX inference.*
 
@@ -14,12 +14,20 @@
 
 ---
 
-**Sentinel** is an enterprise-grade, real-time fraud detection system. It simulates high-throughput financial transactions via streaming (Redpanda/Kafka) and evaluates them in milliseconds using an optimized ONNX inference engine.
+## Overview
+**Sentinel** is an enterprise-grade, real-time fraud detection platform designed to handle high-throughput financial transaction streams with sub-millisecond AI inference latency.
 
+The system simulates live financial transactions through an event-driven streaming pipeline powered by Redpanda (Kafka-compatible), validates payloads at high speed via a Rust stream processor, and evaluates fraud risks using an optimized Python ONNX runtime environment.
+
+## Architecture & Workflow
+
+### Performance Benchmark
 ![Performance Benchmark](docs/images/rps-report/k6-load-test.png)
 *Peak Performance Benchmark: Sustaining 25,300+ RPS with 7.79ms average latency over 4.5 million requests.*
 
-*Note: Note: Peak 25,300+ RPS was achieved under optimal hardware conditions. Standard local Docker Desktop deployments typically yield ~18,000+ RPS due to local CPU and network bridge constraints.*
+> **Note:** Peak 25,300+ RPS was achieved under optimal hardware conditions. Standard local Docker Desktop deployments typically yield ~18,000+ RPS due to local CPU and network bridge constraints.
+
+### System Data Flow
 
 ```mermaid
 graph TD
@@ -39,7 +47,7 @@ graph TD
     end
 
     subgraph Streaming & Validation
-        Redis[(Redis<br>Idempotency)]:::infra
+        Redis[(Redis / Valkey<br>Idempotency)]:::infra
         Broker1{Redpanda<br>raw-events}:::broker
         Validator[Rust Stream Processor]:::rust
         Broker2{Redpanda<br>clean-events}:::broker
@@ -65,60 +73,70 @@ graph TD
     Consumer -->|9. Persist Result| DB
 ```
 
-## Quick Start
-
-### Prerequisites
-- [Task](https://taskfile.dev/installation/) (`brew install go-task` / `choco install go-task`)
-- Docker & Docker Compose
-- [uv](https://github.com/astral-sh/uv)
-
-### Setup & Run
-
-    # 1. Clone repository
-    git clone https://github.com/enesgulerdev/sentinel.git
-    cd sentinel
-
-    # 2. Configure environment (Requires Google Drive File ID for gdown)
-    cp .env.example .env
-
-    # 3. Install dependencies via uv
-    task env:install
-
-    # 4. Execute ML Pipeline (Fetch dataset, preprocess, train baseline)
-    task ml:pipeline
-
-    # 5. Start microservices (API Gateway, Redpanda, etc.)
-    task docker:on
-
-    # 6. Run load tests to verify system performance
-    k6 run tests/fixtures/loadtest.js
-
-### Container Management
-
-    task docker:on    # Start all services
-    task docker:down  # Stop gracefully (keeps images intact)
-    task docker:off   # Full wipe (removes containers, networks, volumes, images)
-
-
-## Local Services
-
-| Service | Local URL |
-| :--- | :--- |
-| **API Gateway** | `http://localhost:8000` |
-| **Redpanda** | `http://localhost:8080` |
-
-
-## Architecture & Deep Dives
-
-Explore the sub-modules for advanced deployment, scaling, and observability patterns:
+### Module Documentation
+Explore the sub-modules for advanced deployment, scaling, policy enforcement, and observability patterns:
 
 | Module / Component | Description |
 | :--- | :--- |
 | **[Testing Suite](tests/README.md)** | Unit, integration, and mock fixtures. |
 | **[Helm Workloads](infrastructure/helm/README.md)** | Autonomous local provisioning for stateful dependencies and isolated ML workloads. |
-| **[GitOps & CD](infrastructure/argocd/README.md)** | Zero-touch deployment architecture using ArgoCD and Jenkins for deterministic state synchronization. |
+| **[GitOps & CD](infrastructure/argocd/README.md)** | Zero-touch deployment architecture using ArgoCD and automated CI/CD pipelines. |
 | **[AWS FinOps Simulation](infrastructure/terraform/aws-finops-mock/README.md)** | Infracost model demonstrating system scale to **25,300+ RPS** with an **85% cost reduction** under enterprise conditions. |
 | **[Policy & Governance](policy/README.md)** | Enterprise Policy-as-Code standards enforcing infrastructure, container, and Kubernetes security via OPA/Rego. |
 | **[AI Release Agent](agent/release/README.md)** | Autonomous, AI-driven Python agent for dynamic Semantic Versioning and automated release notes generation via Gemini. |
 | **[AI Doc Agent](agent/doc/README.md)** | Autonomous, AI-driven Engineering Council that analyzes git diffs to generate weekly persona-based architectural reviews. |
 | **[Local AWS Simulation](infrastructure/terraform/localstack/README.md)** | Fully offline AWS S3 audit logging and event routing simulation via LocalStack. |
+
+## Prerequisites
+Ensure the following tools are installed before running the platform locally:
+*   **[Taskfile](https://taskfile.dev/installation/):** Task runner (`brew install go-task` / `choco install go-task`)
+*   **Docker & Docker Compose:** Required for containerized local runtime
+*   **[uv](https://github.com/astral-sh/uv):** Ultra-fast Python package installer
+*   **k6:** Required for executing performance load tests
+
+## Quick Start & Usage
+
+### 1. Setup Environment
+```bash
+# Clone repository
+git clone https://github.com/enesgulerdev/sentinel.git
+cd sentinel
+
+# Configure environment variables
+cp .env.example .env
+
+# Install Python dependencies via uv
+task env:install
+```
+
+### 2. Execute ML Pipeline & Local Services
+```bash
+# Execute ML Pipeline (Fetch dataset, preprocess, train baseline model)
+task ml:pipeline
+
+# Start local microservices (API Gateway, Redpanda, Redis, etc.)
+task docker:on
+```
+
+### 3. Verification & Load Testing
+```bash
+# Run k6 load tests to verify system throughput
+k6 run tests/fixtures/loadtest.js
+```
+
+### 4. Container Management
+```bash
+task docker:on    # Start all services
+task docker:down  # Stop services gracefully (retains container images)
+task docker:off   # Full wipe (removes containers, networks, volumes, and images)
+```
+
+## Configuration & Environment
+
+### Local Service Endpoints
+When running locally, Sentinel exposes the following service interfaces:
+
+| Service | Local URL / Endpoint | Protocol | Description |
+| :--- | :--- | :--- | :--- |
+| **API Gateway** | `http://localhost:8000` | HTTP | Ingestion gateway endpoint |
+| **Redpanda Console** | `http://localhost:8080` | HTTP | Message broker UI & topic inspector |
