@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -58,9 +59,10 @@ func setupTestEnvironment() (*gin.Engine, redismock.ClientMock, *MockKafkaWriter
 }
 
 func getExpectedRedisKey(payload TransactionPayload) string {
-	// main.go ile birebir aynı mantık: Payload'un tamamı üzerinden SHA-256 hash üretilir
-	hashBytes, _ := json.Marshal(payload)
-	hash := sha256.Sum256(hashBytes)
+	hashInput := fmt.Sprintf("%s|%f|%f|%f|%f|%f",
+		payload.UserID, payload.Amount, payload.Time, payload.V1, payload.V2, payload.V3)
+
+	hash := sha256.Sum256([]byte(hashInput))
 	return "tx:" + hex.EncodeToString(hash[:])
 }
 
