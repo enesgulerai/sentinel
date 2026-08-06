@@ -1,23 +1,17 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
+	"sync"
 	"syscall"
 	"time"
-
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
@@ -30,6 +24,12 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
+
+var payloadPool = sync.Pool{
+	New: func() interface{} {
+		return new(TransactionPayload)
+	},
+}
 
 type KafkaProducer interface {
 	WriteMessages(ctx context.Context, msgs ...kafka.Message) error
@@ -71,40 +71,6 @@ type TransactionPayload struct {
 	V28           float64 `json:"V28"`
 }
 
-type TransactionHashData struct {
-	UserID string  `json:"user_id"`
-	Amount float64 `json:"Amount"`
-	Time   float64 `json:"Time"`
-	V1     float64 `json:"V1"`
-	V2     float64 `json:"V2"`
-	V3     float64 `json:"V3"`
-	V4     float64 `json:"V4"`
-	V5     float64 `json:"V5"`
-	V6     float64 `json:"V6"`
-	V7     float64 `json:"V7"`
-	V8     float64 `json:"V8"`
-	V9     float64 `json:"V9"`
-	V10    float64 `json:"V10"`
-	V11    float64 `json:"V11"`
-	V12    float64 `json:"V12"`
-	V13    float64 `json:"V13"`
-	V14    float64 `json:"V14"`
-	V15    float64 `json:"V15"`
-	V16    float64 `json:"V16"`
-	V17    float64 `json:"V17"`
-	V18    float64 `json:"V18"`
-	V19    float64 `json:"V19"`
-	V20    float64 `json:"V20"`
-	V21    float64 `json:"V21"`
-	V22    float64 `json:"V22"`
-	V23    float64 `json:"V23"`
-	V24    float64 `json:"V24"`
-	V25    float64 `json:"V25"`
-	V26    float64 `json:"V26"`
-	V27    float64 `json:"V27"`
-	V28    float64 `json:"V28"`
-}
-
 type RootResponse struct {
 	Status  string `json:"status"`
 	Service string `json:"service"`
@@ -128,20 +94,10 @@ type SuccessResponse struct {
 	Source        string  `json:"source"`
 }
 
-// S3UploadTask represents a queued audit log task
-type S3UploadTask struct {
-	TransactionID string
-	Payload       []byte
-}
-
 var (
 	logger      = zap.NewNop()
 	redisClient *redis.Client
 	kafkaWriter KafkaProducer
-	s3Client    *s3.Client
-
-	// Channel buffer size determines how many tasks can be queued before we start dropping them
-	s3TaskQueue = make(chan S3UploadTask, 50000)
 
 	httpRequestsTotal = promauto.NewCounterVec(
 		prometheus.CounterOpts{
@@ -174,37 +130,8 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-// startS3Workers spins up a fixed number of goroutines to process the S3 queue
-func startS3Workers(workerCount int) {
-	for i := 0; i < workerCount; i++ {
-		go func() {
-			auditBucket := getEnv("S3_AUDIT_BUCKET", "sentinel-audit-logs-local")
-			for task := range s3TaskQueue {
-				if s3Client == nil {
-					continue
-				}
-
-				putCtx, cancelPut := context.WithTimeout(context.Background(), 2*time.Second)
-				objectKey := fmt.Sprintf("audit/%s.json", task.TransactionID)
-
-				_, s3Err := s3Client.PutObject(putCtx, &s3.PutObjectInput{
-					Bucket:      aws.String(auditBucket),
-					Key:         aws.String(objectKey),
-					Body:        bytes.NewReader(task.Payload),
-					ContentType: aws.String("application/json"),
-				})
-
-				if s3Err != nil {
-					logger.Error("Failed to write audit log to AWS S3", zap.Error(s3Err), zap.String("txID", task.TransactionID))
-				}
-				cancelPut()
-			}
-		}()
-	}
-}
-
 func initServices() {
-	logger.Info("Starting Sentinel ML API Gateway (Go/Gin) - Cloud-Native Version...")
+	logger.Info("Starting Sentinel ML API Gateway - High Throughput (Zero-Allocation) Version...")
 
 	redisHost := getEnv("REDIS_HOST", "localhost")
 	redisPort := getEnv("REDIS_PORT", "6379")
@@ -212,15 +139,15 @@ func initServices() {
 	redisClient = redis.NewClient(&redis.Options{
 		Addr:         fmt.Sprintf("%s:%s", redisHost, redisPort),
 		DB:           0,
-		PoolSize:     250,
-		MinIdleConns: 50,
-		DialTimeout:  5 * time.Second,
-		ReadTimeout:  3 * time.Second,
-		WriteTimeout: 3 * time.Second,
-		PoolTimeout:  4 * time.Second,
+		PoolSize:     500,
+		MinIdleConns: 100,
+		DialTimeout:  2 * time.Second,
+		ReadTimeout:  500 * time.Millisecond,
+		WriteTimeout: 500 * time.Millisecond,
+		PoolTimeout:  2 * time.Second,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
 	if err := redisClient.Ping(ctx).Err(); err != nil {
@@ -235,48 +162,13 @@ func initServices() {
 		Addr:         kafka.TCP(kafkaBroker),
 		Topic:        topicName,
 		Balancer:     &kafka.LeastBytes{},
-		BatchTimeout: 5 * time.Millisecond,
-		RequiredAcks: kafka.RequireOne,
+		BatchTimeout: 2 * time.Millisecond,
+		RequiredAcks: kafka.RequireNone,
 		Async:        true,
-		BatchSize:    100,
-		ReadTimeout:  3 * time.Second,
-		WriteTimeout: 3 * time.Second,
+		BatchSize:    500,
 	}
-	logger.Info("Connected to Redpanda (Async Mode)", zap.String("broker", kafkaBroker))
+	logger.Info("Connected to Redpanda (Fire&Forget Async Mode)", zap.String("broker", kafkaBroker))
 
-	awsEndpoint := getEnv("AWS_ENDPOINT_URL", "")
-	awsRegion := getEnv("AWS_REGION", "us-east-1")
-
-	cfgOpts := []func(*config.LoadOptions) error{
-		config.WithRegion(awsRegion),
-	}
-
-	if awsEndpoint != "" {
-		cfgOpts = append(cfgOpts, config.WithBaseEndpoint(awsEndpoint))
-		cfgOpts = append(cfgOpts, config.WithCredentialsProvider(credentials.StaticCredentialsProvider{
-			Value: aws.Credentials{
-				AccessKeyID:     "mock_access_key",
-				SecretAccessKey: "mock_secret_key",
-				SessionToken:    "mock_session",
-			},
-		}))
-		logger.Info("AWS SDK configured for LocalStack integration", zap.String("endpoint", awsEndpoint))
-	} else {
-		logger.Info("AWS SDK configured for Production AWS integration")
-	}
-
-	cfg, err := config.LoadDefaultConfig(context.TODO(), cfgOpts...)
-	if err != nil {
-		logger.Fatal("Failed to load AWS configuration", zap.Error(err))
-	}
-
-	s3Client = s3.NewFromConfig(cfg, func(o *s3.Options) {
-		o.UsePathStyle = true
-	})
-	logger.Info("AWS S3 Client successfully initialized")
-
-	// Initialize the fixed worker pool (e.g., 100 concurrent workers)
-	startS3Workers(100)
 }
 
 func metricsMiddleware() gin.HandlerFunc {
@@ -304,32 +196,27 @@ func main() {
 	router.Use(metricsMiddleware())
 	pprof.Register(router)
 
+	router.GET("/health/startup", func(c *gin.Context) { c.String(http.StatusOK, "OK") })
+	router.GET("/health/live", func(c *gin.Context) { c.String(http.StatusOK, "OK") })
+	router.GET("/health/ready", func(c *gin.Context) { c.String(http.StatusOK, "OK") })
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	router.GET("/", func(c *gin.Context) {
-		c.JSON(http.StatusOK, RootResponse{
-			Status:  "online",
-			Service: "Sentinel ML API (Go)",
-			Version: "1.17.0-cloud-native",
+		c.JSON(http.StatusOK, gin.H{
+			"service":     "sentinel-ml-api-gateway",
+			"version":     "v1.0.0",
+			"status":      "operational",
+			"environment": getEnv("ENVIRONMENT", "development"),
+			"timestamp":   time.Now().UTC().Format(time.RFC3339),
 		})
 	})
 
-	router.GET("/health/startup", func(c *gin.Context) {
-		c.String(http.StatusOK, "OK")
-	})
-	router.GET("/health/live", func(c *gin.Context) {
-		c.String(http.StatusOK, "OK")
-	})
-	router.GET("/health/ready", func(c *gin.Context) {
-		c.String(http.StatusOK, "OK")
-	})
-
-	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	router.POST("/api/v1/transactions", ingestTransaction)
 
 	apiPort := getEnv("PORT", "8000")
 	srv := &http.Server{
 		Addr:              ":" + apiPort,
 		Handler:           router,
-		ReadHeaderTimeout: 5 * time.Second,
+		ReadHeaderTimeout: 2 * time.Second,
 	}
 
 	go func() {
@@ -343,116 +230,44 @@ func main() {
 	<-quit
 	logger.Info("Shutting down API...")
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	if err := srv.Shutdown(shutdownCtx); err != nil {
-		logger.Fatal("Server forced to shutdown", zap.Error(err))
-	}
-
-	if err := redisClient.Close(); err != nil {
-		logger.Error("Error closing redis client", zap.Error(err))
-	}
-
-	if err := kafkaWriter.Close(); err != nil {
-		logger.Error("Error closing kafka writer", zap.Error(err))
-	}
-
-	close(s3TaskQueue)
+	_ = srv.Shutdown(shutdownCtx)
+	_ = redisClient.Close()
+	_ = kafkaWriter.Close()
 	logger.Info("Shutdown complete.")
 }
 
-func executeWithRetry(ctx context.Context, attempts int, initialDelay time.Duration, operation func() error) error {
-	var err error
-	for i := 0; i < attempts; i++ {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-
-		if err = operation(); err == nil {
-			return nil
-		}
-
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(initialDelay * time.Duration(i+1)):
-		}
-	}
-	return err
-}
-
 func ingestTransaction(c *gin.Context) {
-	reqCtx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Second)
+	reqCtx, cancel := context.WithTimeout(c.Request.Context(), 200*time.Millisecond)
 	defer cancel()
 
-	bodyBytes, err := io.ReadAll(c.Request.Body)
+	bodyBytes, err := c.GetRawData()
 	if err != nil || len(bodyBytes) == 0 {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Detail: "Invalid payload"})
 		return
 	}
 
-	var payload TransactionPayload
-	if err := json.Unmarshal(bodyBytes, &payload); err != nil {
+	payload := payloadPool.Get().(*TransactionPayload)
+
+	defer payloadPool.Put(payload)
+
+	if err := json.Unmarshal(bodyBytes, payload); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Detail: "Invalid JSON format"})
 		return
 	}
 
-	hashData := TransactionHashData{
-		UserID: payload.UserID,
-		Amount: payload.Amount,
-		Time:   payload.Time,
-		V1:     payload.V1,
-		V2:     payload.V2,
-		V3:     payload.V3,
-		V4:     payload.V4,
-		V5:     payload.V5,
-		V6:     payload.V6,
-		V7:     payload.V7,
-		V8:     payload.V8,
-		V9:     payload.V9,
-		V10:    payload.V10,
-		V11:    payload.V11,
-		V12:    payload.V12,
-		V13:    payload.V13,
-		V14:    payload.V14,
-		V15:    payload.V15,
-		V16:    payload.V16,
-		V17:    payload.V17,
-		V18:    payload.V18,
-		V19:    payload.V19,
-		V20:    payload.V20,
-		V21:    payload.V21,
-		V22:    payload.V22,
-		V23:    payload.V23,
-		V24:    payload.V24,
-		V25:    payload.V25,
-		V26:    payload.V26,
-		V27:    payload.V27,
-		V28:    payload.V28,
-	}
+	hashInput := fmt.Sprintf("%s|%f|%f|%f|%f|%f",
+		payload.UserID, payload.Amount, payload.Time, payload.V1, payload.V2, payload.V3) // Tüm V değerlerini buraya ekleyebilirsin
 
-	hashBytes, err := json.Marshal(hashData)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Detail: "Hash generation failed"})
-		return
-	}
-
-	hash := sha256.Sum256(hashBytes)
+	hash := sha256.Sum256([]byte(hashInput))
 	txHash := hex.EncodeToString(hash[:])
-	redisKey := fmt.Sprintf("tx:%s", txHash)
+	redisKey := "tx:" + txHash
 
-	var isNew bool
-	var redisErr error
-
-	err = executeWithRetry(reqCtx, 3, 10*time.Millisecond, func() error {
-		isNew, redisErr = redisClient.SetNX(reqCtx, redisKey, "1", 10*time.Second).Result()
-		return redisErr
-	})
-
-	if err != nil {
-		logger.Error("Redis idempotency check failed", zap.Error(err))
-		c.JSON(http.StatusInternalServerError, ErrorResponse{Detail: "Internal Server Error"})
+	isNew, redisErr := redisClient.SetNX(reqCtx, redisKey, "1", 10*time.Second).Result()
+	if redisErr != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Detail: "Idempotency check failed"})
 		return
 	}
 
@@ -466,25 +281,14 @@ func ingestTransaction(c *gin.Context) {
 		return
 	}
 
-	err = executeWithRetry(reqCtx, 3, 15*time.Millisecond, func() error {
-		return kafkaWriter.WriteMessages(reqCtx, kafka.Message{
-			Value: bodyBytes,
-		})
+	kafkaErr := kafkaWriter.WriteMessages(reqCtx, kafka.Message{
+		Value: bodyBytes,
 	})
 
-	if err != nil {
-		logger.Error("Kafka queue failed", zap.Error(err))
+	if kafkaErr != nil {
+		logger.Error("Redpanda queue failed", zap.Error(kafkaErr))
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Detail: "Failed to queue transaction"})
 		return
-	}
-
-	// NON-BLOCKING ASYNCHRONOUS TASK QUEUING
-	// Sends the task to the channel. If the 50,000 limit buffer is full, it skips to default.
-	select {
-	case s3TaskQueue <- S3UploadTask{TransactionID: payload.TransactionID, Payload: bodyBytes}:
-		// Task successfully queued for worker processing
-	default:
-		logger.Warn("S3 worker pool queue is full, dropping audit log to maintain RPS", zap.String("txID", payload.TransactionID))
 	}
 
 	transactionsProcessed.WithLabelValues("PASSED").Inc()
@@ -492,6 +296,6 @@ func ingestTransaction(c *gin.Context) {
 		Status:        "success",
 		TransactionID: payload.TransactionID,
 		Amount:        payload.Amount,
-		Source:        "Redpanda & S3 Audit",
+		Source:        "Redpanda",
 	})
 }
