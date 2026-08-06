@@ -11,14 +11,11 @@ tasks:
 
   # Docker
   docker:on:
-    desc: "[Docker] Start all services using the current Git SHA image tags"
-    vars:
-      GIT_SHA:
-        sh: git rev-parse --short HEAD
+    desc: "[Docker] Start all services using local 'dev' image tags"
     env:
-      IMAGE_TAG: '{{.GIT_SHA}}'
+      IMAGE_TAG: 'dev'
     cmds:
-      - echo "Starting all services with IMAGE_TAG={{.GIT_SHA}}"
+      - echo "Starting all services with IMAGE_TAG=dev..."
       - docker compose up -d --build
 
   docker:off:
@@ -58,7 +55,7 @@ tasks:
       - echo "Pre-pulling Valkey image to prevent network timeouts and ImagePullBackOff..."
       - docker pull valkey/valkey:8.0
       - echo "Deploying LOCAL Sentinel infrastructure via Helm..."
-      - helm upgrade --install sentinel-dev ./infrastructure/helm/sentinel -n sentinel-namespace --create-namespace
+      - helm upgrade --install sentinel ./infrastructure/helm/sentinel -n sentinel-namespace --create-namespace
 
   helm:prod:
     desc: "[Helm] Deploy Sentinel infrastructure using PROD images (Git SHA) from GHCR"
@@ -92,9 +89,8 @@ tasks:
   helm:forward:
     desc: "[Helm] Bind K8s isolated network to localhost via Ingress (API: 8000)"
     cmds:
-      - |
-        echo "Starting Ingress port-forwarding... Press Ctrl+C to stop all connections."
-        kubectl port-forward svc/ingress-nginx-controller 8000:80 -n ingress-nginx &
+      - echo "Starting Ingress port-forwarding... Press Ctrl+C to stop."
+      - kubectl port-forward svc/ingress-nginx-controller 8000:80 -n ingress-nginx
 
   helm:off:
     desc: "[Helm] Uninstall the Sentinel Helm release and clean up resources"
@@ -174,19 +170,6 @@ tasks:
     dir: src/validator/src
     cmds:
       - cargo test
-
-  # CI/CD
-  jenkins:on:
-    desc: "[CI/CD] Start Jenkins container in the background"
-    dir: docker/jenkins
-    cmds:
-      - docker compose up -d
-
-  jenkins:off:
-    desc: "[CI/CD] Stop and remove Jenkins container"
-    dir: docker/jenkins
-    cmds:
-      - docker compose down
 
   # Agent
   agent:doc:

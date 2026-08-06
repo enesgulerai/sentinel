@@ -12,7 +12,7 @@ api:
   enabled: true
   replicaCount: 1
   image:
-    repository: ghcr.io/enesgulerdev/sentinel-api
+    repository: sentinel-api
     tag: "dev"
     pullPolicy: IfNotPresent
   service:
@@ -72,7 +72,7 @@ validator:
   enabled: true
   replicaCount: 2
   image:
-    repository: ghcr.io/enesgulerdev/sentinel-validator
+    repository: sentinel-validator
     tag: "dev"
     pullPolicy: IfNotPresent
   env:
@@ -118,7 +118,7 @@ consumer:
   enabled: true
   replicaCount: 1
   image:
-    repository: ghcr.io/enesgulerdev/sentinel-consumer
+    repository: sentinel-consumer
     tag: "dev"
     pullPolicy: IfNotPresent
   env:

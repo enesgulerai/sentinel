@@ -40,7 +40,7 @@ services:
 
   # API
   api:
-    image: sentinel-api:${IMAGE_TAG:-latest}
+    image: sentinel-api:dev
     build:
       context: .
       dockerfile: docker/api/Dockerfile
@@ -70,7 +70,7 @@ services:
 
   # Consumer
   consumer:
-    image: sentinel-consumer:${IMAGE_TAG:-latest}
+    image: sentinel-consumer:dev
     build:
       context: .
       dockerfile: docker/consumer/Dockerfile
@@ -121,7 +121,7 @@ services:
 
   # Validator
   validator:
-    image: sentinel-validator:${IMAGE_TAG:-latest}
+    image: sentinel-validator:dev
     build:
       context: .
       dockerfile: docker/validator/Dockerfile
