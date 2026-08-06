@@ -1,9 +1,12 @@
 api:
   image:
-    tag: "aa80e44"
+    repository: "ghcr.io/enesgulerdev/sentinel-api"
+    tag: "47f0ff9"
 validator:
   image:
-    tag: "aa80e44"
+    repository: "ghcr.io/enesgulerdev/sentinel-validator"
+    tag: "47f0ff9"
 consumer:
   image:
-    tag: "aa80e44"
+    repository: "ghcr.io/enesgulerdev/sentinel-consumer"
+    tag: "47f0ff9"
