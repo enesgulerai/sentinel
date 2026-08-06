@@ -67,12 +67,15 @@ jobs:
           cat <<EOF > infrastructure/helm/sentinel/values.production.yaml
           api:
             image:
+              repository: "${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/sentinel-api"
               tag: "${SHORT_SHA}"
           validator:
             image:
+              repository: "${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/sentinel-validator"
               tag: "${SHORT_SHA}"
           consumer:
             image:
+              repository: "${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/sentinel-consumer"
               tag: "${SHORT_SHA}"
           EOF
 
