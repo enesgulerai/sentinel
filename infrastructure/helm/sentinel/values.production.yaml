@@ -1,12 +1,12 @@
 api:
   image:
     repository: "ghcr.io/enesgulerdev/sentinel-api"
-    tag: "d343658"
+    tag: "b576207"
 validator:
   image:
     repository: "ghcr.io/enesgulerdev/sentinel-validator"
-    tag: "d343658"
+    tag: "b576207"
 consumer:
   image:
     repository: "ghcr.io/enesgulerdev/sentinel-consumer"
-    tag: "d343658"
+    tag: "b576207"
