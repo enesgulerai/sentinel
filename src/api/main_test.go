@@ -58,41 +58,8 @@ func setupTestEnvironment() (*gin.Engine, redismock.ClientMock, *MockKafkaWriter
 }
 
 func getExpectedRedisKey(payload TransactionPayload) string {
-	hashData := TransactionPayload{
-		UserID: payload.UserID,
-		Amount: payload.Amount,
-		Time:   payload.Time,
-		V1:     payload.V1,
-		V2:     payload.V2,
-		V3:     payload.V3,
-		V4:     payload.V4,
-		V5:     payload.V5,
-		V6:     payload.V6,
-		V7:     payload.V7,
-		V8:     payload.V8,
-		V9:     payload.V9,
-		V10:    payload.V10,
-		V11:    payload.V11,
-		V12:    payload.V12,
-		V13:    payload.V13,
-		V14:    payload.V14,
-		V15:    payload.V15,
-		V16:    payload.V16,
-		V17:    payload.V17,
-		V18:    payload.V18,
-		V19:    payload.V19,
-		V20:    payload.V20,
-		V21:    payload.V21,
-		V22:    payload.V22,
-		V23:    payload.V23,
-		V24:    payload.V24,
-		V25:    payload.V25,
-		V26:    payload.V26,
-		V27:    payload.V27,
-		V28:    payload.V28,
-	}
-
-	hashBytes, _ := json.Marshal(hashData)
+	// main.go ile birebir aynı mantık: Payload'un tamamı üzerinden SHA-256 hash üretilir
+	hashBytes, _ := json.Marshal(payload)
 	hash := sha256.Sum256(hashBytes)
 	return "tx:" + hex.EncodeToString(hash[:])
 }
