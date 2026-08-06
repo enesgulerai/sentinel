@@ -4,180 +4,164 @@ dotenv: ['.env']
 
 tasks:
   default:
-    desc: "[System] Display this help menu listing all available commands"
+    desc: Display this help menu listing all available commands
     silent: true
     cmds:
       - task --list
 
-  # Docker
-  docker:on:
-    desc: "[Docker] Start all services using local 'dev' image tags"
-    env:
-      IMAGE_TAG: 'dev'
-    cmds:
-      - echo "Starting all services with IMAGE_TAG=dev..."
-      - docker compose up -d --build
-
-  docker:off:
-    desc: "[Docker] Sequentially stop containers and clear all unused images"
-    cmds:
-      - task: docker:down
-      - task: docker:clear
-      - cmd: echo "Docker environment has been completely shut down and cleaned."
-        silent: true
-
-  docker:down:
-    desc: "[Docker] Stop and remove Docker containers, networks, and volumes"
-    cmds:
-      - docker compose down
-
-  docker:clear:
-    desc: "[Docker] Forcefully remove all unused and dangling images to free up space"
-    cmds:
-      - docker image prune -a -f
-
-  docker:ps:
-    desc: "[Docker] Show the current status of running containers"
-    cmds:
-      - docker compose ps
-
-  # Helm & Kubernetes
-  helm:dev:
-    desc: "[Helm] Deploy Sentinel using LOCAL images (Inner Loop) for development"
-    cmds:
-      - kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/cloud/deploy.yaml
-      - echo "Waiting for Ingress Controller to become ready..."
-      - cmd: powershell -Command "Start-Sleep -Seconds 5"
-        platforms: [windows]
-      - cmd: sleep 5
-        platforms: [linux, darwin]
-      - kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=120s
-      - echo "Pre-pulling Valkey image to prevent network timeouts and ImagePullBackOff..."
-      - docker pull valkey/valkey:8.0
-      - echo "Deploying LOCAL Sentinel infrastructure via Helm..."
-      - helm upgrade --install sentinel ./infrastructure/helm/sentinel -n sentinel-namespace --create-namespace
-
-  helm:prod:
-    desc: "[Helm] Deploy Sentinel infrastructure using PROD images (Git SHA) from GHCR"
-    cmds:
-      - kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/cloud/deploy.yaml
-      - echo "Waiting for Ingress Controller to become ready..."
-      - cmd: powershell -Command "Start-Sleep -Seconds 5"
-        platforms: [windows]
-      - cmd: sleep 5
-        platforms: [linux, darwin]
-      - kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=120s
-      - echo "Pre-pulling Valkey image to prevent network timeouts and ImagePullBackOff..."
-      - docker pull valkey/valkey:8.0
-      - echo "Deploying PROD Sentinel infrastructure via Helm..."
-      - helm upgrade --install sentinel-prod ./infrastructure/helm/sentinel -f ./infrastructure/helm/sentinel/values.production.yaml -n sentinel-namespace --create-namespace
-
-  helm:status:
-    desc: "[Helm] Watch the real-time status of the Sentinel Helm deployment"
-    cmds:
-      - kubectl get pods -n sentinel-namespace -w
-
-  helm:monitor:
-    desc: "[Helm] Deploy the official Prometheus & Grafana stack for observability"
-    cmds:
-      - echo "Adding Prometheus Community Helm repository..."
-      - helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-      - helm repo update
-      - echo "Installing Kube-Prometheus-Stack..."
-      - helm upgrade --install observability prometheus-community/kube-prometheus-stack -n monitoring --create-namespace --wait
-
-  helm:forward:
-    desc: "[Helm] Bind K8s isolated network to localhost via Ingress (API: 8000)"
-    cmds:
-      - echo "Starting Ingress port-forwarding... Press Ctrl+C to stop."
-      - kubectl port-forward svc/ingress-nginx-controller 8000:80 -n ingress-nginx
-
-  helm:off:
-    desc: "[Helm] Uninstall the Sentinel Helm release and clean up resources"
-    cmds:
-      - echo "Cleaning up deployed Sentinel environments..."
-      - cmd: helm uninstall sentinel-dev -n sentinel-namespace
-        ignore_error: true
-      - cmd: helm uninstall sentinel-prod -n sentinel-namespace
-        ignore_error: true
-
   # Environment Setup
-  env:install:
-    desc: "[Env] Install project dependencies and set up the development environment"
+  env:setup:
+    desc: Install project dependencies and set up the development environment
     cmds:
       - uv sync
       - uv run pre-commit install
 
+  # Docker Compose Operations
+  docker:up:
+    desc: Start all services using local 'dev' image tags
+    env:
+      IMAGE_TAG: 'dev'
+    cmds:
+      - docker compose up -d --build
+
+  docker:down:
+    desc: Stop and remove Docker containers, networks, and volumes
+    cmds:
+      - docker compose down
+
+  docker:clean:
+    desc: Forcefully remove all unused and dangling images
+    cmds:
+      - docker image prune -a -f
+
+  docker:nuke:
+    desc: Sequentially stop containers and clear all unused images
+    cmds:
+      - task: docker:down
+      - task: docker:clean
+
+  docker:ps:
+    desc: Show the current status of running containers
+    cmds:
+      - docker compose ps
+
+  # Kubernetes & Helm Operations
+  _setup-ingress:
+    internal: true
+    cmds:
+      - kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.1/deploy/static/provider/cloud/deploy.yaml
+      - cmd: powershell -Command "Start-Sleep -Seconds 5"
+        platforms: [windows]
+      - cmd: sleep 5
+        platforms: [linux, darwin]
+      - kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=120s
+      - docker pull valkey/valkey:8.0
+
+  helm:dev:
+    desc: Deploy Sentinel using LOCAL images (Inner Loop) for development
+    deps: [_setup-ingress]
+    cmds:
+      - helm upgrade --install sentinel ./infrastructure/helm/sentinel -n sentinel-namespace --create-namespace
+
+  helm:prod:
+    desc: Deploy Sentinel infrastructure using PROD images (Git SHA) from GHCR
+    deps: [_setup-ingress]
+    cmds:
+      - helm upgrade --install sentinel-prod ./infrastructure/helm/sentinel -f ./infrastructure/helm/sentinel/values.production.yaml -n sentinel-namespace --create-namespace
+
+  helm:status:
+    desc: Watch the real-time status of the Sentinel Helm deployment
+    cmds:
+      - kubectl get pods -n sentinel-namespace -w
+
+  helm:monitor:
+    desc: Deploy the official Prometheus & Grafana stack for observability
+    cmds:
+      - helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+      - helm repo update
+      - helm upgrade --install observability prometheus-community/kube-prometheus-stack -n monitoring --create-namespace --wait
+
+  helm:forward:
+    desc: Bind K8s isolated network to localhost via Ingress (API port 8000)
+    cmds:
+      - kubectl port-forward svc/ingress-nginx-controller 8000:80 -n ingress-nginx
+
+  helm:down:
+    desc: Uninstall the Sentinel Helm releases and clean up resources
+    cmds:
+      - cmd: helm uninstall sentinel -n sentinel-namespace
+        ignore_error: true
+      - cmd: helm uninstall sentinel-prod -n sentinel-namespace
+        ignore_error: true
+
   # MLOps & Data Pipeline
   ml:pipeline:
-    desc: "[ML] Run the complete end-to-end machine learning pipeline"
+    desc: Run the complete end-to-end machine learning pipeline
     deps: [ml:train]
     silent: true
     cmds:
-      - 'echo "SUCCESS: Full Machine Learning Pipeline Completed!"'
+      - echo "Full Machine Learning Pipeline Completed successfully."
 
   ml:fetch:
-    desc: "[ML] Download raw data and verify integrity using SHA-256"
+    desc: Download raw data and verify integrity using SHA-256
     cmds:
       - uv run python -m src.data.ingestion
 
   ml:preprocess:
-    desc: "[ML] Split train/test sets and apply preprocessing without data leakage"
+    desc: Split train/test sets and apply preprocessing without data leakage
     deps: [ml:fetch]
     cmds:
       - uv run python -m src.features.preprocessing
 
   ml:train:
-    desc: "[ML] Train the champion model (XGBoost) and export it to ONNX format"
+    desc: Train the champion model (XGBoost) and export it to ONNX format
     deps: [ml:preprocess]
     cmds:
       - uv run python -m src.models.trainer
 
   ml:clean:
-    desc: "[ML] Wipe all generated datasets, scaled files, and trained models"
-    silent: true
+    desc: Wipe all generated datasets, scaled files, and trained models
     ignore_error: true
     cmds:
       - rm -f data/raw/creditcard.csv
       - rm -f data/processed/*.csv
       - rm -f models/*.joblib
       - rm -f models/*.onnx
-      - echo "All generated data and models have been wiped clean."
 
-  # Tests
+  # Testing Suites
   test:all:
-    desc: "[Test] Run all test suites sequentially (API, Validator, Consumer)"
+    desc: Run all test suites sequentially (API, Validator, Consumer)
     cmds:
       - task: test:api
       - task: test:validator
       - task: test:consumer
 
   test:api:
-    desc: "[Test] Run Go API unit and integration tests"
+    desc: Run Go API unit and integration tests
     dir: src/api
     cmds:
       - go test -v .
 
   test:consumer:
-    desc: "[Test] Run Python ML Consumer unit tests with Pytest"
+    desc: Run Python ML Consumer unit tests with Pytest
     env:
       OTEL_SDK_DISABLED: "true"
     cmds:
       - pytest tests/unit/test_consumer.py -v
 
   test:validator:
-    desc: "[Test] Run Rust Validator unit tests via Cargo"
+    desc: Run Rust Validator unit tests via Cargo
     dir: src/validator/src
     cmds:
       - cargo test
 
-  # Agent
+  # Autonomous Agents
   agent:doc:
-    desc: "[Agent] Runs the autonomous Engineering Council to generate the weekly architectural report"
+    desc: Run the autonomous Engineering Council to generate the architectural report
     cmds:
       - uv run agent/doc/doc_agent.py
 
   agent:release:
-    desc: "[Agent] Executes the AI-powered Release Agent for automated SemVer bump and changelog generation"
+    desc: Execute the AI Release Agent for automated SemVer bumps and changelog generation
     cmds:
       - uv run agent/release/release_agent.py
