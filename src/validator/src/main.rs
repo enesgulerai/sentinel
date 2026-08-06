@@ -1,16 +1,19 @@
 use rskafka::client::ClientBuilder;
 use rskafka::client::partition::{Compression, OffsetAt, UnknownTopicHandling};
-use rskafka::record::Record;
 use serde::Deserialize;
 use std::env;
+use std::sync::Arc;
 use std::time::Duration;
+use tokio::task;
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 #[allow(dead_code)]
-struct FraudEvent {
-    transaction_id: String,
-    user_id: Option<String>,
+struct FraudEvent<'a> {
+    #[serde(borrow)]
+    transaction_id: &'a str,
+    #[serde(borrow)]
+    user_id: Option<&'a str>,
     Time: f64,
     V1: f64,
     V2: f64,
@@ -64,33 +67,17 @@ async fn main() {
         }
     };
 
-    let raw_partition_client = match client
+    let raw_partition_client = client
         .partition_client("raw-events", 0, UnknownTopicHandling::Retry)
         .await
-    {
-        Ok(pc) => pc,
-        Err(e) => {
-            eprintln!(
-                "CRITICAL: Failed to connect to raw-events partition: {:?}",
-                e
-            );
-            std::process::exit(1);
-        }
-    };
+        .unwrap();
 
-    let clean_partition_client = match client
-        .partition_client("clean-events", 0, UnknownTopicHandling::Retry)
-        .await
-    {
-        Ok(pc) => pc,
-        Err(e) => {
-            eprintln!(
-                "CRITICAL: Failed to connect to clean-events partition: {:?}",
-                e
-            );
-            std::process::exit(1);
-        }
-    };
+    let clean_partition_client = Arc::new(
+        client
+            .partition_client("clean-events", 0, UnknownTopicHandling::Retry)
+            .await
+            .unwrap(),
+    );
 
     if is_probe {
         println!("Health check passed successfully.");
@@ -104,7 +91,7 @@ async fn main() {
 
     loop {
         match raw_partition_client
-            .fetch_records(current_offset, 1..1_000_000, 1_000_000)
+            .fetch_records(current_offset, 1..5_000_000, 5_000_000)
             .await
         {
             Ok((records, _high_watermark)) => {
@@ -113,38 +100,42 @@ async fn main() {
                     continue;
                 }
 
-                let mut valid_batch = Vec::new();
+                let mut valid_batch = Vec::with_capacity(records.len());
 
-                for record_and_offset in records {
+                for record_and_offset in records.into_iter() {
                     current_offset = record_and_offset.offset + 1;
 
-                    if let Some(value) = &record_and_offset.record.value {
+                    let is_valid = if let Some(value) = &record_and_offset.record.value {
                         match serde_json::from_slice::<FraudEvent>(value) {
-                            Ok(_) => {
-                                let clean_record = Record {
-                                    key: record_and_offset.record.key.clone(),
-                                    value: Some(value.clone()),
-                                    headers: record_and_offset.record.headers.clone(),
-                                    timestamp: record_and_offset.record.timestamp,
-                                };
-                                valid_batch.push(clean_record);
-                            }
+                            Ok(_) => true,
                             Err(e) => {
                                 let payload_str = String::from_utf8_lossy(value);
                                 println!("INVALID: {} - {}", e, payload_str);
+                                false
                             }
                         }
+                    } else {
+                        false
+                    };
+
+                    if is_valid {
+                        valid_batch.push(record_and_offset.record);
                     }
                 }
 
                 if !valid_batch.is_empty() {
-                    let _ = clean_partition_client
-                        .produce(valid_batch, Compression::NoCompression)
-                        .await;
+                    // 3. EKLENEN KISIM: Arc'ın referans sayacını ucuz bir şekilde artırıyoruz
+                    let producer_client = Arc::clone(&clean_partition_client);
+
+                    task::spawn(async move {
+                        let _ = producer_client
+                            .produce(valid_batch, Compression::NoCompression)
+                            .await;
+                    });
                 }
             }
             Err(_) => {
-                tokio::time::sleep(Duration::from_millis(1000)).await;
+                tokio::time::sleep(Duration::from_millis(500)).await;
             }
         }
     }
@@ -173,20 +164,17 @@ mod tests {
     fn test_valid_payload_passes() {
         let payload = get_valid_json();
         let result = serde_json::from_str::<FraudEvent>(&payload);
-
         assert!(result.is_ok());
-
         let event = result.unwrap();
         assert_eq!(event.transaction_id, "TX-RUST-001");
         assert_eq!(event.Amount, 1505.0);
-        assert_eq!(event.user_id, Some("usr_999".to_string()));
+        assert_eq!(event.user_id, Some("usr_999"));
     }
 
     #[test]
     fn test_optional_user_id_allowed() {
         let payload = get_valid_json().replace(r#""user_id": "usr_999","#, "");
         let result = serde_json::from_str::<FraudEvent>(&payload);
-
         assert!(result.is_ok());
         assert_eq!(result.unwrap().user_id, None);
     }
@@ -195,7 +183,6 @@ mod tests {
     fn test_missing_required_field_fails() {
         let payload = get_valid_json().replace(r#""Amount""#, r#""MissingAmount""#);
         let result = serde_json::from_str::<FraudEvent>(&payload);
-
         assert!(result.is_err());
     }
 
@@ -203,7 +190,6 @@ mod tests {
     fn test_type_mismatch_fails() {
         let payload = get_valid_json().replace(r#""Amount": 1505.0"#, r#""Amount": "1505.0""#);
         let result = serde_json::from_str::<FraudEvent>(&payload);
-
         assert!(result.is_err());
     }
 }
