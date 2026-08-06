@@ -1,3 +1,22 @@
+### v1.26.1
+
+#### 🚀 Features & Core Modifications
+- **Standardized Platform Engineering Workflows:** Migrated CI/CD pipelines from Jenkins to GitHub Actions. This centralizes workflow management and leverages a more integrated CI/CD ecosystem.
+- **Automated Image Tagging and GitOps Updates:** Introduced a new GitHub Actions workflow (`cd-build-push.yaml`) that automatically builds and pushes Docker images to GHCR. It then updates the `values.production.yaml` file with the short Git SHA of the commit, ensuring GitOps manifests accurately reflect the deployed image versions.
+- **Manual Triggering for CD Pipelines:** Added `workflow_dispatch` triggers to several GitHub Actions workflows, enabling manual execution of CI/CD pipelines for greater control over deployments.
+- **Enhanced Policy Enforcement:** Introduced a new GitHub Actions workflow (`ci-opa-policy.yaml`) for validating Docker, Kubernetes, and AWS infrastructure configurations against Open Policy Agent (OPA) rules using `conftest`. This strengthens governance and compliance.
+
+#### 🛠 Stability & Performance (Fixes)
+- **OPA Explicit Versioning Compliance:** Modified base image tags in `values.yaml` to 'dev' to satisfy OPA's explicit versioning policy, ensuring better policy adherence.
+
+#### 🏗 Architectural Impact
+- **Jenkins Deprecation:** The `Jenkinsfile` has been removed, signifying a complete migration away from Jenkins for CI/CD.
+- **New GitOps Deployment Strategy:** The `cd-build-push.yaml` workflow now directly manages updates to `values.production.yaml`, streamlining the GitOps deployment process.
+- **Consolidated Policy Validation:** The OPA policy validation logic has been consolidated into a single workflow (`ci-opa-policy.yaml`), replacing the previous `sec-opa-policy.yaml`. This provides a unified approach to policy enforcement across different resource types.
+- **Taskfile Enhancements:** The `Taskfile.yaml` has been updated with new Helm tasks (`helm:dev`, `helm:prod`) to differentiate between deploying local development images and production images tagged with Git SHAs. The `helm:off` task now handles the uninstallation of both development and production Helm releases.
+
+---
+
 # Release Notes - v1.26.0
 
 This release focuses on enhancing security, refining the release automation process, and improving the accuracy of semantic versioning analysis.
