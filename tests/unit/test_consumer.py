@@ -44,12 +44,16 @@ async def test_inference_engine_batch_processing(
     # 3. Mock Kafka
     mock_consumer_instance = AsyncMock()
 
+    dummy_features = {f"V{i}": 0.0 for i in range(1, 29)}
+
     msg1 = MagicMock()
-    msg1.value = json.dumps({"transaction_id": "TX100", "Amount": 1500.0, "Time": 10.0}).encode("utf-8")
+    payload1 = {"transaction_id": "TX100", "Amount": 1500.0, "Time": 10.0, **dummy_features}
+    msg1.value = json.dumps(payload1).encode("utf-8")
     msg1.headers = []
 
     msg2 = MagicMock()
-    msg2.value = json.dumps({"transaction_id": "TX101", "Amount": 20.0, "Time": 15.0}).encode("utf-8")
+    payload2 = {"transaction_id": "TX101", "Amount": 20.0, "Time": 15.0, **dummy_features}
+    msg2.value = json.dumps(payload2).encode("utf-8")
     msg2.headers = []
 
     mock_consumer_instance.getmany.side_effect = [{MagicMock(): [msg1, msg2]}, asyncio.CancelledError()]

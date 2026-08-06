@@ -58,7 +58,7 @@ func setupTestEnvironment() (*gin.Engine, redismock.ClientMock, *MockKafkaWriter
 }
 
 func getExpectedRedisKey(payload TransactionPayload) string {
-	hashData := TransactionHashData{
+	hashData := TransactionPayload{
 		UserID: payload.UserID,
 		Amount: payload.Amount,
 		Time:   payload.Time,

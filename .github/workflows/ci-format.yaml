@@ -48,6 +48,8 @@ jobs:
 
       - name: Run GolangCI-Lint
         uses: golangci/golangci-lint-action@v6
+        env:
+          ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
         with:
           version: latest
           install-mode: goinstall
