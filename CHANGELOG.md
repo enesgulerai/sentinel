@@ -1,3 +1,30 @@
+### v1.26.2
+
+#### 🚀 Features & Core Modifications
+
+*   **Enhanced API Throughput and Reduced Latency:** The Go API Gateway has been refactored for zero-allocation and optimized I/O operations. This includes aggressive tuning of Redis and Redpanda client configurations, reducing timeouts to sub-millisecond levels and increasing buffer sizes for higher throughput. The `ingestTransaction` handler now utilizes a sync pool for `TransactionPayload` to minimize memory allocations and garbage collection overhead.
+*   **Streamlined CI/CD GitOps Updates:** The Continuous Deployment pipeline has been refactored to dynamically include registry and repository variables, making GitOps updates more robust and configurable.
+*   **Improved Local Development Experience:** Taskfile commands have been streamlined for better readability and maintainability, simplifying local development workflows.
+*   **AI-Driven Release Notes and Documentation:** Integrated AI agents for automated Semantic Versioning and release note generation, as well as for generating weekly architectural reviews based on git diffs.
+
+#### 🛠 Stability & Performance (Fixes)
+
+*   **Synchronized Redis Hashing in Tests:** Test suites have been updated to align Redis key hashing logic with the main payload structure, resolving inconsistencies.
+*   **Resolved CI Deprecations and Test Suite Updates:** Addressed GolangCI-Lint's Node.js 20 deprecation and updated outdated test suites to ensure CI stability.
+*   **API Stability Enhancements:** Introduced startup probes for the API, added a root endpoint for basic health checks, and increased context timeouts to improve overall API resilience.
+*   **Chaos Mesh Test Stability:** Updated Chaos Mesh Helm deployment to use production values and synchronized Redis hash in tests to improve the stability of chaos engineering experiments.
+*   **Validator and Consumer Component Updates:** Refactored validator and consumer components, along with load test fixtures, to align with the latest payload structures and improve data processing consistency.
+*   **Local Deployment Configuration Updates:** Updated local deployment configurations and the task runner for a more stable local development environment.
+
+#### 🏗 Architectural Impact
+
+*   **Removed Legacy Jenkins Configuration:** Deprecated Jenkins CI configuration files have been removed, simplifying the CI/CD tooling landscape.
+*   **Refined Helm Production Values:** Production Helm values have been updated to correctly specify image repositories for API, validator, and consumer components, ensuring correct deployment of production artifacts.
+*   **Updated READMEs and Documentation:** Enhanced documentation for DevSecOps practices, including updated OPA policy rules and load testing readmes, providing clearer guidance on security and performance testing.
+*   **Valkey Integration:** The `README.md` and related documentation now reflect the potential integration or compatibility with Valkey as a Redis alternative, indicating flexibility in datastore choices.
+
+---
+
 ### v1.26.1
 
 #### 🚀 Features & Core Modifications
