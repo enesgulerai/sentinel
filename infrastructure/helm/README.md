@@ -38,7 +38,7 @@ All infrastructure lifecycle tasks are wrapped inside the unified `Taskfile` int
 
 ```bash
 # Provision unified Helm chart (Single Source of Truth)
-task helm:on
+task helm:dev
 
 # Watch pod transitions and wait for datastore quorum
 task helm:status
