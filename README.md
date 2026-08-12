@@ -106,7 +106,7 @@ cd sentinel
 cp .env.example .env
 
 # Install Python dependencies via uv
-task env:install
+task env:setup
 ```
 
 ### 2. Execute ML Pipeline & Local Services
@@ -115,7 +115,7 @@ task env:install
 task ml:pipeline
 
 # Start local microservices (API Gateway, Redpanda, Redis, etc.)
-task docker:on
+task docker:up
 ```
 
 ### 3. Verification & Load Testing
@@ -126,9 +126,9 @@ k6 run tests/fixtures/loadtest.js
 
 ### 4. Container Management
 ```bash
-task docker:on    # Start all services
+task docker:up    # Start all services
 task docker:down  # Stop services gracefully (retains container images)
-task docker:off   # Full wipe (removes containers, networks, volumes, and images)
+task docker:nuke   # Full wipe (removes containers, networks, volumes, and images)
 ```
 
 ## Configuration & Environment
