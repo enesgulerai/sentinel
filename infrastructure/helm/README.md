@@ -113,6 +113,13 @@ kubectl get hpa -n sentinel-namespace -w
 kubectl exec -it -n sentinel-namespace $(kubectl get pods -n sentinel-namespace -l app=postgres -o jsonpath='{.items[0].metadata.name}') -- psql -U sentinel_user -d sentinel_db -c "SELECT transaction_id, risk_score, created_at FROM transactions ORDER BY created_at DESC LIMIT 5;"
 ```
 
+```markdown
+Note on HPA Metric Warm-up:
+Kubernetes Metrics Server collects CPU/Memory utilization metrics periodically (typically every 15s) and applies a rolling average to prevent metric flapping.
+
+Because short burst tests may complete before Metrics Server registers target utilization thresholds, run the load test twice consecutively (or maintain sustained traffic) to warm up CPU utilization and trigger horizontal pod scaling.
+```
+
 ## Configuration & Task Reference
 
 | Command / File | Target Domain | Description |
