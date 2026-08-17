@@ -70,10 +70,10 @@ jobs:
           cache-dependency-path: 'src/api/go.sum'
 
       - name: Run Gosec (SAST)
-        uses: securego/gosec@master
-        with:
-          args: '-exclude-dir=tests ./...'
-          working-directory: src/api
+        working-directory: src/api
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          gosec -exclude-dir=tests ./...
 
       - name: Install and Run Govulncheck
         run: |
