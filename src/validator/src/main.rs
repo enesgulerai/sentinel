@@ -1,5 +1,5 @@
-use rskafka::client::ClientBuilder;
 use rskafka::client::partition::{Compression, OffsetAt, UnknownTopicHandling};
+use rskafka::client::ClientBuilder;
 use serde::Deserialize;
 use std::env;
 use std::sync::Arc;
