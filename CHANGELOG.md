@@ -1,3 +1,24 @@
+### v1.26.3
+
+#### 🚀 Features & Core Modifications
+- **Enhanced Release Agent:** The release agent has been updated to optimize its interaction with the Gemini API. It now includes more robust handling of rate limits and temporary API errors, with increased retry delays and a more refined exclusion pattern for git diffs. This ensures more reliable generation of release notes by preventing token exhaustion and API timeouts.
+- **Security Scanning Alignment:** The CI pipeline for security scanning has been updated to execute `gosec` directly via the command line, ensuring it uses the same Go toolchain version as the main build. This provides a more accurate and consistent static analysis of the codebase.
+
+#### 🛠 Stability & Performance (Fixes)
+- **Vulnerability Patching:** Addressed critical security vulnerabilities in the `h2` and `rustls-webpki` components by upgrading dependencies and updating the Go toolchain. This significantly improves the security posture of the validator service.
+- **Dependency Tree Updates:** The dependency tree for the validator has been upgraded to patch the `h2` vulnerability, ensuring a more secure and stable runtime environment.
+
+#### 🏗 Architectural Impact
+- **Updated Image Tags:** Production image tags for the `api`, `validator`, and `consumer` services have been updated to `ef20e95`.
+- **Helm Documentation Updates:**
+    - The Helm documentation now includes a note on Horizontal Pod Autoscaler (HPA) metric warm-up requirements, advising users to run load tests twice consecutively or maintain sustained traffic for accurate scaling.
+    - Task names in the Helm documentation have been synchronized with the `Taskfile`, ensuring consistency in documentation and executable commands.
+- **README Task Reference Synchronization:** The root `README.md` has been updated to reflect the correct `Taskfile` command names for environment setup (`env:setup`), starting local services (`docker:up`), and container management (`docker:nuke`).
+- **Go Toolchain Update:** The Go toolchain version for the API service has been updated to `1.26.6`.
+- **Validator Edition Change:** The `edition` for the validator crate has been updated from "2024" to "2021" in `Cargo.toml`.
+
+---
+
 ### v1.26.2
 
 #### 🚀 Features & Core Modifications
