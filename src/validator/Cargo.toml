@@ -4,10 +4,13 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-# Modern HTTP Client
+# Kafka Client (TLS/SOCKS5 stripped to eliminate legacy rustls-webpki)
+rskafka = { version = "0.5", default-features = false, features = ["compression-snappy", "compression-gzip", "compression-lz4", "compression-zstd"] }
+
+# HTTP Client (Uses modern rustls with patched rustls-webpki >=0.103)
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 
-# Asynchronous Runtime
+# Async Runtime
 tokio = { version = "1.39", features = ["full"] }
 
 # Serialization & Deserialization
