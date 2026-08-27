@@ -31,12 +31,21 @@ def get_commit_messages(latest_tag):
     return commits.split("\n") if commits else []
 
 
-def get_git_diff(latest_tag):
+def get_git_diff(latest_tag, max_chars=40000):
+    # Exclude lock files and generated assets to save input tokens
+    exclude_pattern = "-- . ':!*lock*' ':!*.json' ':!*.min.*' ':!*.svg' ':!*.csv'"
     if latest_tag == "v0.0.0":
-        command = "git diff $(git hash-object -t tree /dev/null) HEAD"
+        command = f"git diff $(git hash-object -t tree /dev/null) HEAD {exclude_pattern}"
     else:
-        command = f"git diff {latest_tag} HEAD"
-    return run_command(command)
+        command = f"git diff {latest_tag} HEAD {exclude_pattern}"
+
+    diff = run_command(command)
+    if not diff:
+        return ""
+
+    if len(diff) > max_chars:
+        return diff[:max_chars] + "\n\n[Diff truncated to stay within model token quotas...]"
+    return diff
 
 
 def analyze_semver_bump(commit_messages):
@@ -139,8 +148,8 @@ Please strictly fill out the following template. Omit empty sections. Do not hal
 - Note any changes to deployment, infrastructure requirements, or potential breaking changes.
 """
 
-    max_retries = 5
-    retry_delay = 10
+    max_retries = 3
+    retry_delay = 60
 
     for attempt in range(max_retries):
         try:
@@ -155,8 +164,14 @@ Please strictly fill out the following template. Omit empty sections. Do not hal
             return response.text
         except Exception as e:
             err_msg = str(e)
-            if ("503" in err_msg or "UNAVAILABLE" in err_msg or "429" in err_msg) and attempt < max_retries - 1:
-                time.sleep(retry_delay * (attempt + 1))
+            if (
+                "503" in err_msg or "UNAVAILABLE" in err_msg or "429" in err_msg or "RESOURCE_EXHAUSTED" in err_msg
+            ) and attempt < max_retries - 1:
+                print(
+                    f"Rate limit or temporary API error encountered. Waiting {retry_delay}s before retry ({attempt + 1}/{max_retries})...",
+                    file=sys.stderr,
+                )
+                time.sleep(retry_delay)
                 continue
             return f"Failed to generate release notes via Gemini API: {err_msg}"
 
